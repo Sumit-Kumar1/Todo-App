@@ -42,7 +42,7 @@ func (h *Handler) AddTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method != http.MethodPost {
-		log.Print("not a valid request method")
+		log.Printf("%v on /add : not a valid request method", r.Method)
 		w.WriteHeader(http.StatusMethodNotAllowed)
 
 		return
@@ -66,13 +66,14 @@ func (h *Handler) AddTask(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 	if !htmx.IsHTMX(r) {
-		w.WriteHeader(http.StatusBadRequest)
+		log.Print("not a htmx request")
+		w.WriteHeader(http.StatusForbidden)
 
 		return
 	}
 
 	if r.Method != http.MethodDelete {
-		log.Print("not a valid request method")
+		log.Printf("%v on /delete : not a valid request method", r.Method)
 		w.WriteHeader(http.StatusMethodNotAllowed)
 
 		return
@@ -82,14 +83,21 @@ func (h *Handler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("\nDelete Request for ID: %v", id)
 
-	if err := h.Service.DeleteTask(id); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+	err := h.Service.DeleteTask(id)
+	if err != nil {
+		switch err.Error() {
+		case "not found":
+			w.WriteHeader(http.StatusNotFound)
+		default:
+			w.WriteHeader(http.StatusBadRequest)
+		}
+
 		_, _ = w.Write([]byte(err.Error()))
 
 		return
 	}
 
-	htmx.NewResponse().StatusCode(http.StatusAccepted).Redirect("/").Refresh(true)
+	htmx.NewResponse().StatusCode(http.StatusOK).Redirect("/").Refresh(true)
 }
 
 func (h *Handler) Done(w http.ResponseWriter, r *http.Request) {
@@ -109,8 +117,15 @@ func (h *Handler) Done(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("\nTask Done for ID: %v", id)
 
-	if err := h.Service.DeleteTask(id); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+	err := h.Service.DeleteTask(id)
+	if err != nil {
+		switch err.Error() {
+		case "not found":
+			w.WriteHeader(http.StatusNotFound)
+		default:
+			w.WriteHeader(http.StatusBadRequest)
+		}
+
 		_, _ = w.Write([]byte(err.Error()))
 
 		return

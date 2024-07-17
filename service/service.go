@@ -20,7 +20,7 @@ func New() *Service {
 
 func (s *Service) AddTask(title, desc string) (*models.Task, error) {
 	if strings.TrimSpace(title) == "" {
-		return nil, fmt.Errorf("Task is empty")
+		return nil, fmt.Errorf("task is empty")
 	}
 
 	var (
@@ -44,10 +44,56 @@ func (s *Service) AddTask(title, desc string) (*models.Task, error) {
 }
 
 func (s *Service) DeleteTask(id string) error {
+	if err := validateID(id); err != nil {
+		log.Println("id error : ", err.Error())
+
+		return err
+	}
+
+	uid, _ := uuid.Parse(id)
+
+	_, ok := s.Data[uid]
+	if !ok {
+		return fmt.Errorf("not found")
+	}
+
+	delete(s.Data, uid)
+
+	log.Print("Deleted : ", id)
 
 	return nil
 }
 
 func (s *Service) MarkDone(id string) error {
+	if err := validateID(id); err != nil {
+		log.Println("id error : ", err.Error())
+
+		return err
+	}
+
+	uid, _ := uuid.Parse(id)
+
+	t, ok := s.Data[uid]
+	if !ok {
+		return fmt.Errorf("not found")
+	}
+
+	t.IsDone = true
+	s.Data[uid] = t
+
+	log.Print("Done Task: ", id)
+	return nil
+}
+
+func validateID(id string) error {
+	uid, err := uuid.Parse(id)
+	if err != nil {
+		return err
+	}
+
+	if uid == uuid.Nil {
+		return fmt.Errorf("nil uuid")
+	}
+
 	return nil
 }
