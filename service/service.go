@@ -65,25 +65,25 @@ func (s *Service) DeleteTask(id string) error {
 	return nil
 }
 
-func (s *Service) MarkDone(id string) error {
+func (s *Service) MarkDone(id string) (*models.Task, error) {
 	if err := validateID(id); err != nil {
 		log.Println("id error : ", err.Error())
 
-		return err
+		return nil, err
 	}
 
 	uid, _ := uuid.Parse(id)
 
 	t, ok := s.Data[uid]
 	if !ok {
-		return fmt.Errorf("not found")
+		return nil, fmt.Errorf("not found")
 	}
 
 	t.IsDone = true
 	s.Data[uid] = t
 
 	log.Print("Done Task: ", id)
-	return nil
+	return &t, nil
 }
 
 func validateID(id string) error {

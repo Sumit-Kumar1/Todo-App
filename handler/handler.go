@@ -116,7 +116,7 @@ func (h *Handler) Done(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Task Done for ID: %v", id)
 
-	err := h.Service.MarkDone(id)
+	resp, err := h.Service.MarkDone(id)
 	if err != nil {
 		switch err.Error() {
 		case "not found":
@@ -130,5 +130,14 @@ func (h *Handler) Done(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	if resp == nil {
+		w.WriteHeader(http.StatusNoContent)
+
+		return
+	}
+
+	if err := h.template.ExecuteTemplate(w, "add", *resp); err != nil {
+		log.Printf("error in /done/%s\n\tError:%s", id, err.Error())
+	}
+
 }
