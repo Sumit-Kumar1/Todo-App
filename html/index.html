@@ -70,11 +70,11 @@
 {{block "add" .}}
 <tr class="hover:bg-gray-100">
 	{{if .IsDone}}
-	<td class="line-through italic">{{.Task}}</td>
+	<td class="line-through italic">{{.Title}}</td>
 	<td class="line-through italic">{{.Desc}}</td>
 	<td></td>
 	{{else}}
-	<td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-80 text-wrap">{{.Task}}</td>
+	<td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-80 text-wrap">{{.Title}}</td>
 	<td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-80 text-wrap">{{.Desc}}</td>
 	<td>
 		<button hx-post="/done/{{.ID}}"
