@@ -20,3 +20,15 @@
 # Go workspace file
 go.work
 go.work.sum
+
+build/
+
+
+#IDE specific directories
+.vscode/
+.idea/
+
+
+# air specific 
+.air.toml
+tmp/
