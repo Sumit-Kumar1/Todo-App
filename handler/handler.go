@@ -1,10 +1,9 @@
 package handler
 
 import (
+	"html/template"
 	"log"
 	"net/http"
-
-	"html/template"
 
 	"github.com/angelofallars/htmx-go"
 )
@@ -59,7 +58,7 @@ func (h *Handler) AddTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.template.ExecuteTemplate(w, "add", t); err != nil {
+	if err := h.template.ExecuteTemplate(w, "add", *t); err != nil {
 		log.Printf("Error while excuting template: %v", err.Error())
 	}
 }
@@ -81,7 +80,7 @@ func (h *Handler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 
 	id := r.PathValue("id")
 
-	log.Printf("\nDelete Request for ID: %v", id)
+	log.Printf("Delete Request for ID: %v", id)
 
 	err := h.Service.DeleteTask(id)
 	if err != nil {
@@ -97,7 +96,7 @@ func (h *Handler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	htmx.NewResponse().StatusCode(http.StatusOK).Redirect("/").Refresh(true)
+	w.WriteHeader(http.StatusOK)
 }
 
 func (h *Handler) Done(w http.ResponseWriter, r *http.Request) {
@@ -115,9 +114,9 @@ func (h *Handler) Done(w http.ResponseWriter, r *http.Request) {
 
 	id := r.PathValue("id")
 
-	log.Printf("\nTask Done for ID: %v", id)
+	log.Printf("Task Done for ID: %v", id)
 
-	err := h.Service.DeleteTask(id)
+	err := h.Service.MarkDone(id)
 	if err != nil {
 		switch err.Error() {
 		case "not found":
@@ -131,5 +130,5 @@ func (h *Handler) Done(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_ = htmx.NewResponse().StatusCode(http.StatusOK).Redirect("/").Refresh(true).Write(w)
+	w.WriteHeader(http.StatusOK)
 }
