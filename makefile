@@ -45,6 +45,11 @@ audit:
 # DEVELOPMENT
 # ==================================================================================== #
 
+## lint: check for lint errors
+.PHONY: lint
+lint:
+	golangci-lint run --enable-all
+
 ## test: run all tests
 .PHONY: test
 test:
