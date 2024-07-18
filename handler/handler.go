@@ -4,8 +4,10 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+)
 
-	"github.com/angelofallars/htmx-go"
+const (
+	HxHeaderRequest = "Hx-Request"
 )
 
 type Handler struct {
@@ -33,7 +35,7 @@ func (h *Handler) IndexPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) AddTask(w http.ResponseWriter, r *http.Request) {
-	if !htmx.IsHTMX(r) {
+	if r.Header.Get(HxHeaderRequest) != "true" {
 		log.Print("not a htmx request")
 		w.WriteHeader(http.StatusBadRequest)
 
@@ -64,7 +66,7 @@ func (h *Handler) AddTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) DeleteTask(w http.ResponseWriter, r *http.Request) {
-	if !htmx.IsHTMX(r) {
+	if r.Header.Get(HxHeaderRequest) != "true" {
 		log.Print("not a htmx request")
 		w.WriteHeader(http.StatusForbidden)
 
@@ -100,7 +102,7 @@ func (h *Handler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Done(w http.ResponseWriter, r *http.Request) {
-	if !htmx.IsHTMX(r) {
+	if r.Header.Get(HxHeaderRequest) != "true" {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
