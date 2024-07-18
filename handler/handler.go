@@ -155,7 +155,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method != http.MethodPut {
-		log.Print("not a valid request method")
+		log.Printf(invalidReqMethod, r.Method, "/update")
 		w.WriteHeader(http.StatusMethodNotAllowed)
 
 		return
@@ -165,8 +165,6 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	title := r.FormValue("title")
 	desc := r.FormValue("desc")
 	isDone := r.FormValue("done")
-
-	log.Printf("Task Done for ID: %v", id)
 
 	resp, err := h.Service.UpdateTask(id, title, desc, isDone)
 	if err != nil {
@@ -189,7 +187,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.template.ExecuteTemplate(w, "add", *resp); err != nil {
-		log.Printf("error in /done/%s\n\tError:%s", id, err.Error())
+		log.Printf("error in /update/%s\n\tError:%s", id, err.Error())
 		return
 	}
 

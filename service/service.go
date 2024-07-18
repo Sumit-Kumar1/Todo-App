@@ -88,8 +88,12 @@ func (s *Service) UpdateTask(id, title, desc, isDone string) (*models.Task, erro
 	}
 
 	task.Title = title
-	if strings.TrimSpace(desc) == "" {
+
+	switch {
+	case strings.TrimSpace(desc) == "":
 		task.Desc = "<n/a>"
+	default:
+		task.Desc = desc
 	}
 
 	task.IsDone, _ = strconv.ParseBool(isDone)
