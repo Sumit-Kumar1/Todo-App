@@ -10,6 +10,8 @@ var (
 	ErrPermissionDenied = constError("permission denied")
 	ErrInvalidId        = constError("invalid id")
 	ErrNotFound         = constError("not found")
+	ErrTaskTitle        = constError("invalid task title")
+	ErrTaskDone         = constError("invalid task done")
 )
 
 type constError string

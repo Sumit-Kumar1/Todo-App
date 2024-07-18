@@ -4,10 +4,14 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"todoapp/models"
 )
 
 const (
-	HxHeaderRequest = "Hx-Request"
+	hxRequest        = "Hx-Request"
+	trueStr          = "true"
+	invalidReqMethod = "%s method not allowed on %s"
+	notHTMX          = "not a htmx request"
 )
 
 type Handler struct {
@@ -22,7 +26,7 @@ func New(s Servicer) *Handler {
 
 func (h *Handler) IndexPage(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		log.Print("not a valid request method")
+		log.Printf(invalidReqMethod, r.Method, "/")
 		w.WriteHeader(http.StatusMethodNotAllowed)
 
 		return
@@ -35,15 +39,15 @@ func (h *Handler) IndexPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) AddTask(w http.ResponseWriter, r *http.Request) {
-	if r.Header.Get(HxHeaderRequest) != "true" {
-		log.Print("not a htmx request")
+	if r.Header.Get(hxRequest) != trueStr {
+		log.Print(notHTMX)
 		w.WriteHeader(http.StatusBadRequest)
 
 		return
 	}
 
 	if r.Method != http.MethodPost {
-		log.Printf("%v on /add : not a valid request method", r.Method)
+		log.Printf(invalidReqMethod, r.Method, "/add")
 		w.WriteHeader(http.StatusMethodNotAllowed)
 
 		return
@@ -66,15 +70,15 @@ func (h *Handler) AddTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) DeleteTask(w http.ResponseWriter, r *http.Request) {
-	if r.Header.Get(HxHeaderRequest) != "true" {
-		log.Print("not a htmx request")
+	if r.Header.Get(hxRequest) != trueStr {
+		log.Print(notHTMX)
 		w.WriteHeader(http.StatusForbidden)
 
 		return
 	}
 
 	if r.Method != http.MethodDelete {
-		log.Printf("%v on /delete : not a valid request method", r.Method)
+		log.Printf(invalidReqMethod, r.Method, "/delete")
 		w.WriteHeader(http.StatusMethodNotAllowed)
 
 		return
@@ -86,8 +90,8 @@ func (h *Handler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 
 	err := h.Service.DeleteTask(id)
 	if err != nil {
-		switch err.Error() {
-		case "not found":
+		switch {
+		case models.ErrNotFound.Is(err):
 			w.WriteHeader(http.StatusNotFound)
 		default:
 			w.WriteHeader(http.StatusBadRequest)
@@ -102,13 +106,13 @@ func (h *Handler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Done(w http.ResponseWriter, r *http.Request) {
-	if r.Header.Get(HxHeaderRequest) != "true" {
+	if r.Header.Get(hxRequest) != trueStr {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	if r.Method != http.MethodPut {
-		log.Print("not a valid request method")
+		log.Printf(invalidReqMethod, r.Method, "/done")
 		w.WriteHeader(http.StatusMethodNotAllowed)
 
 		return
@@ -120,8 +124,8 @@ func (h *Handler) Done(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.Service.MarkDone(id)
 	if err != nil {
-		switch err.Error() {
-		case "not found":
+		switch {
+		case models.ErrNotFound.Is(err):
 			w.WriteHeader(http.StatusNotFound)
 		default:
 			w.WriteHeader(http.StatusBadRequest)
@@ -141,5 +145,53 @@ func (h *Handler) Done(w http.ResponseWriter, r *http.Request) {
 	if err := h.template.ExecuteTemplate(w, "add", *resp); err != nil {
 		log.Printf("error in /done/%s\n\tError:%s", id, err.Error())
 	}
+}
 
+func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get(hxRequest) != trueStr {
+		w.WriteHeader(http.StatusBadRequest)
+
+		return
+	}
+
+	if r.Method != http.MethodPut {
+		log.Print("not a valid request method")
+		w.WriteHeader(http.StatusMethodNotAllowed)
+
+		return
+	}
+
+	id := r.PathValue("id")
+	title := r.FormValue("title")
+	desc := r.FormValue("desc")
+	isDone := r.FormValue("done")
+
+	log.Printf("Task Done for ID: %v", id)
+
+	resp, err := h.Service.UpdateTask(id, title, desc, isDone)
+	if err != nil {
+		switch {
+		case models.ErrNotFound.Is(err):
+			w.WriteHeader(http.StatusNotFound)
+		default:
+			w.WriteHeader(http.StatusBadRequest)
+		}
+
+		_, _ = w.Write([]byte(err.Error()))
+
+		return
+	}
+
+	if resp == nil {
+		w.WriteHeader(http.StatusNoContent)
+
+		return
+	}
+
+	if err := h.template.ExecuteTemplate(w, "add", *resp); err != nil {
+		log.Printf("error in /done/%s\n\tError:%s", id, err.Error())
+		return
+	}
+
+	log.Printf("Task Updated : %s", id)
 }

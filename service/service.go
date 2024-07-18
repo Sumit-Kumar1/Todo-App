@@ -1,9 +1,9 @@
 package service
 
 import (
-	"fmt"
-	"log"
+	"strconv"
 	"strings"
+
 	"todoapp/models"
 
 	"github.com/google/uuid"
@@ -20,7 +20,7 @@ func New() *Service {
 
 func (s *Service) AddTask(title, desc string) (*models.Task, error) {
 	if strings.TrimSpace(title) == "" {
-		return nil, fmt.Errorf("task is empty")
+		return nil, models.ErrTaskTitle
 	}
 
 	var (
@@ -39,62 +39,61 @@ func (s *Service) AddTask(title, desc string) (*models.Task, error) {
 
 	s.Data[id] = t
 
-	log.Println("Task Added ID: ", id)
-
 	return &t, nil
 }
 
 func (s *Service) DeleteTask(id string) error {
 	if err := validateID(id); err != nil {
-		log.Println("id error : ", err.Error())
-
-		return err
+		return models.ErrInvalidId
 	}
 
 	uid, _ := uuid.Parse(id)
-
-	_, ok := s.Data[uid]
-	if !ok {
-		return fmt.Errorf("not found")
+	if _, ok := s.Data[uid]; !ok {
+		return models.ErrNotFound
 	}
 
 	delete(s.Data, uid)
-
-	log.Print("Deleted : ", id)
 
 	return nil
 }
 
 func (s *Service) MarkDone(id string) (*models.Task, error) {
 	if err := validateID(id); err != nil {
-		log.Println("id error : ", err.Error())
+		return nil, models.ErrInvalidId
+	}
 
+	uid, _ := uuid.Parse(id)
+
+	task, ok := s.Data[uid]
+	if !ok {
+		return nil, models.ErrNotFound
+	}
+
+	task.IsDone = true
+	s.Data[uid] = task
+
+	return &task, nil
+}
+
+func (s *Service) UpdateTask(id, title, desc, isDone string) (*models.Task, error) {
+	if err := validateTask(id, title, isDone); err != nil {
 		return nil, err
 	}
 
 	uid, _ := uuid.Parse(id)
 
-	t, ok := s.Data[uid]
+	task, ok := s.Data[uid]
 	if !ok {
-		return nil, fmt.Errorf("not found")
+		return nil, models.ErrNotFound
 	}
 
-	t.IsDone = true
-	s.Data[uid] = t
-
-	log.Print("Done Task: ", id)
-	return &t, nil
-}
-
-func validateID(id string) error {
-	uid, err := uuid.Parse(id)
-	if err != nil {
-		return err
+	task.Title = title
+	if strings.TrimSpace(desc) == "" {
+		task.Desc = "<n/a>"
 	}
 
-	if uid == uuid.Nil {
-		return fmt.Errorf("nil uuid")
-	}
+	task.IsDone, _ = strconv.ParseBool(isDone)
+	s.Data[uid] = task
 
-	return nil
+	return &task, nil
 }
