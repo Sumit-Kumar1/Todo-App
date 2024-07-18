@@ -27,6 +27,7 @@ func (s *Service) AddTask(title, desc string) (*models.Task, error) {
 		id = uuid.New()
 		t  = models.Task{
 			ID:     id,
+			TagID:  id.String()[:5],
 			Desc:   desc,
 			Title:  title,
 			IsDone: false,
