@@ -45,9 +45,9 @@
       <h1 class="text-2xl text-center font-bold h-20 justify-center">TODO APP</h1>
       <form hx-post="/add" hx-target="#rend" hx-swap="beforeend" class="w-full text-center flex gap-3 flex-col">
         <input placeholder="Task Title*" name="task" type="text"
-          class="border-[#7091E6] border rounded p-2 w-full text-wrap h-auto bg-[#EDE8F5] text-[#3D52A0]"></input>
+          class="border-[#7091E6] border rounded p-2 w-full text-wrap h-auto bg-[#FFFFFF] text-[#3D52A0]"></input>
         <input placeholder="Task Description" name="desc" type="text"
-          class="border-[#7091E6] border rounded p-2 w-full text-wrap h-auto bg-[#EDE8F5] text-[#3D52A0]"></input>
+          class="border-[#7091E6] border rounded p-2 w-full text-wrap h-auto bg-[#FFFFFF] text-[#3D52A0]"></input>
         <button type="submit"
           class="border-[#7091E6] border rounded p-2 bg-[#7091E6] text-white hover:bg-[#3D52A0] w-auto mx-auto text-[#FFFFFF] transition ease-in-out duration-300 hover:scale-110">
           <span class="flex items-center text-center justify-center"> <svg width="30px" height="30px"
@@ -73,12 +73,12 @@
 
 
 {{block "add" .}}
-<div id="{{.TagID}}"
-  class="bg-[#EDE8F5] text-[#3D52A0] flex shadow-md shadow-[#ADBBDA] m-5 border-2 rounded-md border-[#7091E6] hover:shadow-xl gap-5 h-auto w-auto p-3 flex-col">
+<div id="{{.ID}}"
+  class="bg-[#FFFFFF] text-[#3D52A0] flex shadow-md shadow-[#ADBBDA] m-5 border-2 rounded-md border-[#7091E6] hover:shadow-xl gap-5 h-auto w-auto p-3 flex-col transition-all duration-1500 ease-in-out tansform hover:scale-110 text-center hover:m-x-10 transition-y">
   {{if .IsDone}}
   <p class="line-through italic text-wrap whitespace-nowrap text-[#3D52A0]">{{.Title}}</p>
   <p class="line-through italic text-wrap whitespace-nowrap text-[#3D52A0]">{{.Desc}}</p>
-  <button hx-confirm="Really Delete??" hx-delete="/delete/{{.ID}}" hx-target="#{{.TagID}}" hx-swap="outerHTML"
+  <button hx-confirm="Really Delete??" hx-delete="/delete/{{.ID}}" hx-target="#{{.ID}}" hx-swap="outerHTML"
     class="font-medium text-red-600 dark:text-red-500 hover:underline"><svg width="35px" height="35px"
       viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path
@@ -88,21 +88,21 @@
   {{else}}
   <p class="font-normal text-wrap whitespace-nowrap text-[#320323] text-3xl font-mono">{{.Title}}</p>
   <p class="font-light text-wrap whitespace-nowrap text-[#555555] font-monteserrat">{{.Desc}}</p>
-  <div class="flex w-full flex-row-reverse gap">
-    <button hx-confirm="Really Delete??" hx-delete="/delete/{{.ID}}" hx-target="#{{.TagID}}" hx-swap="outerHTML"
-      class="p-2 w-auto hover:border hover:rounded-full hover:border-[#EF4444] hover:animate-spin"><svg width="35px"
+  <div class="flex w-full flex-row-reverse gap-2">
+    <button hx-confirm="Really Delete??" hx-delete="/delete/{{.ID}}" hx-target="#{{.ID}}" hx-swap="outerHTML swap:0.5s"
+      class="p-2 w-auto hover:border hover:rounded-full hover:border-[#EF4444]"><svg width="35px"
         height="35px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path
           d="M6.99486 7.00636C6.60433 7.39689 6.60433 8.03005 6.99486 8.42058L10.58 12.0057L6.99486 15.5909C6.60433 15.9814 6.60433 16.6146 6.99486 17.0051C7.38538 17.3956 8.01855 17.3956 8.40907 17.0051L11.9942 13.4199L15.5794 17.0051C15.9699 17.3956 16.6031 17.3956 16.9936 17.0051C17.3841 16.6146 17.3841 15.9814 16.9936 15.5909L13.4084 12.0057L16.9936 8.42059C17.3841 8.03007 17.3841 7.3969 16.9936 7.00638C16.603 6.61585 15.9699 6.61585 15.5794 7.00638L11.9942 10.5915L8.40907 7.00636C8.01855 6.61584 7.38538 6.61584 6.99486 7.00636Z"
           fill="#EF4444" />
       </svg></button>
-    <button hx-put="/done/{{.ID}}" hx-target="#{{.TagID}}" hx-swap="outerHTML"
+    <button hx-put="/done/{{.ID}}" hx-target="#{{.ID}}" hx-swap="outerHTML"
       class="p-2 w-auto hover:border hover:rounded-full hover:border-[#008000]"><svg width="35px" height="35px"
         viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M5 14L8.23309 16.4248C8.66178 16.7463 9.26772 16.6728 9.60705 16.2581L18 6" stroke="#008000"
           stroke-width="2" stroke-linecap="round" />
       </svg></button>
-    <button button hx-on:click="alert('BOMB Has been planted!!! &#127757;')" hx-target="#{{.TagID}}" hx-swap="outerHTML"
+    <button button hx-on:click="alert('BOMB Has been planted!!! &#127757;')" hx-target="#{{.ID}}" hx-swap="outerHTML"
       class="p-2 hover:border hover:rounded-full hover:border-[#7091E6]">
       <svg width="30px" height="30px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path fill-rule="evenodd" clip-rule="evenodd"
