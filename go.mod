@@ -2,4 +2,4 @@ module todoapp
 
 go 1.22.2
 
-require github.com/google/uuid v1.6.0
+require golang.org/x/exp v0.0.0-20240716175740-e3f259677ff7
