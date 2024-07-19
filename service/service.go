@@ -5,17 +5,14 @@ import (
 	"strings"
 
 	"todoapp/models"
-
-	"github.com/google/uuid"
 )
 
 type Service struct {
-	Data map[uuid.UUID]models.Task
+	Data map[string]models.Task
 }
 
 func New() *Service {
-	d := make(map[uuid.UUID]models.Task)
-	return &Service{Data: d}
+	return &Service{Data: make(map[string]models.Task)}
 }
 
 func (s *Service) AddTask(title, desc string) (*models.Task, error) {
@@ -24,10 +21,9 @@ func (s *Service) AddTask(title, desc string) (*models.Task, error) {
 	}
 
 	var (
-		id = uuid.New()
+		id = generateID()
 		t  = models.Task{
 			ID:     id,
-			TagID:  id.String()[:5],
 			Desc:   desc,
 			Title:  title,
 			IsDone: false,
@@ -45,33 +41,30 @@ func (s *Service) AddTask(title, desc string) (*models.Task, error) {
 
 func (s *Service) DeleteTask(id string) error {
 	if err := validateID(id); err != nil {
-		return models.ErrInvalidId
+		return models.ErrInvalidID
 	}
 
-	uid, _ := uuid.Parse(id)
-	if _, ok := s.Data[uid]; !ok {
+	if _, ok := s.Data[id]; !ok {
 		return models.ErrNotFound
 	}
 
-	delete(s.Data, uid)
+	delete(s.Data, id)
 
 	return nil
 }
 
 func (s *Service) MarkDone(id string) (*models.Task, error) {
 	if err := validateID(id); err != nil {
-		return nil, models.ErrInvalidId
+		return nil, models.ErrInvalidID
 	}
 
-	uid, _ := uuid.Parse(id)
-
-	task, ok := s.Data[uid]
+	task, ok := s.Data[id]
 	if !ok {
 		return nil, models.ErrNotFound
 	}
 
 	task.IsDone = true
-	s.Data[uid] = task
+	s.Data[id] = task
 
 	return &task, nil
 }
@@ -81,9 +74,7 @@ func (s *Service) UpdateTask(id, title, desc, isDone string) (*models.Task, erro
 		return nil, err
 	}
 
-	uid, _ := uuid.Parse(id)
-
-	task, ok := s.Data[uid]
+	task, ok := s.Data[id]
 	if !ok {
 		return nil, models.ErrNotFound
 	}
@@ -98,7 +89,7 @@ func (s *Service) UpdateTask(id, title, desc, isDone string) (*models.Task, erro
 	}
 
 	task.IsDone, _ = strconv.ParseBool(isDone)
-	s.Data[uid] = task
+	s.Data[id] = task
 
 	return &task, nil
 }
