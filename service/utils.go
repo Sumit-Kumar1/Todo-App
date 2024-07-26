@@ -11,7 +11,8 @@ import (
 
 func generateID() string {
 	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	var seededRand *rand.Rand = rand.New(rand.NewSource(uint64(time.Now().UnixNano())))
+
+	seededRand := rand.New(rand.NewSource(uint64(time.Now().UnixNano())))
 
 	b := make([]byte, 5)
 	for i := range b {

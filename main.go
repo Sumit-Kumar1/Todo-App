@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
-
+	"time"
 	"todoapp/handler"
 	"todoapp/service"
 )
@@ -18,5 +18,13 @@ func main() {
 	http.HandleFunc("/update/{id}", h.Update)
 	http.HandleFunc("/done/{id}", h.Done)
 
-	log.Fatal(http.ListenAndServe(":12344", nil))
+	server := http.Server{
+		Addr:         ":12344",
+		Handler:      nil,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  15 * time.Second,
+	}
+
+	log.Fatal(server.ListenAndServe())
 }

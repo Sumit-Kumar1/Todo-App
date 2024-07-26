@@ -1,15 +1,16 @@
 package service
 
 import (
+	"errors"
 	"testing"
 	"todoapp/models"
 )
 
-func Test_validateID(t *testing.T) {
+func TestValidateID(t *testing.T) {
 	tests := []struct {
+		wantErr error
 		name    string
 		id      string
-		wantErr error
 	}{
 		{name: "valid case", id: "abceo", wantErr: nil},
 		{name: "nil case", id: "", wantErr: models.ErrInvalidID},
@@ -20,38 +21,38 @@ func Test_validateID(t *testing.T) {
 
 	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := validateID(tt.id); err != tt.wantErr {
+			if err := validateID(tt.id); !errors.Is(err, tt.wantErr) {
 				t.Errorf("\nTEST[%d] Failed - %s\n\tExpected: %+v\n\tActual: %+v", i, tt.name, tt.wantErr, err)
 			}
 		})
 	}
 }
 
-func Test_generateID(t *testing.T) {
+func TestGenerateID(t *testing.T) {
 	tests := []struct {
-		name    string
 		wantErr error
+		name    string
 	}{
-		{"valid ID", nil},
+		{name: "valid case", wantErr: nil},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := generateID()
-			if err := validateID(got); err != tt.wantErr {
+			if err := validateID(got); !errors.Is(err, tt.wantErr) {
 				t.Errorf("generateID() = %v", got)
 			}
 		})
 	}
 }
 
-func Test_validateTask(t *testing.T) {
+func TestValidateTask(t *testing.T) {
 	tests := []struct {
+		wantErr error
 		name    string
 		id      string
 		title   string
 		isDone  string
-		wantErr error
 	}{
 		{name: "valid case", id: "abcde", title: "hello", isDone: "true", wantErr: nil},
 		{name: "invalid ID", id: "abcd1", title: "hello", isDone: "true", wantErr: models.ErrInvalidID},
@@ -61,7 +62,7 @@ func Test_validateTask(t *testing.T) {
 
 	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := validateTask(tt.id, tt.title, tt.isDone); err != tt.wantErr {
+			if err := validateTask(tt.id, tt.title, tt.isDone); !errors.Is(err, tt.wantErr) {
 				t.Errorf("\nTEST[%d] Failed - %s\n\tExpected: %+v\n\tActual: %+v", i, tt.name, tt.wantErr, err)
 			}
 		})
