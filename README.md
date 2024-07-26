@@ -1,6 +1,6 @@
 # Todo-App
 
-This is a todo app created using HTMX and golang
+This is a simple todo app created using HTMX and golang
 
 ## Steps to run the project
 
@@ -13,5 +13,4 @@ This is a todo app created using HTMX and golang
 
 ## API Specification
 
-- Todo api specification can be found at `openapi/todoApi.yaml`
-
+- Todo api specification can be found at `openapi/todoApi.yaml` (WIP)
