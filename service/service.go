@@ -1,8 +1,10 @@
 package service
 
 import (
+	"sort"
 	"strconv"
 	"strings"
+	"time"
 	"todoapp/models"
 )
 
@@ -21,6 +23,10 @@ func (s *Service) GetAll() []models.Task {
 		tasks = append(tasks, s.Data[i])
 	}
 
+	sort.Slice(tasks, func(i, j int) bool {
+		return tasks[i].AddedAt.Before(tasks[j].AddedAt)
+	})
+
 	return tasks
 }
 
@@ -32,9 +38,10 @@ func (s *Service) AddTask(title string) (*models.Task, error) {
 	var (
 		id = generateID()
 		t  = models.Task{
-			ID:     id,
-			Title:  title,
-			IsDone: false,
+			ID:      id,
+			Title:   title,
+			IsDone:  false,
+			AddedAt: time.Now(),
 		}
 	)
 
@@ -85,6 +92,7 @@ func (s *Service) UpdateTask(id, title, isDone string) (*models.Task, error) {
 
 	task.Title = title
 	task.IsDone, _ = strconv.ParseBool(isDone)
+	task.ModifiedAt = time.Now()
 
 	s.Data[id] = task
 
