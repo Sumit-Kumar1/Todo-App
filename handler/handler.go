@@ -32,7 +32,11 @@ func (h *Handler) IndexPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := h.template.ExecuteTemplate(w, "index", nil)
+	tasks := h.Service.GetAll()
+
+	err := h.template.ExecuteTemplate(w, "index", map[string][]models.Task{
+		"Data": tasks,
+	})
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 	}
@@ -54,15 +58,16 @@ func (h *Handler) AddTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	task := r.PostFormValue("task")
-	taskDesc := r.PostFormValue("desc")
 
-	t, err := h.Service.AddTask(task, taskDesc)
+	t, err := h.Service.AddTask(task)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte(err.Error()))
 
 		return
 	}
+
+	log.Printf("Task is Added ID : %s", t.ID)
 
 	if err := h.template.ExecuteTemplate(w, "add", *t); err != nil {
 		log.Printf("Error while excuting template: %v", err.Error())
@@ -163,10 +168,9 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 
 	id := r.PathValue("id")
 	title := r.FormValue("title")
-	desc := r.FormValue("desc")
 	isDone := r.FormValue("done")
 
-	resp, err := h.Service.UpdateTask(id, title, desc, isDone)
+	resp, err := h.Service.UpdateTask(id, title, isDone)
 	if err != nil {
 		switch {
 		case models.ErrNotFound.Is(err):

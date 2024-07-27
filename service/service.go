@@ -14,7 +14,17 @@ func New() *Service {
 	return &Service{Data: make(map[string]models.Task)}
 }
 
-func (s *Service) AddTask(title, desc string) (*models.Task, error) {
+func (s *Service) GetAll() []models.Task {
+	var tasks []models.Task
+
+	for i := range s.Data {
+		tasks = append(tasks, s.Data[i])
+	}
+
+	return tasks
+}
+
+func (s *Service) AddTask(title string) (*models.Task, error) {
 	if strings.TrimSpace(title) == "" {
 		return nil, models.ErrTaskTitle
 	}
@@ -23,15 +33,10 @@ func (s *Service) AddTask(title, desc string) (*models.Task, error) {
 		id = generateID()
 		t  = models.Task{
 			ID:     id,
-			Desc:   desc,
 			Title:  title,
 			IsDone: false,
 		}
 	)
-
-	if strings.TrimSpace(desc) == "" {
-		t.Desc = "<n/a>"
-	}
 
 	s.Data[id] = t
 
@@ -68,7 +73,7 @@ func (s *Service) MarkDone(id string) (*models.Task, error) {
 	return &task, nil
 }
 
-func (s *Service) UpdateTask(id, title, desc, isDone string) (*models.Task, error) {
+func (s *Service) UpdateTask(id, title, isDone string) (*models.Task, error) {
 	if err := validateTask(id, title, isDone); err != nil {
 		return nil, err
 	}
@@ -79,15 +84,8 @@ func (s *Service) UpdateTask(id, title, desc, isDone string) (*models.Task, erro
 	}
 
 	task.Title = title
-
-	switch {
-	case strings.TrimSpace(desc) == "":
-		task.Desc = "<n/a>"
-	default:
-		task.Desc = desc
-	}
-
 	task.IsDone, _ = strconv.ParseBool(isDone)
+
 	s.Data[id] = task
 
 	return &task, nil
