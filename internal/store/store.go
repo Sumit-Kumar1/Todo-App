@@ -100,10 +100,10 @@ func (s Store) Create(ctx context.Context, id, title string) (*models.Task, erro
 	return &task, nil
 }
 
-func (s Store) Update(ctx context.Context, id, title, isDone string) (*models.Task, error) {
+func (s Store) Update(ctx context.Context, id, title string) (*models.Task, error) {
 	modifiedTS := time.Now()
 
-	query, values := genUpdateQuery(id, title, isDone, modifiedTS)
+	query, values := genUpdateQuery(id, title, modifiedTS)
 
 	_, err := s.DB.ExecContext(ctx, query, values...)
 	if err != nil {

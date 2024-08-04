@@ -9,7 +9,7 @@ import (
 
 const (
 	hxRequest        = "Hx-Request"
-	hxPromtp         = "HX-Prompt"
+	hxPrompt         = "HX-Prompt"
 	trueStr          = "true"
 	invalidReqMethod = "%s method not allowed on %s"
 	notHTMX          = "not a htmx request"

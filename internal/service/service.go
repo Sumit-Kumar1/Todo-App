@@ -77,7 +77,7 @@ func (s *Service) UpdateTask(ctx context.Context, id, title, isDone string) (*mo
 		return nil, err
 	}
 
-	task, err := s.Store.Update(ctx, id, title, isDone)
+	task, err := s.Store.Update(ctx, id, title)
 	if err != nil {
 		log.Println("error in updating task : ", err.Error())
 

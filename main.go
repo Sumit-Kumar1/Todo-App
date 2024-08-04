@@ -16,7 +16,7 @@ func main() {
 		return
 	}
 
-	if err := st.DB.Ping(); err != nil {
+	if err = st.DB.Ping(); err != nil {
 		log.Println("not able to ping the database: ", err.Error())
 		return
 	}
@@ -42,5 +42,10 @@ func main() {
 		IdleTimeout:  15 * time.Second,
 	}
 
-	log.Fatal(server.ListenAndServe())
+	err = server.ListenAndServe()
+	if err != nil {
+		log.Println("error while running server : ", err.Error())
+
+		return
+	}
 }

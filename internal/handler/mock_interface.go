@@ -5,6 +5,7 @@
 package handler
 
 import (
+	context "context"
 	reflect "reflect"
 	models "todoapp/internal/models"
 
@@ -35,74 +36,75 @@ func (m *MockServicer) EXPECT() *MockServicerMockRecorder {
 }
 
 // AddTask mocks base method.
-func (m *MockServicer) AddTask(task string) (*models.Task, error) {
+func (m *MockServicer) AddTask(ctx context.Context, task string) (*models.Task, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddTask", task)
+	ret := m.ctrl.Call(m, "AddTask", ctx, task)
 	ret0, _ := ret[0].(*models.Task)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // AddTask indicates an expected call of AddTask.
-func (mr *MockServicerMockRecorder) AddTask(task interface{}) *gomock.Call {
+func (mr *MockServicerMockRecorder) AddTask(ctx, task interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddTask", reflect.TypeOf((*MockServicer)(nil).AddTask), task)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddTask", reflect.TypeOf((*MockServicer)(nil).AddTask), ctx, task)
 }
 
 // DeleteTask mocks base method.
-func (m *MockServicer) DeleteTask(id string) error {
+func (m *MockServicer) DeleteTask(ctx context.Context, id string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteTask", id)
+	ret := m.ctrl.Call(m, "DeleteTask", ctx, id)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteTask indicates an expected call of DeleteTask.
-func (mr *MockServicerMockRecorder) DeleteTask(id interface{}) *gomock.Call {
+func (mr *MockServicerMockRecorder) DeleteTask(ctx, id interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteTask", reflect.TypeOf((*MockServicer)(nil).DeleteTask), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteTask", reflect.TypeOf((*MockServicer)(nil).DeleteTask), ctx, id)
 }
 
 // GetAll mocks base method.
-func (m *MockServicer) GetAll() []models.Task {
+func (m *MockServicer) GetAll(ctx context.Context) ([]models.Task, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAll")
+	ret := m.ctrl.Call(m, "GetAll", ctx)
 	ret0, _ := ret[0].([]models.Task)
-	return ret0
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // GetAll indicates an expected call of GetAll.
-func (mr *MockServicerMockRecorder) GetAll() *gomock.Call {
+func (mr *MockServicerMockRecorder) GetAll(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAll", reflect.TypeOf((*MockServicer)(nil).GetAll))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAll", reflect.TypeOf((*MockServicer)(nil).GetAll), ctx)
 }
 
 // MarkDone mocks base method.
-func (m *MockServicer) MarkDone(id string) (*models.Task, error) {
+func (m *MockServicer) MarkDone(ctx context.Context, id string) (*models.Task, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "MarkDone", id)
+	ret := m.ctrl.Call(m, "MarkDone", ctx, id)
 	ret0, _ := ret[0].(*models.Task)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // MarkDone indicates an expected call of MarkDone.
-func (mr *MockServicerMockRecorder) MarkDone(id interface{}) *gomock.Call {
+func (mr *MockServicerMockRecorder) MarkDone(ctx, id interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarkDone", reflect.TypeOf((*MockServicer)(nil).MarkDone), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarkDone", reflect.TypeOf((*MockServicer)(nil).MarkDone), ctx, id)
 }
 
 // UpdateTask mocks base method.
-func (m *MockServicer) UpdateTask(id, title, isDone string) (*models.Task, error) {
+func (m *MockServicer) UpdateTask(ctx context.Context, id, title, isDone string) (*models.Task, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateTask", id, title, isDone)
+	ret := m.ctrl.Call(m, "UpdateTask", ctx, id, title, isDone)
 	ret0, _ := ret[0].(*models.Task)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // UpdateTask indicates an expected call of UpdateTask.
-func (mr *MockServicerMockRecorder) UpdateTask(id, title, isDone interface{}) *gomock.Call {
+func (mr *MockServicerMockRecorder) UpdateTask(ctx, id, title, isDone interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateTask", reflect.TypeOf((*MockServicer)(nil).UpdateTask), id, title, isDone)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateTask", reflect.TypeOf((*MockServicer)(nil).UpdateTask), ctx, id, title, isDone)
 }

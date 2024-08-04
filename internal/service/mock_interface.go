@@ -36,11 +36,12 @@ func (m *MockStorer) EXPECT() *MockStorerMockRecorder {
 }
 
 // Create mocks base method.
-func (m *MockStorer) Create(ctx context.Context, id, title string) error {
+func (m *MockStorer) Create(ctx context.Context, id, title string) (*models.Task, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Create", ctx, id, title)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(*models.Task)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // Create indicates an expected call of Create.
@@ -79,11 +80,12 @@ func (mr *MockStorerMockRecorder) GetAll(ctx interface{}) *gomock.Call {
 }
 
 // MarkDone mocks base method.
-func (m *MockStorer) MarkDone(ctx context.Context, id string) error {
+func (m *MockStorer) MarkDone(ctx context.Context, id string) (*models.Task, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MarkDone", ctx, id)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(*models.Task)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // MarkDone indicates an expected call of MarkDone.
@@ -93,15 +95,16 @@ func (mr *MockStorerMockRecorder) MarkDone(ctx, id interface{}) *gomock.Call {
 }
 
 // Update mocks base method.
-func (m *MockStorer) Update(ctx context.Context, id, title, isDone string) error {
+func (m *MockStorer) Update(ctx context.Context, id, title string) (*models.Task, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Update", ctx, id, title, isDone)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret := m.ctrl.Call(m, "Update", ctx, id, title)
+	ret0, _ := ret[0].(*models.Task)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // Update indicates an expected call of Update.
-func (mr *MockStorerMockRecorder) Update(ctx, id, title, isDone interface{}) *gomock.Call {
+func (mr *MockStorerMockRecorder) Update(ctx, id, title interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockStorer)(nil).Update), ctx, id, title, isDone)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockStorer)(nil).Update), ctx, id, title)
 }
