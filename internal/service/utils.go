@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"todoapp/models"
+	"todoapp/internal/models"
 
 	"golang.org/x/exp/rand"
 )
@@ -28,11 +28,11 @@ func validateTask(id, title, isDone string) error {
 	}
 
 	if strings.TrimSpace(title) == "" {
-		return models.ErrTaskTitle
+		return models.ErrInvalidTitle
 	}
 
 	if _, err := strconv.ParseBool(isDone); err != nil {
-		return models.ErrTaskDone
+		return models.ErrInvalidDoneStatus
 	}
 
 	return nil

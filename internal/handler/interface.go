@@ -1,6 +1,6 @@
 package handler
 
-import "todoapp/models"
+import "todoapp/internal/models"
 
 type Servicer interface {
 	GetAll() []models.Task

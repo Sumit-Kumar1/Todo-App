@@ -4,8 +4,8 @@ import (
 	"log"
 	"net/http"
 	"time"
-	"todoapp/handler"
-	"todoapp/service"
+	"todoapp/internal/handler"
+	"todoapp/internal/service"
 )
 
 func main() {

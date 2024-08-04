@@ -5,22 +5,26 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"todoapp/models"
+	"todoapp/internal/models"
 )
 
 type Service struct {
-	Data map[string]models.Task
+	Data map[string]*models.Task
 }
 
 func New() *Service {
-	return &Service{Data: make(map[string]models.Task)}
+	return &Service{Data: make(map[string]*models.Task)}
 }
 
 func (s *Service) GetAll() []models.Task {
 	var tasks []models.Task
 
 	for i := range s.Data {
-		tasks = append(tasks, s.Data[i])
+		if s.Data[i] == nil {
+			continue
+		}
+
+		tasks = append(tasks, *s.Data[i])
 	}
 
 	sort.Slice(tasks, func(i, j int) bool {
@@ -32,7 +36,7 @@ func (s *Service) GetAll() []models.Task {
 
 func (s *Service) AddTask(title string) (*models.Task, error) {
 	if strings.TrimSpace(title) == "" {
-		return nil, models.ErrTaskTitle
+		return nil, models.ErrInvalidTitle
 	}
 
 	var (
@@ -45,7 +49,7 @@ func (s *Service) AddTask(title string) (*models.Task, error) {
 		}
 	)
 
-	s.Data[id] = t
+	s.Data[id] = &t
 
 	return &t, nil
 }
@@ -75,9 +79,10 @@ func (s *Service) MarkDone(id string) (*models.Task, error) {
 	}
 
 	task.IsDone = true
+	task.ModifiedAt = time.Now()
 	s.Data[id] = task
 
-	return &task, nil
+	return task, nil
 }
 
 func (s *Service) UpdateTask(id, title, isDone string) (*models.Task, error) {
@@ -96,5 +101,5 @@ func (s *Service) UpdateTask(id, title, isDone string) (*models.Task, error) {
 
 	s.Data[id] = task
 
-	return &task, nil
+	return task, nil
 }

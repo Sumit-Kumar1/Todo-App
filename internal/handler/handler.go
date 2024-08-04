@@ -4,7 +4,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
-	"todoapp/models"
+	"todoapp/internal/models"
 )
 
 const (
@@ -20,7 +20,7 @@ type Handler struct {
 }
 
 func New(s Servicer) *Handler {
-	tmpl := template.Must(template.ParseFiles("html/index.html"))
+	tmpl := template.Must(template.ParseFiles("views/index.html"))
 	return &Handler{template: tmpl, Service: s}
 }
 

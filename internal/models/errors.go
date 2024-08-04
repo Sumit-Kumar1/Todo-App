@@ -7,11 +7,11 @@ import (
 
 // Errors raised by package models.
 var (
-	ErrPermissionDenied = constError("permission denied")
-	ErrInvalidID        = constError("invalid id")
-	ErrNotFound         = constError("not found")
-	ErrTaskTitle        = constError("invalid task title")
-	ErrTaskDone         = constError("invalid task done")
+	ErrNotFound          = constError("not found")
+	ErrInvalidID         = constError("invalid id")
+	ErrInvalidTitle      = constError("invalid task title")
+	ErrPermissionDenied  = constError("permission denied")
+	ErrInvalidDoneStatus = constError("invalid task done")
 )
 
 type constError string

@@ -3,7 +3,7 @@ package service
 import (
 	"errors"
 	"testing"
-	"todoapp/models"
+	"todoapp/internal/models"
 )
 
 func TestValidateID(t *testing.T) {
@@ -56,8 +56,8 @@ func TestValidateTask(t *testing.T) {
 	}{
 		{name: "valid case", id: "abcde", title: "hello", isDone: "true", wantErr: nil},
 		{name: "invalid ID", id: "abcd1", title: "hello", isDone: "true", wantErr: models.ErrInvalidID},
-		{name: "invalid Title", id: "zAcdx", title: "", isDone: "true", wantErr: models.ErrTaskTitle},
-		{name: "invalid done", id: "pAUbe", title: "hello world", isDone: "not known", wantErr: models.ErrTaskDone},
+		{name: "invalid Title", id: "zAcdx", title: "", isDone: "true", wantErr: models.ErrInvalidTitle},
+		{name: "invalid done", id: "pAUbe", title: "hello world", isDone: "not known", wantErr: models.ErrInvalidDoneStatus},
 	}
 
 	for i, tt := range tests {
