@@ -28,16 +28,6 @@
       font-style: normal;
     }
   </style>
-  <script>
-    function update(id) {
-      let elem = document.getElementById(id)
-      elem.childNodes[1].innerHTML = `<form hx-put="/update/${id}" hx-target='#${id}' hx-swap="outerHTML">
-        <input placeholder="enter update" id="title" name="title" class="border-2 border-gray-500"></input>
-        <button type="submit" class="hover:underline">Update</button>
-         </form>`
-    }
-
-  </script>
 </head>
 
 <body class="bg-[#EDE8F5] text-[#3D52A0]">
@@ -94,7 +84,7 @@
         <path d="M5 14L8.23309 16.4248C8.66178 16.7463 9.26772 16.6728 9.60705 16.2581L18 6" stroke="#008000"
           stroke-width="2" stroke-linecap="round" />
       </svg></button>
-    <button  hx-on:click="update('{{.ID}}')" hx-trigger="changed" hx-put="/update/{{.ID}}" hx-swap="outerHTML" hx-target="#{{.ID}}"
+    <button  hx-prompt="Enter the task" hx-confirm="Are you sure on update?" hx-post="/update/{{.ID}}" hx-swap="outerHTML" hx-target="#{{.ID}}"
       class="p-2 hover:border hover:rounded-full hover:border-[#7091E6] h-auto">
       <svg width="30px" height="30px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path fill-rule="evenodd" clip-rule="evenodd"

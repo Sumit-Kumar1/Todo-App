@@ -1,105 +1,90 @@
 package service
 
 import (
-	"sort"
-	"strconv"
+	"context"
+	"log"
 	"strings"
-	"time"
 	"todoapp/internal/models"
 )
 
 type Service struct {
-	Data map[string]*models.Task
+	Store Storer
 }
 
-func New() *Service {
-	return &Service{Data: make(map[string]*models.Task)}
+func New(st Storer) *Service {
+	return &Service{Store: st}
 }
 
-func (s *Service) GetAll() []models.Task {
-	var tasks []models.Task
+func (s *Service) GetAll(ctx context.Context) ([]models.Task, error) {
+	tasks, err := s.Store.GetAll(ctx)
+	if err != nil {
+		log.Println("error in getAll : ", err.Error())
 
-	for i := range s.Data {
-		if s.Data[i] == nil {
-			continue
-		}
-
-		tasks = append(tasks, *s.Data[i])
+		return nil, err
 	}
 
-	sort.Slice(tasks, func(i, j int) bool {
-		return tasks[i].AddedAt.Before(tasks[j].AddedAt)
-	})
-
-	return tasks
+	return tasks, nil
 }
 
-func (s *Service) AddTask(title string) (*models.Task, error) {
+func (s *Service) AddTask(ctx context.Context, title string) (*models.Task, error) {
 	if strings.TrimSpace(title) == "" {
 		return nil, models.ErrInvalidTitle
 	}
 
-	var (
-		id = generateID()
-		t  = models.Task{
-			ID:      id,
-			Title:   title,
-			IsDone:  false,
-			AddedAt: time.Now(),
-		}
-	)
+	id := generateID()
 
-	s.Data[id] = &t
+	task, err := s.Store.Create(ctx, id, title)
+	if err != nil {
+		log.Println("error in add task : ", err.Error())
 
-	return &t, nil
-}
-
-func (s *Service) DeleteTask(id string) error {
-	if err := validateID(id); err != nil {
-		return models.ErrInvalidID
+		return nil, err
 	}
-
-	if _, ok := s.Data[id]; !ok {
-		return models.ErrNotFound
-	}
-
-	delete(s.Data, id)
-
-	return nil
-}
-
-func (s *Service) MarkDone(id string) (*models.Task, error) {
-	if err := validateID(id); err != nil {
-		return nil, models.ErrInvalidID
-	}
-
-	task, ok := s.Data[id]
-	if !ok {
-		return nil, models.ErrNotFound
-	}
-
-	task.IsDone = true
-	task.ModifiedAt = time.Now()
-	s.Data[id] = task
 
 	return task, nil
 }
 
-func (s *Service) UpdateTask(id, title, isDone string) (*models.Task, error) {
+func (s *Service) DeleteTask(ctx context.Context, id string) error {
+	if err := validateID(id); err != nil {
+		return models.ErrInvalidID
+	}
+
+	if err := s.Store.Delete(ctx, id); err != nil {
+		log.Println("error in delete task : ", err.Error())
+
+		return err
+	}
+
+	return nil
+}
+
+func (s *Service) MarkDone(ctx context.Context, id string) (*models.Task, error) {
+	if err := validateID(id); err != nil {
+		return nil, models.ErrInvalidID
+	}
+
+	task, err := s.Store.MarkDone(ctx, id)
+	if err != nil {
+		log.Println("error in markdone : ", err.Error())
+
+		return nil, err
+	}
+
+	return task, nil
+}
+
+func (s *Service) UpdateTask(ctx context.Context, id, title, isDone string) (*models.Task, error) {
 	if err := validateTask(id, title, isDone); err != nil {
 		return nil, err
 	}
 
-	task, ok := s.Data[id]
-	if !ok {
-		return nil, models.ErrNotFound
+	task, err := s.Store.Update(ctx, id, title, isDone)
+	if err != nil {
+		log.Println("error in updating task : ", err.Error())
+
+		return nil, err
 	}
 
-	task.Title = title
-	task.IsDone, _ = strconv.ParseBool(isDone)
-	task.ModifiedAt = time.Now()
-
-	s.Data[id] = task
+	log.Printf("\nUpdated task: %+v", task)
 
 	return task, nil
 }

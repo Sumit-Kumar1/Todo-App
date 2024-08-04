@@ -1,11 +1,14 @@
 package handler
 
-import "todoapp/internal/models"
+import (
+	"context"
+	"todoapp/internal/models"
+)
 
 type Servicer interface {
-	GetAll() []models.Task
-	AddTask(task string) (*models.Task, error)
-	DeleteTask(id string) error
-	UpdateTask(id, title, isDone string) (*models.Task, error)
-	MarkDone(id string) (*models.Task, error)
+	GetAll(ctx context.Context) ([]models.Task, error)
+	AddTask(ctx context.Context, task string) (*models.Task, error)
+	DeleteTask(ctx context.Context, id string) error
+	UpdateTask(ctx context.Context, id, title, isDone string) (*models.Task, error)
+	MarkDone(ctx context.Context, id string) (*models.Task, error)
 }

@@ -7,5 +7,5 @@ type Task struct {
 	Title      string
 	IsDone     bool
 	AddedAt    time.Time
-	ModifiedAt time.Time
+	ModifiedAt *time.Time
 }

@@ -9,6 +9,7 @@ import (
 
 const (
 	hxRequest        = "Hx-Request"
+	hxPromtp         = "HX-Prompt"
 	trueStr          = "true"
 	invalidReqMethod = "%s method not allowed on %s"
 	notHTMX          = "not a htmx request"
@@ -20,7 +21,9 @@ type Handler struct {
 }
 
 func New(s Servicer) *Handler {
-	tmpl := template.Must(template.ParseFiles("views/index.html"))
+	templateDir := "views/index.html"
+
+	tmpl := template.Must(template.ParseFiles(templateDir))
 	return &Handler{template: tmpl, Service: s}
 }
 
@@ -32,9 +35,14 @@ func (h *Handler) IndexPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tasks := h.Service.GetAll()
+	ctx := r.Context()
 
-	err := h.template.ExecuteTemplate(w, "index", map[string][]models.Task{
+	tasks, err := h.Service.GetAll(ctx)
+	if err != nil {
+		return
+	}
+
+	err = h.template.ExecuteTemplate(w, "index", map[string][]models.Task{
 		"Data": tasks,
 	})
 	if err != nil {
@@ -58,8 +66,9 @@ func (h *Handler) AddTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	task := r.PostFormValue("task")
+	ctx := r.Context()
 
-	t, err := h.Service.AddTask(task)
+	t, err := h.Service.AddTask(ctx, task)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte(err.Error()))
@@ -90,10 +99,11 @@ func (h *Handler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := r.PathValue("id")
+	ctx := r.Context()
 
 	log.Printf("Delete Request for ID: %v", id)
 
-	err := h.Service.DeleteTask(id)
+	err := h.Service.DeleteTask(ctx, id)
 	if err != nil {
 		switch {
 		case models.ErrNotFound.Is(err):
@@ -124,10 +134,11 @@ func (h *Handler) Done(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := r.PathValue("id")
+	ctx := r.Context()
 
 	log.Printf("Task Done for ID: %v", id)
 
-	resp, err := h.Service.MarkDone(id)
+	resp, err := h.Service.MarkDone(ctx, id)
 	if err != nil {
 		switch {
 		case models.ErrNotFound.Is(err):
@@ -159,7 +170,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if r.Method != http.MethodPut {
+	if r.Method != http.MethodPost {
 		log.Printf(invalidReqMethod, r.Method, "/update")
 		w.WriteHeader(http.StatusMethodNotAllowed)
 
@@ -167,10 +178,10 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := r.PathValue("id")
-	title := r.FormValue("title")
-	isDone := r.FormValue("done")
+	title := r.Header.Get("HX-Prompt")
+	ctx := r.Context()
 
-	resp, err := h.Service.UpdateTask(id, title, isDone)
+	resp, err := h.Service.UpdateTask(ctx, id, title, "false")
 	if err != nil {
 		switch {
 		case models.ErrNotFound.Is(err):
