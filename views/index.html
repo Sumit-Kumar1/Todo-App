@@ -4,30 +4,32 @@
 
 <head>
   <title>Todo APP HTMX</title>
-  <meta content="text/html; charset=utf-8" />
+  <meta charset="UTF-8">
   <script defer src="https://unpkg.com/htmx.org@2.0.1"></script>
   <script defer src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap"
-    rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap"
-    rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@100..900&family=Nunito:wght@200..1000&display=swap" rel="stylesheet">
   <style>
-    .font-monteserrat {
-      font-family: "Montserrat", sans-serif;
-      font-optical-sizing: auto;
-      font-weight: 400px;
-      font-style: normal;
-    }
-
-    .font-nunito {
-      font-family: "Nunito", sans-serif;
-      font-optical-sizing: auto;
-      font-weight: 400px;
-      font-style: normal;
-    }
+    .font-monteserrat { font-family: "Montserrat", sans-serif; }
+    .font-nunito { font-family: "Nunito", sans-serif; }
+    .drag-over { border: 2px dashed #7091E6; margin-bottom: 10px; }
   </style>
+  <script>
+    function allowDrop(ev) { ev.preventDefault(); ev.target.classList.add('drag-over'); }
+    function dragLeave(ev) { ev.target.classList.remove('drag-over'); }
+    function dragStart(ev) { ev.dataTransfer.setData("text", ev.target.id); ev.target.style.opacity = '0.7';  }
+    function dragDrop(ev) {
+      ev.preventDefault();
+      ev.target.classList.remove('drag-over');
+      let data = ev.dataTransfer.getData("text");
+      let draggedElement = document.getElementById(data);
+      draggedElement.style.opacity = '1';
+      if (ev.target.parentElement && ev.target.parentElement.id === 'rend') {
+        ev.target.insertAdjacentElement('beforebegin', draggedElement);
+      }
+    }
+  </script>
 </head>
 
 <body class="bg-[#EDE8F5] text-[#3D52A0]">
@@ -35,20 +37,19 @@
   <div class="w-full flex justify-center border-2">
     <div class="w-1/2">
       <form hx-post="/add" hx-target="#rend" hx-swap="beforeend" class="w-full text-center flex gap-3 flex-row">
-        <input placeholder="Task*" name="task" type="text" id="title"
-          class="border-[#7091E6] border rounded p-2 w-full text-wrap h-auto bg-[#FFFFFF] text-[#3D52A0]"></input>
+        <input placeholder="Task*" name="task" type="text" id="title" class="border-[#7091E6] border rounded p-2 w-full bg-white text-[#3D52A0]">
         <input type="reset" class="hover:cursor-pointer" />
-        <button type="submit"
-          class="border-[#7091E6] border rounded p-2 bg-[#7091E6] text-white hover:bg-[#3D52A0] w-fit h-fit text-[#FFFFFF] transition ease-in-out duration-300 hover:scale-110 h-auto">
-          <span class="flex items-center text-nowrap"> <svg width="30px" height="30px" viewBox="0 0 24 24" fill="none"
-              xmlns="http://www.w3.org/2000/svg">
+        <button type="submit" class="border-[#7091E6] border rounded p-2 bg-[#7091E6] text-white hover:bg-[#3D52A0] transition ease-in-out duration-300 hover:scale-110">
+          <span class="flex items-center"> 
+            <svg width="30px" height="30px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <g id="Edit / Add_Plus">
-                <path id="Vector" d="M6 12H12M12 12H18M12 12V18M12 12V6" stroke="#FFFFFF" stroke-width="1"
-                  stroke-linecap="round" stroke-linejoin="round" />
+                <path id="Vector" d="M6 12H12M12 12H18M12 12V18M12 12V6" stroke="#FFFFFF" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" />
               </g>
-            </svg>Add Task</span></button>
+            </svg>Add Task
+          </span>
+        </button>
       </form>
-      <div id="rend" class="mt-5 flex gap-2 flex-col max-h-[75vh] overflow-y-scroll overflow-x-auto w-full">
+      <div id="rend" class="mt-5 flex gap-2 flex-col max-h-[75vh] overflow-y-scroll overflow-x-auto w-full" ondrop="dragDrop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)">
         {{range $val := .Data}}
         {{template "add" $val}}
         {{end}}
@@ -60,46 +61,33 @@
 </html>
 {{end}}
 
-
-
 {{block "add" .}}
-<div id="{{.ID}}"
-  class="flex flex-row rounded-md border-2 border-[#7091E6] bg-[#FFFFFF] p-2 text-[#3D52A0] items-center">
+<div id="{{.ID}}" draggable="true" ondragstart="dragStart(event)" class="flex flex-row rounded-md border-2 border-[#7091E6] bg-white p-2 text-[#3D52A0] items-center hover:cursor-pointer">
   {{if .IsDone}}
-  <p class="line-through italic text-wrap whitespace-nowrap text-[#3D52A0] basis-5/6 items-center">{{.Title}}</p>
-  <button hx-confirm="Really Delete??" hx-delete="/delete/{{.ID}}" hx-target="#{{.ID}}" hx-swap="outerHTML"
-    class="font-medium text-red-600 dark:text-red-500 hover:underline"><svg width="35px" height="35px"
-      viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path
-        d="M6.99486 7.00636C6.60433 7.39689 6.60433 8.03005 6.99486 8.42058L10.58 12.0057L6.99486 15.5909C6.60433 15.9814 6.60433 16.6146 6.99486 17.0051C7.38538 17.3956 8.01855 17.3956 8.40907 17.0051L11.9942 13.4199L15.5794 17.0051C15.9699 17.3956 16.6031 17.3956 16.9936 17.0051C17.3841 16.6146 17.3841 15.9814 16.9936 15.5909L13.4084 12.0057L16.9936 8.42059C17.3841 8.03007 17.3841 7.3969 16.9936 7.00638C16.603 6.61585 15.9699 6.61585 15.5794 7.00638L11.9942 10.5915L8.40907 7.00636C8.01855 6.61584 7.38538 6.61584 6.99486 7.00636Z"
-        fill="#EF4444" />
-    </svg></button>
+  <p class="line-through italic text-wrap whitespace-nowrap text-[#3D52A0] basis-5/6">{{.Title}}</p>
+  <button hx-confirm="Really Delete??" hx-delete="/delete/{{.ID}}" hx-target="#{{.ID}}" hx-swap="outerHTML" class="text-red-600 hover:underline">
+    <svg width="35px" height="35px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M6.99486 7.00636C6.60433 7.39689 6.60433 8.03005 6.99486 8.42058L10.58 12.0057L6.99486 15.5909C6.60433 15.9814 6.60433 16.6146 6.99486 17.0051C7.38538 17.3956 8.01855 17.3956 8.40907 17.0051L11.9942 13.4199L15.5794 17.0051C15.9699 17.3956 16.6031 17.3956 16.9936 17.0051C17.3841 16.6146 17.3841 15.9814 16.9936 15.5909L13.4084 12.0057L16.9936 8.42059C17.3841 8.03007 17.3841 7.3969 16.9936 7.00638C16.603 6.61585 15.9699 6.61585 15.5794 7.00638L11.9942 10.5915L8.40907 7.00636C8.01855 6.61584 7.38538 6.61584 6.99486 7.00636Z" fill="#EF4444" />
+    </svg>
+  </button>
   {{else}}
-  <p class="font-normal text-wrap whitespace-nowrap text-[#3D52A0] font-monteserrat p-1 basis-5/6 justitfy-center">
-    {{.Title}}</p>
+  <p class="font-monteserrat p-1 basis-5/6">{{.Title}}</p>
   <div class="flex right-0">
-    <button hx-put="/done/{{.ID}}" hx-target="#{{.ID}}" hx-swap="outerHTML"
-      class="p-2 w-auto hover:border hover:rounded-full hover:border-[#008000] h-auto"><svg width="35px" height="35px"
-        viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M5 14L8.23309 16.4248C8.66178 16.7463 9.26772 16.6728 9.60705 16.2581L18 6" stroke="#008000"
-          stroke-width="2" stroke-linecap="round" />
-      </svg></button>
-    <button  hx-prompt="Enter the task" hx-confirm="Are you sure on update?" hx-post="/update/{{.ID}}" hx-swap="outerHTML" hx-target="#{{.ID}}"
-      class="p-2 hover:border hover:rounded-full hover:border-[#7091E6] h-auto">
-      <svg width="30px" height="30px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path fill-rule="evenodd" clip-rule="evenodd"
-          d="M20.8477 1.87868C19.6761 0.707109 17.7766 0.707105 16.605 1.87868L2.44744 16.0363C2.02864 16.4551 1.74317 16.9885 1.62702 17.5692L1.03995 20.5046C0.760062 21.904 1.9939 23.1379 3.39334 22.858L6.32868 22.2709C6.90945 22.1548 7.44285 21.8693 7.86165 21.4505L22.0192 7.29289C23.1908 6.12132 23.1908 4.22183 22.0192 3.05025L20.8477 1.87868ZM18.0192 3.29289C18.4098 2.90237 19.0429 2.90237 19.4335 3.29289L20.605 4.46447C20.9956 4.85499 20.9956 5.48815 20.605 5.87868L17.9334 8.55027L15.3477 5.96448L18.0192 3.29289ZM13.9334 7.3787L3.86165 17.4505C3.72205 17.5901 3.6269 17.7679 3.58818 17.9615L3.00111 20.8968L5.93645 20.3097C6.13004 20.271 6.30784 20.1759 6.44744 20.0363L16.5192 9.96448L13.9334 7.3787Z"
-          fill="#7091E6" />
+    <button hx-put="/done/{{.ID}}" hx-target="#{{.ID}}" hx-swap="outerHTML" class="p-2 hover:border hover:rounded-full hover:border-green-500">
+      <svg width="35px" height="35px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M5 14L8.23309 16.4248C8.66178 16.7463 9.26772 16.6728 9.60705 16.2581L18 6" stroke="#008000" stroke-width="2" stroke-linecap="round" />
       </svg>
     </button>
-    <button hx-confirm="Really Delete??" hx-delete="/delete/{{.ID}}" hx-target="#{{.ID}}" hx-swap="outerHTML swap:0.5s"
-      class="p-2 w-auto hover:border hover:rounded-full hover:border-[#EF4444] h-auto"><svg width="35px" height="35px"
-        viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path
-          d="M6.99486 7.00636C6.60433 7.39689 6.60433 8.03005 6.99486 8.42058L10.58 12.0057L6.99486 15.5909C6.60433 15.9814 6.60433 16.6146 6.99486 17.0051C7.38538 17.3956 8.01855 17.3956 8.40907 17.0051L11.9942 13.4199L15.5794 17.0051C15.9699 17.3956 16.6031 17.3956 16.9936 17.0051C17.3841 16.6146 17.3841 15.9814 16.9936 15.5909L13.4084 12.0057L16.9936 8.42059C17.3841 8.03007 17.3841 7.3969 16.9936 7.00638C16.603 6.61585 15.9699 6.61585 15.5794 7.00638L11.9942 10.5915L8.40907 7.00636C8.01855 6.61584 7.38538 6.61584 6.99486 7.00636Z"
-          fill="#EF4444" />
-      </svg></button>
-
+    <button hx-prompt="Enter the task" hx-confirm="Are you sure on update?" hx-post="/update/{{.ID}}" hx-swap="outerHTML" hx-target="#{{.ID}}" class="p-2 hover:border hover:rounded-full hover:border-[#7091E6]">
+      <svg width="30px" height="30px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M20.8477 1.87868C19.6761 0.707109 17.7766 0.707105 16.605 1.87868L2.44744 16.0363C2.02864 16.4551 1.74317 16.9885 1.62702 17.5692L1.03995 20.5046C0.760062 21.904 1.9939 23.1379 3.39334 22.858L6.32868 22.2709C6.90945 22.1548 7.44285 21.8693 7.86165 21.4505L22.0192 7.29289C23.1908 6.12132 23.1908 4.22183 22.0192 3.05025L20.8477 1.87868ZM18.0192 3.29289C18.4098 2.90237 19.0429 2.90237 19.4335 3.29289L20.605 4.46447C20.9956 4.85499 20.9956 5.48815 20.605 5.87868L17.9334 8.55027L15.3477 5.96448L18.0192 3.29289ZM13.9334 7.3787L3.86165 17.4505C3.72205 17.5901 3.6269 17.7679 3.58818 17.9615L3.00111 20.8968L5.93645 20.3097C6.13004 20.271 6.30784 20.1759 6.44744 20.0363L16.5192 9.96448L13.9334 7.3787Z" fill="#7091E6" />
+      </svg>
+    </button>
+    <button hx-confirm="Really Delete??" hx-delete="/delete/{{.ID}}" hx-target="#{{.ID}}" hx-swap="outerHTML" class="p-2 hover:border hover:rounded-full hover:border-red-600">
+      <svg width="35px" height="35px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M6.99486 7.00636C6.60433 7.39689 6.60433 8.03005 6.99486 8.42058L10.58 12.0057L6.99486 15.5909C6.60433 15.9814 6.60433 16.6146 6.99486 17.0051C7.38538 17.3956 8.01855 17.3956 8.40907 17.0051L11.9942 13.4199L15.5794 17.0051C15.9699 17.3956 16.6031 17.3956 16.9936 17.0051C17.3841 16.6146 17.3841 15.9814 16.9936 15.5909L13.4084 12.0057L16.9936 8.42059C17.3841 8.03007 17.3841 7.3969 16.9936 7.00638C16.603 6.61585 15.9699 6.61585 15.5794 7.00638L11.9942 10.5915L8.40907 7.00636C8.01855 6.61584 7.38538 6.61584 6.99486 7.00636Z" fill="#EF4444" />
+      </svg>
+    </button>
   </div>
   {{end}}
 </div>
