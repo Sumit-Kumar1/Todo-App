@@ -3,13 +3,15 @@ package main
 import (
 	"log"
 	"net/http"
-	"time"
 	"todoapp/internal/handler"
+	"todoapp/internal/server"
 	"todoapp/internal/service"
 	"todoapp/internal/store"
 )
 
 func main() {
+	app := server.NewServer()
+
 	st, err := store.New()
 	if err != nil {
 		log.Printf("\nDB Creation err : %s", err.Error())
@@ -17,7 +19,7 @@ func main() {
 	}
 
 	if err = st.DB.Ping(); err != nil {
-		log.Println("not able to ping the database: ", err.Error())
+		log.Println("database not reachable: ", err.Error())
 		return
 	}
 
@@ -33,19 +35,20 @@ func main() {
 	http.HandleFunc("/delete/{id}", h.DeleteTask)
 	http.HandleFunc("/update/{id}", h.Update)
 	http.HandleFunc("/done/{id}", h.Done)
+	http.HandleFunc("/health", healthStatus)
 
-	server := http.Server{
-		Addr:         ":12344",
-		Handler:      nil,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  15 * time.Second,
-	}
+	log.Printf("Server created with configs:App-Name: %s, Port: %s, env: %s", app.Name, app.Addr, app.Env)
+	log.Printf("\nApplication %v server is started on port:%v", app.Name, app.Addr)
 
-	err = server.ListenAndServe()
+	err = app.ListenAndServe()
 	if err != nil {
 		log.Println("error while running server : ", err.Error())
 
 		return
 	}
+}
+
+func healthStatus(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
 }
