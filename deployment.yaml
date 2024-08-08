@@ -21,22 +21,21 @@ spec:
           imagePullPolicy: Never # for local container image
           ports:
             - containerPort: 12344
+          readinessProbe:
+            tcpSocket:
+              port: 12344
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 12344
+            initialDelaySeconds: 3
+            failureThreshold: 20
+            periodSeconds: 3
           resources:
             limits:
               memory: 100Mi #limit memory for a container max of 100 MB
-      
       automountServiceAccountToken: false
 
-      readinessProbe:
-        tcpSocket:
-          port: 12344
-        initialDelaySeconds: 15
-        periodSeconds: 10
       
-      livenessProbe:
-        httpGet:
-          path: /health
-          port: 12344
-        initialDelaySeconds: 3
-        failureThreshold: 20
-        periodSeconds: 3
