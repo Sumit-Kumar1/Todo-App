@@ -82,12 +82,17 @@ run/live:
         --build.include_ext "go, tpl, tmpl, html, css, scss, js, ts, sql, jpeg, jpg, gif, png, bmp, svg, webp, ico" \
         --misc.clean_on_exit "true"
 
-## docker/build : build the docker image
-.PHONY: docker/build
+## docker/build-image : build the docker image
+.PHONY: docker/build-image
 docker/build: build
 	docker buildx build -t todoapp . --no-cache --progress=plain
 
-## build/container : run the docker container from the image build
-.PHONY: build/container
-build/container : docker/build
+## run/container : run the docker container from the image build
+.PHONY: run/container
+build/container : docker/build-image
 	docker run --name todoapp -p 12344:12344 -d todoapp:latest
+
+## deploy/local : it deploys the container image on local instance using kubectl and forward the port
+.PHONY: deploy/local
+deploy/local: docker/build-image
+	kubectl apply -f deployment.yaml
