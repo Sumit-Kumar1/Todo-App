@@ -66,6 +66,7 @@ test/cover:
 build:
     # Include additional build steps, like TypeScript, SCSS or Tailwind compilation here...
 	go build -o=/tmp/bin/${BINARY_NAME} ${MAIN_PACKAGE_PATH}
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o=./Build/main ${MAIN_PACKAGE_PATH}
 
 ## run: run the  application
 .PHONY: run
@@ -80,3 +81,13 @@ run/live:
         --build.exclude_dir "" \
         --build.include_ext "go, tpl, tmpl, html, css, scss, js, ts, sql, jpeg, jpg, gif, png, bmp, svg, webp, ico" \
         --misc.clean_on_exit "true"
+
+## docker/build : build the docker image
+.PHONY: docker/build
+docker/build: build
+	docker buildx build -t todoapp . --no-cache --progress=plain
+
+## build/container : run the docker container from the image build
+.PHONY: build/container
+build/container : docker/build
+	docker run --name todoapp -p 12344:12344 -d todoapp:latest
