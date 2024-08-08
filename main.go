@@ -10,8 +10,6 @@ import (
 )
 
 func main() {
-	app := server.NewServer()
-
 	st, err := store.New()
 	if err != nil {
 		log.Printf("\nDB Creation err : %s", err.Error())
@@ -37,6 +35,12 @@ func main() {
 	http.HandleFunc("/done/{id}", h.Done)
 	http.HandleFunc("/health", healthStatus)
 
+	app := server.NewServer(
+		server.WithAppName("todoApp"),
+		server.WithEnv("development"),
+		server.WithPort("12344"),
+	)
+
 	log.Printf("Server created with configs:App-Name: %s, Port: %s, env: %s", app.Name, app.Addr, app.Env)
 	log.Printf("\nApplication %v server is started on port:%v", app.Name, app.Addr)
 
@@ -48,7 +52,7 @@ func main() {
 	}
 }
 
-func healthStatus(w http.ResponseWriter, r *http.Request) {
+func healthStatus(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("ok"))
+	_, _ = w.Write([]byte("ok"))
 }
