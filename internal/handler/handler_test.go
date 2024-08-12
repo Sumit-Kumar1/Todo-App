@@ -38,8 +38,6 @@ func TestHandler_AddTask(t *testing.T) {
 			h.AddTask(w, r)
 
 			assert.Equalf(t, tt.respCode, w.Result().StatusCode, "TEST[%d] Failed - %s", i, tt.name)
-
-			w.Result().Body.Close()
 		})
 	}
 }

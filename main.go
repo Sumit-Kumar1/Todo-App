@@ -38,11 +38,11 @@ func main() {
 	app := server.NewServer(
 		server.WithAppName("todoApp"),
 		server.WithEnv("development"),
-		server.WithPort("12344"),
+		server.WithPort("9001"),
 	)
 
 	log.Printf("Server created with configs:App-Name: %s, Port: %s, env: %s", app.Name, app.Addr, app.Env)
-	log.Printf("\nApplication %v server is started on port:%v", app.Name, app.Addr)
+	log.Printf("Application %v server is started on port:%v", app.Name, app.Addr)
 
 	err = app.ListenAndServe()
 	if err != nil {

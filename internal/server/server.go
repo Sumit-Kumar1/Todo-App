@@ -5,8 +5,6 @@ import (
 	"time"
 )
 
-type Opts func(*Server)
-
 type Configs struct {
 	Name string `json:"name"`
 	Env  string `json:"env"`
@@ -22,8 +20,10 @@ type Server struct {
 	*Configs
 }
 
+type Opts func(s *Server)
+
 func NewServer(opts ...Opts) *Server {
-	s := defaultState()
+	s := defaultServer()
 
 	for _, fn := range opts {
 		fn(s)
@@ -58,18 +58,19 @@ func WithEnv(env string) Opts {
 	}
 }
 
-func defaultState() *Server {
+func defaultServer() *Server {
 	port := "9001"
 	name := "todoApp"
 	env := "dev"
 	host := ""
+	timeout := 10 * time.Second
 
 	return &Server{
 		Server: &http.Server{
 			Addr:         host + ":" + port,
-			ReadTimeout:  10 * time.Second,
-			WriteTimeout: 10 * time.Second,
-			IdleTimeout:  20 * time.Second,
+			ReadTimeout:  timeout,
+			WriteTimeout: timeout,
+			IdleTimeout:  2 * timeout,
 		},
 		Configs: &Configs{
 			Name: name,
