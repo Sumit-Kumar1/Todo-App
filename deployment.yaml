@@ -34,8 +34,12 @@ spec:
             failureThreshold: 20
             periodSeconds: 3
           resources:
+            requests:
+              memory: "64Mi"
+              cpu: "250m"
             limits:
-              memory: 100Mi #limit memory for a container max of 100 MB
+              memory: "128Mi"
+              cpu: "500m"
       automountServiceAccountToken: false
 
       
