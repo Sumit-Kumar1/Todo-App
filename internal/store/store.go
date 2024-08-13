@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"log"
 	"time"
 	"todoapp/internal/models"
@@ -84,17 +85,11 @@ func (s Store) Create(ctx context.Context, id, title string) (*models.Task, erro
 		return nil, err
 	}
 
-	addedTS, ok := values[3].(time.Time)
-	if !ok {
-		log.Println("not able to infer value for added time")
-		addedTS = addTS
-	}
-
 	var task = models.Task{
 		ID:      id,
 		Title:   title,
 		IsDone:  false,
-		AddedAt: addedTS,
+		AddedAt: addTS,
 	}
 
 	return &task, nil
@@ -130,25 +125,31 @@ func (s Store) Delete(ctx context.Context, id string) error {
 }
 
 func (s Store) MarkDone(ctx context.Context, id string) (*models.Task, error) {
-	_, err := s.DB.ExecContext(ctx, "UPDATE tasks SET done_status=? WHERE task_id=?", 1, id)
-	if err != nil {
-		return nil, err
-	}
-
 	var (
 		task = models.Task{ID: id}
 		done int
 	)
+
+	res, err := s.DB.ExecContext(ctx, "UPDATE tasks SET done_status=? WHERE task_id=?", 1, id)
+	if err != nil {
+		return nil, err
+	}
+
+	val, err := res.RowsAffected()
+	if err != nil {
+		return nil, err
+	}
+
+	if val > 1 {
+		return nil, errors.New("not able to update")
+	}
 
 	row := s.DB.QueryRowContext(ctx, "SELECT task_title, done_status, added_at, modified_at FROM tasks WHERE task_id=?", id)
 	if err := row.Scan(&task.Title, &done, &task.AddedAt, &task.ModifiedAt); err != nil {
 		return nil, err
 	}
 
-	switch done {
-	case 0:
-		task.IsDone = false
-	case 1:
+	if done == 1 {
 		task.IsDone = true
 	}
 
