@@ -3,6 +3,7 @@ module todoapp
 go 1.22.2
 
 require (
+	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/golang/mock v1.6.0
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/exp v0.0.0-20240716175740-e3f259677ff7
