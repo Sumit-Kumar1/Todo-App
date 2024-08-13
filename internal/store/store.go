@@ -146,6 +146,10 @@ func (s Store) MarkDone(ctx context.Context, id string) (*models.Task, error) {
 
 	row := s.DB.QueryRowContext(ctx, "SELECT task_title, done_status, added_at, modified_at FROM tasks WHERE task_id=?", id)
 	if err := row.Scan(&task.Title, &done, &task.AddedAt, &task.ModifiedAt); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, models.ErrNotFound
+		}
+
 		return nil, err
 	}
 

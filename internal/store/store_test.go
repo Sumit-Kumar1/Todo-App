@@ -279,7 +279,7 @@ func TestStore_MarkDone(t *testing.T) {
 			id:   id,
 			mocks: []any{mock.ExpectExec("UPDATE tasks").WillReturnResult(sqlmock.NewResult(1, 1)),
 				mock.ExpectQuery(selectQuery).WillReturnRows(sqlmock.NewRows(cols).RowError(-1, errDB))},
-			wantErr: sql.ErrNoRows,
+			wantErr: models.ErrNotFound,
 		},
 		{
 			name: "valid mark done",
