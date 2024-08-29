@@ -2,14 +2,13 @@ package handler
 
 import (
 	"html/template"
-	"log"
+	"log/slog"
 	"net/http"
 	"todoapp/internal/models"
 )
 
 const (
 	hxRequest        = "Hx-Request"
-	hxPrompt         = "HX-Prompt"
 	trueStr          = "true"
 	invalidReqMethod = "%s method not allowed on %s"
 	notHTMX          = "not a htmx request"
@@ -18,18 +17,19 @@ const (
 type Handler struct {
 	template *template.Template
 	Service  Servicer
+	Log      *slog.Logger
 }
 
-func New(s Servicer) *Handler {
+func New(s Servicer, log *slog.Logger) *Handler {
 	templateDir := "views/index.html"
-
 	tmpl := template.Must(template.ParseFiles(templateDir))
-	return &Handler{template: tmpl, Service: s}
+
+	return &Handler{template: tmpl, Service: s, Log: log}
 }
 
 func (h *Handler) IndexPage(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		log.Printf(invalidReqMethod, r.Method, "/")
+		h.Log.Error(invalidReqMethod, "method", r.Method, "endpoint", "/")
 		w.WriteHeader(http.StatusMethodNotAllowed)
 
 		return
@@ -39,6 +39,9 @@ func (h *Handler) IndexPage(w http.ResponseWriter, r *http.Request) {
 
 	tasks, err := h.Service.GetAll(ctx)
 	if err != nil {
+		h.Log.Error("error in service GetAll", "error", err)
+
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
@@ -46,20 +49,22 @@ func (h *Handler) IndexPage(w http.ResponseWriter, r *http.Request) {
 		"Data": tasks,
 	})
 	if err != nil {
+		h.Log.Error("error executing template", "error", err)
 		w.WriteHeader(http.StatusBadRequest)
+		return
 	}
 }
 
 func (h *Handler) AddTask(w http.ResponseWriter, r *http.Request) {
 	if r.Header.Get(hxRequest) != trueStr {
-		log.Print(notHTMX)
+		h.Log.Error(notHTMX)
 		w.WriteHeader(http.StatusBadRequest)
 
 		return
 	}
 
 	if r.Method != http.MethodPost {
-		log.Printf(invalidReqMethod, r.Method, "/add")
+		h.Log.Error(invalidReqMethod, "method", r.Method, "endpoint", "/add")
 		w.WriteHeader(http.StatusMethodNotAllowed)
 
 		return
@@ -70,29 +75,32 @@ func (h *Handler) AddTask(w http.ResponseWriter, r *http.Request) {
 
 	t, err := h.Service.AddTask(ctx, task)
 	if err != nil {
+		h.Log.Error("error while adding task", "error", err)
 		w.WriteHeader(http.StatusBadRequest)
+
 		_, _ = w.Write([]byte(err.Error()))
 
 		return
 	}
 
-	log.Printf("Task is Added ID : %s", t.ID)
+	h.Log.Info("Task is Added", "ID", t.ID)
 
 	if err := h.template.ExecuteTemplate(w, "add", *t); err != nil {
-		log.Printf("Error while excuting template: %v", err.Error())
+		h.Log.Error("error while executing template:", "error", err.Error())
+		return
 	}
 }
 
 func (h *Handler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 	if r.Header.Get(hxRequest) != trueStr {
-		log.Print(notHTMX)
+		h.Log.Error(notHTMX)
 		w.WriteHeader(http.StatusForbidden)
 
 		return
 	}
 
 	if r.Method != http.MethodDelete {
-		log.Printf(invalidReqMethod, r.Method, "/delete")
+		h.Log.Error(invalidReqMethod, "method", r.Method, "endpoint", "/delete")
 		w.WriteHeader(http.StatusMethodNotAllowed)
 
 		return
@@ -101,7 +109,7 @@ func (h *Handler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	ctx := r.Context()
 
-	log.Printf("Delete Request for ID: %v", id)
+	h.Log.Info("Delete Request->", "ID", id)
 
 	err := h.Service.DeleteTask(ctx, id)
 	if err != nil {
@@ -111,6 +119,8 @@ func (h *Handler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 		default:
 			w.WriteHeader(http.StatusBadRequest)
 		}
+
+		h.Log.Error("error while deleting task", "error", err)
 
 		_, _ = w.Write([]byte(err.Error()))
 
@@ -127,7 +137,7 @@ func (h *Handler) Done(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method != http.MethodPut {
-		log.Printf(invalidReqMethod, r.Method, "/done")
+		h.Log.Error(invalidReqMethod, "method", r.Method, "endpoint", "/done")
 		w.WriteHeader(http.StatusMethodNotAllowed)
 
 		return
@@ -136,7 +146,7 @@ func (h *Handler) Done(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	ctx := r.Context()
 
-	log.Printf("Task Done for ID: %v", id)
+	h.Log.Info("Task Done -> ", "ID", id)
 
 	resp, err := h.Service.MarkDone(ctx, id)
 	if err != nil {
@@ -147,6 +157,8 @@ func (h *Handler) Done(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 		}
 
+		h.Log.Error("error while marking task done", "error", err)
+
 		_, _ = w.Write([]byte(err.Error()))
 
 		return
@@ -154,24 +166,22 @@ func (h *Handler) Done(w http.ResponseWriter, r *http.Request) {
 
 	if resp == nil {
 		w.WriteHeader(http.StatusNoContent)
-
 		return
 	}
 
 	if err := h.template.ExecuteTemplate(w, "add", *resp); err != nil {
-		log.Printf("error in /done/%s\n\tError:%s", id, err.Error())
+		h.Log.Error("template done render", "ID", id, "error", err.Error())
 	}
 }
 
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	if r.Header.Get(hxRequest) != trueStr {
 		w.WriteHeader(http.StatusBadRequest)
-
 		return
 	}
 
 	if r.Method != http.MethodPost {
-		log.Printf(invalidReqMethod, r.Method, "/update")
+		h.Log.Error(invalidReqMethod, "method", r.Method, "endpoint", "/update")
 		w.WriteHeader(http.StatusMethodNotAllowed)
 
 		return
@@ -190,21 +200,21 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 		}
 
-		_, _ = w.Write([]byte(err.Error()))
+		h.Log.Error("error while updating task", "error", err)
 
+		_, _ = w.Write([]byte(err.Error()))
 		return
 	}
 
 	if resp == nil {
 		w.WriteHeader(http.StatusNoContent)
-
 		return
 	}
 
 	if err := h.template.ExecuteTemplate(w, "add", *resp); err != nil {
-		log.Printf("error in /update/%s\n\tError:%s", id, err.Error())
+		h.Log.Error("/updated template render", "ID", id, "error", err.Error())
 		return
 	}
 
-	log.Printf("Task Updated : %s", id)
+	h.Log.Info("Task Updated", "ID", id)
 }

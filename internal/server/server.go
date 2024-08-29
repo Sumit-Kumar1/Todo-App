@@ -63,7 +63,7 @@ func defaultServer() *Server {
 	name := "todoApp"
 	env := "dev"
 	host := ""
-	timeout := 10 * time.Second
+	timeout := 3 * time.Minute
 
 	return &Server{
 		Server: &http.Server{

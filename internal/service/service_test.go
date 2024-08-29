@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"testing"
 	"time"
 	"todoapp/internal/models"
@@ -23,7 +24,7 @@ func TestService_GetAll(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	st := NewMockStorer(ctrl)
 
-	s := New(st)
+	s := New(st, slog.Default())
 	tz2 := time.Now().Add(1000)
 
 	t1 := models.Task{
@@ -65,7 +66,7 @@ func TestService_GetAll(t *testing.T) {
 func TestService_AddTask(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	st := NewMockStorer(ctrl)
-	s := New(st)
+	s := New(st, slog.Default())
 
 	task := models.Task{ID: id, Title: title, IsDone: false, AddedAt: ts}
 
@@ -102,7 +103,7 @@ func TestService_AddTask(t *testing.T) {
 func TestService_DeleteTask(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	st := NewMockStorer(ctrl)
-	s := New(st)
+	s := New(st, slog.Default())
 
 	tests := []struct {
 		name    string
@@ -127,7 +128,7 @@ func TestService_DeleteTask(t *testing.T) {
 func TestService_MarkDone(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	st := NewMockStorer(ctrl)
-	s := New(st)
+	s := New(st, slog.Default())
 	task := models.Task{ID: id, Title: title, IsDone: true, AddedAt: ts, ModifiedAt: &ts}
 
 	tests := []struct {
@@ -157,7 +158,7 @@ func TestService_MarkDone(t *testing.T) {
 func TestService_UpdateTask(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	st := NewMockStorer(ctrl)
-	s := New(st)
+	s := New(st, slog.Default())
 	task := models.Task{ID: id, Title: title, IsDone: false, AddedAt: ts, ModifiedAt: &ts}
 
 	type args struct {

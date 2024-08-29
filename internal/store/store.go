@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"log"
+	"log/slog"
 	"time"
 	"todoapp/internal/models"
 
@@ -12,15 +12,16 @@ import (
 )
 
 type Store struct {
-	DB *sql.DB
+	DB  *sql.DB
+	Log *slog.Logger
 }
 
-func New() (*Store, error) {
+func New(logger *slog.Logger) (*Store, error) {
 	const dbFile string = "./tasks.db"
 
 	db, err := sql.Open("sqlite", dbFile)
 	if err != nil {
-		log.Printf("unable to connect sqlite: %s", err.Error())
+		logger.Error("unable to connect sqlite", "error", err.Error())
 		return nil, err
 	}
 
@@ -37,7 +38,8 @@ func New() (*Store, error) {
 	}
 
 	return &Store{
-		DB: db,
+		Log: logger,
+		DB:  db,
 	}, nil
 }
 
@@ -48,6 +50,8 @@ func (s Store) GetAll(ctx context.Context) ([]models.Task, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	s.Log.Debug("completed query with no error", "sql-query", getAll)
 
 	defer rows.Close()
 
@@ -80,6 +84,8 @@ func (s Store) Create(ctx context.Context, id, title string) (*models.Task, erro
 
 	query, values := genInsertQuery(id, title, addTS)
 
+	s.Log.Debug("generated query", "sql-query", query, "values", values)
+
 	_, err := s.DB.ExecContext(ctx, query, values...)
 	if err != nil {
 		return nil, err
@@ -99,6 +105,8 @@ func (s Store) Update(ctx context.Context, id, title string) (*models.Task, erro
 	modifiedTS := time.Now()
 
 	query, values := genUpdateQuery(id, title, modifiedTS)
+
+	s.Log.Debug("generated query", "sql-query", query, "values", values)
 
 	_, err := s.DB.ExecContext(ctx, query, values...)
 	if err != nil {
@@ -146,7 +154,7 @@ func (s Store) MarkDone(ctx context.Context, id string) (*models.Task, error) {
 
 	row := s.DB.QueryRowContext(ctx, "SELECT task_title, done_status, added_at, modified_at FROM tasks WHERE task_id=?", id)
 	if err := row.Scan(&task.Title, &done, &task.AddedAt, &task.ModifiedAt); err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, models.ErrNotFound
 		}
 

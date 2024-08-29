@@ -1,25 +1,14 @@
 package service
 
 import (
+	"github.com/google/uuid"
 	"strconv"
 	"strings"
-	"time"
 	"todoapp/internal/models"
-
-	"golang.org/x/exp/rand"
 )
 
 func generateID() string {
-	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-
-	seededRand := rand.New(rand.NewSource(uint64(time.Now().UnixNano())))
-
-	b := make([]byte, 5)
-	for i := range b {
-		b[i] = charset[seededRand.Intn(len(charset))]
-	}
-
-	return string(b)
+	return "css-" + uuid.New().String()
 }
 
 func validateTask(id, title, isDone string) error {
@@ -39,9 +28,13 @@ func validateTask(id, title, isDone string) error {
 }
 
 func validateID(id string) error {
-	trimmedID := strings.TrimSpace(id)
+	splits := strings.Split(id, "css-")
+	if len(splits) != 2 {
+		return models.ErrInvalidID
+	}
 
-	if trimmedID == "" || strings.ContainsAny(trimmedID, "1234567890") || len(trimmedID) > 5 {
+	uid, err := uuid.Parse(splits[1])
+	if err != nil || uid == uuid.Nil {
 		return models.ErrInvalidID
 	}
 

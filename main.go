@@ -1,8 +1,11 @@
 package main
 
 import (
-	"log"
+	"encoding/json"
+	"log/slog"
 	"net/http"
+	"os"
+
 	"todoapp/internal/handler"
 	"todoapp/internal/server"
 	"todoapp/internal/service"
@@ -10,23 +13,30 @@ import (
 )
 
 func main() {
-	st, err := store.New()
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	slog.SetDefault(logger)
+
+	st, err := store.New(logger)
 	if err != nil {
-		log.Printf("\nDB Creation err : %s", err.Error())
+		slog.Error("DB Creation err", "error", err)
 		return
 	}
 
 	if err = st.DB.Ping(); err != nil {
-		log.Println("database not reachable: ", err.Error())
+		slog.Error("database not reachable", "error", err)
 		return
 	}
 
-	defer st.DB.Close()
+	defer func() {
+		if err := st.DB.Close(); err != nil {
+			logger.Error("DB Close", "error", err)
+		}
+	}()
 
-	log.Printf("\ndb connection success %+v", st.DB.Stats())
+	slog.Info("db connection", "success", st.DB.Stats())
 
-	svc := service.New(st)
-	h := handler.New(svc)
+	svc := service.New(st, logger)
+	h := handler.New(svc, logger)
 
 	http.HandleFunc("/", h.IndexPage)
 	http.HandleFunc("/add", h.AddTask)
@@ -41,12 +51,11 @@ func main() {
 		server.WithPort("9001"),
 	)
 
-	log.Printf("Server created with configs:App-Name: %s, Port: %s, env: %s", app.Name, app.Addr, app.Env)
-	log.Printf("Application %v server is started on port:%v", app.Name, app.Addr)
+	slog.Info("application is running on", "host:port", app.Addr)
 
 	err = app.ListenAndServe()
 	if err != nil {
-		log.Println("error while running server : ", err.Error())
+		slog.Error("error while running server", "error", err)
 
 		return
 	}
@@ -54,5 +63,5 @@ func main() {
 
 func healthStatus(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte("ok"))
+	_, _ = w.Write(json.RawMessage(`{"status":"OK"}`))
 }
