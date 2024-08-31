@@ -14,32 +14,15 @@ paths:
   /:
     get:
       tags:
-        - Todo-Task
-      summary: Renders the page in webapp, returns nothing
+        - Todo
+      summary: Renders the todo-page with all the tasks in database
       description: Renders the html page
-      requestBody:
-        description: Update an existent pet in the store
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Pet'
-          application/xml:
-            schema:
-              $ref: '#/components/schemas/Pet'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/Pet'
-        required: false
       responses:
         '200':
           description: Successful operation
           content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Pet'
-            application/xml:
-              schema:
-                $ref: '#/components/schemas/Pet'
+             text/HTML:
+                <!DOCTYPE html><html lang="en" xml:lang="en"><head><title>Todo APP HTMX</title></head><body><h1>TODO APP</h1><div><div><form hx-post="/add" hx-target="#rend" hx-swap="beforeend"><input placeholder="Task*" name="task" type="text" id="title"/><input type="reset"/><button type="submit">Add Task</button></form></div></div></body></html>
         '400':
           description: Invalid ID supplied
         '500':

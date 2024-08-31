@@ -1,4 +1,4 @@
-{{define "index"}}
+{{ define "index" }}
 <!DOCTYPE html>
 <html lang="en" xml:lang="en">
 
@@ -35,20 +35,20 @@
   <h1 class="text-3xl text-center p-3 font-monteserrat">TODO APP</h1>
     <div class="w-full flex items-center gap-5 flex-col p-3">
       <!-- Form data-->
-      {{template "todoForm"}}
+      {{ template "todoForm" }}
       <div id="rend" ondrop="dragDrop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)"
       class="h-[85vh] w-1/2 overflow-x-auto p-5">
-        {{range $val := .Data}}
-        {{template "add" $val}}
-        {{end}}
+        {{ range $val := .Data }}
+        {{ template "add" $val }}
+        {{ end }}
       </div>
     </div>
 </body>
 
 </html>
-{{end}}
+{{ end }}
 
-{{block "todoForm" .}}
+{{ block "todoForm" . }}
   <form hx-post="/add" hx-target="#rend" hx-swap="beforeend" class="flex gap-5 justify-center w-1/2">
     <input placeholder="Task*" name="task" type="text" id="title" class="input input-bordered input-primary w-full max-w-xs bg-white">
     <input type="reset" class="hover:cursor-pointer"/>
@@ -62,12 +62,12 @@
           </span>
     </button>
   </form>
-{{end}}
+{{ end }}
 
-{{block "add" .}}
+{{ block "add" . }}
 <div id="{{.ID}}" draggable="true" ondragstart="dragStart(event)" class="bg-[#EDE8F5] w-full shadow-xl outline rounded-xl m-3">
   <div class="p-5 font-monteserrat">
-  {{if .IsDone}}
+  {{ if .IsDone }}
   <p class="line-through italic text-wrap whitespace-nowrap">{{.Title}}</p>
     <div class="card-actions justify-end">
   <button hx-confirm="Really Delete??" hx-delete="/delete/{{.ID}}" hx-target="#{{.ID}}" hx-swap="outerHTML" class="p-2 hover:border hover:rounded-full hover:border-red-600">
@@ -76,7 +76,7 @@
     </svg>
   </button>
     </div>
-  {{else}}
+  {{ else }}
   <p class="font-monteserrat text-xl">{{.Title}}</p>
   <div class="card-actions justify-end">
     <button hx-put="/done/{{.ID}}" hx-target="#{{.ID}}" hx-swap="outerHTML"
@@ -98,10 +98,10 @@
       </svg>
     </button>
   </div>
-  {{end}}
+  {{ end }}
   </div>
 </div>
-{{end}}
+{{ end }}
 
 
 {{ block "error" . }}
@@ -110,11 +110,11 @@
     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
-      {{else}}
+      {{ else }}
       <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
       </svg>
-        {{end}}
+        {{ end }}
     <span>{{.Msg}}</span>
   </div>
 {{ end }}

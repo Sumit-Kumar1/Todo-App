@@ -7,8 +7,6 @@ import (
 	"log/slog"
 	"time"
 	"todoapp/internal/models"
-
-	_ "modernc.org/sqlite"
 )
 
 type Store struct {
@@ -16,31 +14,27 @@ type Store struct {
 	Log *slog.Logger
 }
 
-func New(logger *slog.Logger) (*Store, error) {
+func New(logger *slog.Logger) (*Store, func(), error) {
 	const dbFile string = "./tasks.db"
 
 	db, err := sql.Open("sqlite", dbFile)
 	if err != nil {
 		logger.Error("unable to connect sqlite", "error", err.Error())
-		return nil, err
+		return nil, nil, err
 	}
 
-	const create string = `
-		CREATE TABLE IF NOT EXISTS tasks(
-		task_id TEXT NOT NULL PRIMARY KEY,
-		task_title TEXT NOT NULL,
-		done_status BOOLEAN NOT NULL CHECK (done_status IN (0, 1)),
-		added_at DATETIME NOT NULL,
-		modified_at DATETIME);`
-
-	if _, err := db.Exec(create); err != nil {
-		return nil, err
+	if err = db.Ping(); err != nil {
+		logger.Error("database not reachable", "error", err)
+		return nil, nil, err
 	}
 
-	return &Store{
-		Log: logger,
-		DB:  db,
-	}, nil
+	fn := func() {
+		if err := db.Close(); err != nil {
+			logger.Error("DB Close", "error", err)
+		}
+	}
+
+	return &Store{Log: logger, DB: db}, fn, nil
 }
 
 func (s Store) GetAll(ctx context.Context) ([]models.Task, error) {

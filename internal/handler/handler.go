@@ -1,9 +1,11 @@
 package handler
 
 import (
+	"encoding/json"
 	"html/template"
 	"log/slog"
 	"net/http"
+
 	"todoapp/internal/models"
 )
 
@@ -21,40 +23,75 @@ type Handler struct {
 }
 
 func New(s Servicer, log *slog.Logger) *Handler {
-	templateDir := "views/index.html"
-	tmpl := template.Must(template.ParseFiles(templateDir))
+	tmpl := models.NewTemplate()
 
 	return &Handler{template: tmpl, Service: s, Log: log}
 }
 
-func (h *Handler) IndexPage(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		h.Log.Error(invalidReqMethod, "method", r.Method, "endpoint", "/")
-		w.WriteHeader(http.StatusMethodNotAllowed)
+// User API Handlers
+func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
+	var user models.RegisterReq
 
+	err := bind(r, &user)
+	if err != nil {
+		h.Log.Error("error while binding the request body", "error", err)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	ctx := r.Context()
-
-	tasks, err := h.Service.GetAll(ctx)
+	resp, err := h.Service.Register(r.Context(), user)
 	if err != nil {
-		h.Log.Error("error in service GetAll", "error", err)
-
+		h.Log.Error("error while registering the user", "error", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	err = h.template.ExecuteTemplate(w, "index", map[string][]models.Task{
-		"Data": tasks,
-	})
+	data, err := json.Marshal(resp)
 	if err != nil {
-		h.Log.Error("error executing template", "error", err)
-		w.WriteHeader(http.StatusBadRequest)
+		h.Log.Error("error while marshaling the response body", "error", err)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	if _, err := w.Write(data); err != nil {
+		h.Log.Error("error while writing the response body", "error", err)
 	}
 }
 
+func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
+	var user models.LoginReq
+
+	err := bind(r, &user)
+	if err != nil {
+		h.Log.Error("error while binding the request body", "error", err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	resp, err := h.Service.Login(r.Context(), user)
+	if err != nil {
+		h.Log.Error("error while registering the user", "error", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	data, err := json.Marshal(resp)
+	if err != nil {
+		h.Log.Error("error while marshaling the response body", "error", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	if _, err := w.Write(data); err != nil {
+		h.Log.Error("error while writing the response body", "error", err)
+	}
+}
+
+// TODO API Handlers
 func (h *Handler) AddTask(w http.ResponseWriter, r *http.Request) {
 	if r.Header.Get(hxRequest) != trueStr {
 		h.Log.Error(notHTMX)
@@ -91,47 +128,9 @@ func (h *Handler) AddTask(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *Handler) DeleteTask(w http.ResponseWriter, r *http.Request) {
-	if r.Header.Get(hxRequest) != trueStr {
-		h.Log.Error(notHTMX)
-		w.WriteHeader(http.StatusForbidden)
-
-		return
-	}
-
-	if r.Method != http.MethodDelete {
-		h.Log.Error(invalidReqMethod, "method", r.Method, "endpoint", "/delete")
-		w.WriteHeader(http.StatusMethodNotAllowed)
-
-		return
-	}
-
-	id := r.PathValue("id")
-	ctx := r.Context()
-
-	h.Log.Info("Delete Request->", "ID", id)
-
-	err := h.Service.DeleteTask(ctx, id)
-	if err != nil {
-		switch {
-		case models.ErrNotFound.Is(err):
-			w.WriteHeader(http.StatusNotFound)
-		default:
-			w.WriteHeader(http.StatusBadRequest)
-		}
-
-		h.Log.Error("error while deleting task", "error", err)
-
-		_, _ = w.Write([]byte(err.Error()))
-
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-}
-
 func (h *Handler) Done(w http.ResponseWriter, r *http.Request) {
 	if r.Header.Get(hxRequest) != trueStr {
+		h.Log.Error(notHTMX)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -174,8 +173,55 @@ func (h *Handler) Done(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) HandleIDReq(w http.ResponseWriter, r *http.Request) {
 	if r.Header.Get(hxRequest) != trueStr {
+		h.Log.Error(notHTMX)
+		w.WriteHeader(http.StatusForbidden)
+
+		return
+	}
+
+	switch r.Method {
+	case http.MethodDelete:
+		h.deleteTask(w, r)
+	case http.MethodPut:
+		h.update(w, r)
+	default:
+		h.Log.Error(invalidReqMethod, "method", r.Method, "endpoint", "/delete")
+		w.WriteHeader(http.StatusMethodNotAllowed)
+
+		return
+	}
+}
+
+func (h *Handler) deleteTask(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	ctx := r.Context()
+
+	h.Log.Info("Delete Request->", "ID", id)
+
+	err := h.Service.DeleteTask(ctx, id)
+	if err != nil {
+		switch {
+		case models.ErrNotFound.Is(err):
+			w.WriteHeader(http.StatusNotFound)
+		default:
+			w.WriteHeader(http.StatusBadRequest)
+		}
+
+		h.Log.Error("error while deleting task", "error", err)
+
+		_, _ = w.Write([]byte(err.Error()))
+
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get(hxRequest) != trueStr {
+		h.Log.Error(notHTMX)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
