@@ -6,8 +6,16 @@ import (
 )
 
 type Servicer interface {
-	Register(ctx context.Context, req models.RegisterReq) (models.LoginSession, error)
-	Login(ctx context.Context, req models.LoginReq) (models.LoginSession, error)
+	TodoService
+	UserService
+}
+
+type UserService interface {
+	Register(ctx context.Context, req *models.RegisterReq) (*models.LoginSession, error)
+	Login(ctx context.Context, req *models.LoginReq) (*models.LoginSession, error)
+}
+
+type TodoService interface {
 	GetAll(ctx context.Context) ([]models.Task, error)
 	AddTask(ctx context.Context, task string) (*models.Task, error)
 	DeleteTask(ctx context.Context, id string) error

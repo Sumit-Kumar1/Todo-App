@@ -2,17 +2,18 @@ package models
 
 import (
 	"errors"
+	"github.com/google/uuid"
 	"regexp"
 	"strings"
 	"time"
 )
 
 type UserData struct {
-	ID        string `json:"id" db:"id"`
-	Name      string `json:"name" db:"name"`
-	Email     string `json:"email" db:"email"`
-	Password  string `json:"password" db:"password"`
-	SeesionID string `json:"seesionId" db:"seesion_id"`
+	ID        uuid.UUID `json:"id" db:"id"`
+	Name      string    `json:"name" db:"name"`
+	Email     string    `json:"email" db:"email"`
+	Password  string    `json:"password" db:"password"`
+	SeesionID uuid.UUID `json:"seesionId" db:"seesion_id"`
 }
 
 type LoginReq struct {
@@ -32,7 +33,7 @@ type LoginSession struct {
 	Expiry time.Time `json:"expiry" db:"expiry"`
 }
 
-func (l *LoginReq) validate() error {
+func (l *LoginReq) Validate() error {
 	email := strings.ToLower(strings.TrimSpace(l.Email))
 	passwd := strings.TrimSpace(l.Password)
 
@@ -57,7 +58,7 @@ func (l *LoginReq) validate() error {
 	return nil
 }
 
-func (r *RegisterReq) validate() error {
+func (r *RegisterReq) Validate() error {
 	name := strings.TrimSpace(r.Name)
 	if name == "" {
 		return errors.New("name is required")
@@ -67,5 +68,5 @@ func (r *RegisterReq) validate() error {
 		return errors.New("name is too short")
 	}
 
-	return r.LoginReq.validate()
+	return r.LoginReq.Validate()
 }

@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"github.com/stretchr/testify/assert"
 	"testing"
 	"todoapp/internal/models"
 
@@ -84,6 +85,27 @@ func TestValidateTask(t *testing.T) {
 			if err := validateTask(tt.id, tt.title, tt.isDone); !errors.Is(err, tt.wantErr) {
 				t.Errorf("\nTEST[%d] Failed - %s\n\tExpected: %+v\n\tActual: %+v", i, tt.name, tt.wantErr, err)
 			}
+		})
+	}
+}
+
+func Test_encryptedPassword(t *testing.T) {
+	psswd := "$2a$10$w9CWfGIVrp8IAfH4Ji2a.eol1IX0nyd0p0Sfi5bPZ8YRZGwNA3Mlm"
+	tests := []struct {
+		name     string
+		password string
+		want     string
+		wantErr  error
+	}{
+		{"default case", "hello word", psswd, nil},
+	}
+
+	for i, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := encryptedPassword(tt.password)
+
+			assert.Equal(t, tt.wantErr, err, "Test[%d] Failed - %s", i, tt.name)
+			assert.Equal(t, tt.want, got, "Test[%d] Failed - %s", i, tt.name)
 		})
 	}
 }

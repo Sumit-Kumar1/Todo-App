@@ -39,7 +39,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.Service.Register(r.Context(), user)
+	resp, err := h.Service.Register(r.Context(), &user)
 	if err != nil {
 		h.Log.Error("error while registering the user", "error", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -70,9 +70,13 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.Service.Login(r.Context(), user)
+	resp, err := h.Service.Login(r.Context(), &user)
 	if err != nil {
-		h.Log.Error("error while registering the user", "error", err)
+		if models.ErrNotFound.Is(err) {
+			w.WriteHeader(http.StatusUnauthorized)
+		}
+
+		h.Log.Error("error while logging in the user", "error", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

@@ -2,10 +2,20 @@ package service
 
 import (
 	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 	"strconv"
 	"strings"
 	"todoapp/internal/models"
 )
+
+func encryptedPassword(password string) (string, error) {
+	passwd, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+
+	return string(passwd), nil
+}
 
 func generateID() string {
 	return "css-" + uuid.New().String()

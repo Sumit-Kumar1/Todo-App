@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"time"
 	"todoapp/internal/models"
+
+	_ "modernc.org/sqlite"
 )
 
 type Store struct {
@@ -35,6 +37,31 @@ func New(logger *slog.Logger) (*Store, func(), error) {
 	}
 
 	return &Store{Log: logger, DB: db}, fn, nil
+}
+
+func (s *Store) RegisterUser(ctx context.Context, data *models.UserData) (*models.LoginSession, error) {
+	_, err := s.DB.ExecContext(ctx, registerQuery, data.ID, data.Name, data.Email, data.Password)
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.LoginSession{}, nil
+}
+
+func (s *Store) GetByEmail(ctx context.Context, userID string) (*models.UserData, error) {
+	var user models.UserData
+
+	row := s.DB.QueryRowContext(ctx, getUser, userID)
+
+	if err := row.Scan(&user.ID, &user.Name, &user.Email, &user.Password); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, models.ErrNotFound
+		}
+
+		return nil, err
+	}
+
+	return &user, nil
 }
 
 func (s Store) GetAll(ctx context.Context) ([]models.Task, error) {

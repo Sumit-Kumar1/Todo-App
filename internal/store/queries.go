@@ -5,9 +5,11 @@ import (
 )
 
 const (
-	insertQuery = "INSERT INTO tasks (task_id, task_title, done_status, added_at) VALUES ("
-	updateQuery = "UPDATE tasks SET "
-	getAll      = "SELECT task_id, task_title, done_status, added_at, modified_at from tasks"
+	insertQuery   = "INSERT INTO tasks (task_id, task_title, done_status, added_at) VALUES ("
+	updateQuery   = "UPDATE tasks SET "
+	getAll        = "SELECT task_id, task_title, done_status, added_at, modified_at from tasks"
+	registerQuery = "INSERT INTO users(user_id, name, email, password) VALUES (?,?,?,?);"
+	getUser       = "SELECT * FROM users WHERE email = ?;"
 )
 
 func genInsertQuery(id, title string, ts time.Time) (query string, values []any) {

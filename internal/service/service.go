@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 	"log/slog"
 	"strings"
 	"todoapp/internal/models"
@@ -15,6 +17,60 @@ type Service struct {
 func New(st Storer, logger *slog.Logger) *Service {
 	return &Service{Store: st,
 		Log: logger}
+}
+
+// User Endpoints
+func (s *Service) Register(ctx context.Context, req *models.RegisterReq) (*models.LoginSession, error) {
+	var user models.UserData
+
+	if req == nil {
+		return nil, nil
+	}
+
+	if err := req.Validate(); err != nil {
+		return nil, err
+	}
+
+	passwd, err := encryptedPassword(req.Password)
+	if err != nil {
+		return nil, err
+	}
+
+	user.ID = uuid.New()
+	user.Email = req.Email
+	user.Name = req.Name
+	user.Password = passwd
+
+	session, err := s.Store.RegisterUser(ctx, &user)
+	if err != nil {
+		return nil, err
+	}
+
+	return session, nil
+}
+
+func (s *Service) Login(ctx context.Context, req *models.LoginReq) (*models.LoginSession, error) {
+	if req == nil {
+		return nil, nil
+	}
+
+	// validate input request data
+	if err := req.Validate(); err != nil {
+		return nil, err
+	}
+
+	// Get the user's data
+	user, err := s.Store.GetByEmail(ctx, req.Email)
+	if err != nil {
+		return nil, err
+	}
+
+	//match password
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
+		return nil, err
+	}
+
+	return &models.LoginSession{ID: generateID()}, nil
 }
 
 func (s *Service) GetAll(ctx context.Context) ([]models.Task, error) {

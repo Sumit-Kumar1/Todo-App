@@ -32,6 +32,8 @@ func main() {
 	h := handler.New(svc, logger)
 
 	// User API
+	http.HandleFunc("/user/register", h.Register)
+	http.HandleFunc("/user/login", h.Login)
 
 	// Todo API
 	http.HandleFunc("/todo", h.AddTask)
