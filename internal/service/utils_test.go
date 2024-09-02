@@ -2,11 +2,11 @@ package service
 
 import (
 	"errors"
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"todoapp/internal/models"
 
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestValidateID(t *testing.T) {

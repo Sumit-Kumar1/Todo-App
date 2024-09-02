@@ -1,11 +1,12 @@
 package service
 
 import (
-	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
 	"strconv"
 	"strings"
 	"todoapp/internal/models"
+
+	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func encryptedPassword(password string) (string, error) {

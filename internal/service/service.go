@@ -2,11 +2,13 @@ package service
 
 import (
 	"context"
-	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
 	"log/slog"
 	"strings"
+	"time"
 	"todoapp/internal/models"
+
+	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type Service struct {
@@ -20,9 +22,7 @@ func New(st Storer, logger *slog.Logger) *Service {
 }
 
 // User Endpoints
-func (s *Service) Register(ctx context.Context, req *models.RegisterReq) (*models.LoginSession, error) {
-	var user models.UserData
-
+func (s *Service) Register(ctx context.Context, req *models.RegisterReq) (*models.UserSession, error) {
 	if req == nil {
 		return nil, nil
 	}
@@ -36,25 +36,38 @@ func (s *Service) Register(ctx context.Context, req *models.RegisterReq) (*model
 		return nil, err
 	}
 
-	user.ID = uuid.New()
-	user.Email = req.Email
-	user.Name = req.Name
-	user.Password = passwd
-
-	session, err := s.Store.RegisterUser(ctx, &user)
-	if err != nil {
+	// check if user already exists
+	existingUser, err := s.Store.GetByEmail(ctx, req.Email)
+	if err != nil && !models.ErrUserNotFound.Is(err) {
 		return nil, err
 	}
 
-	return session, nil
-}
-
-func (s *Service) Login(ctx context.Context, req *models.LoginReq) (*models.LoginSession, error) {
-	if req == nil {
-		return nil, nil
+	if existingUser != nil {
+		return nil, models.ErrUserAlreadyExists
 	}
 
-	// validate input request data
+	userID := uuid.New()
+	sessionID := uuid.New()
+
+	session := models.UserSession{
+		ID:     sessionID,
+		UserID: userID,
+		Token:  uuid.NewString(),
+		Expiry: time.Now().Add(time.Second * 60).UTC(),
+	}
+
+	user := models.UserData{
+		ID:        userID,
+		Name:      req.Name,
+		Email:     req.Email,
+		Password:  passwd,
+		SessionID: sessionID,
+	}
+
+	return s.Store.RegisterUser(ctx, &user, &session)
+}
+
+func (s *Service) Login(ctx context.Context, req *models.LoginReq) (*models.UserSession, error) {
 	if err := req.Validate(); err != nil {
 		return nil, err
 	}
@@ -65,12 +78,27 @@ func (s *Service) Login(ctx context.Context, req *models.LoginReq) (*models.Logi
 		return nil, err
 	}
 
-	//match password
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
+	if user == nil {
+		return nil, models.ErrUserNotFound
+	}
+
+	if matchErr := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); matchErr != nil {
+		return nil, models.ErrPsswdNotMatch
+	}
+
+	session, err := s.Store.GetSessionByID(ctx, &user.ID)
+	if err != nil {
 		return nil, err
 	}
 
-	return &models.LoginSession{ID: generateID()}, nil
+	if session.Expiry.Before(time.Now().UTC()) {
+		session.Expiry = time.Now().Add(time.Second * 60).UTC()
+		session.Token = uuid.NewString()
+
+		return s.Store.RefreshSession(ctx, session)
+	}
+
+	return session, nil
 }
 
 func (s *Service) GetAll(ctx context.Context) ([]models.Task, error) {
@@ -108,7 +136,6 @@ func (s *Service) DeleteTask(ctx context.Context, id string) error {
 
 	if err := s.Store.Delete(ctx, id); err != nil {
 		s.Log.Error("error in delete task", "error", err.Error())
-
 		return err
 	}
 

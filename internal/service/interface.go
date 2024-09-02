@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"todoapp/internal/models"
+
+	"github.com/google/uuid"
 )
 
 type Storer interface {
@@ -12,7 +14,9 @@ type Storer interface {
 
 type UserStorer interface {
 	GetByEmail(ctx context.Context, email string) (*models.UserData, error)
-	RegisterUser(ctx context.Context, data *models.UserData) (*models.LoginSession, error)
+	GetSessionByID(ctx context.Context, userID *uuid.UUID) (*models.UserSession, error)
+	RefreshSession(ctx context.Context, newSession *models.UserSession) (*models.UserSession, error)
+	RegisterUser(ctx context.Context, data *models.UserData, session *models.UserSession) (*models.UserSession, error)
 }
 
 type TodoStorer interface {
