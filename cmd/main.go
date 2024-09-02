@@ -21,8 +21,8 @@ func main() {
 		return
 	}
 
-	if err := runMigration(st); err != nil {
-		logger.Error("error while running migration function", "error", err.Error())
+	if mErr := runMigration(st); mErr != nil {
+		logger.Error("error while running migration function", "error", mErr.Error())
 		return
 	}
 
