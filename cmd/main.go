@@ -32,11 +32,11 @@ func main() {
 	h := handler.New(svc, logger)
 
 	// User API
-	http.HandleFunc("/user/register", h.Register)
-	http.HandleFunc("/user/login", h.Login)
+	http.HandleFunc("/register", h.Register)
+	http.HandleFunc("/login", h.Login)
 
-	// Todo API
-	http.HandleFunc("/todo", h.AddTask)
+	// tasks API
+	http.HandleFunc("/tasks", h.AddTask)
 	http.HandleFunc("/task/{id}", h.HandleIDReq)
 	http.HandleFunc("/task/done/{id}", h.Done)
 
@@ -60,11 +60,13 @@ func main() {
 
 func runMigration(st *store.Store) error {
 	const (
-		createTaskTable = `CREATE TABLE IF NOT EXISTS tasks(task_id TEXT NOT NULL PRIMARY KEY,
-		task_title TEXT NOT NULL, done_status BOOLEAN NOT NULL CHECK (done_status IN (0, 1)),
-		added_at DATETIME NOT NULL, modified_at DATETIME);`
+		createTaskTable = `CREATE TABLE IF NOT EXISTS tasks(task_id TEXT PRIMARY KEY,
+task_title TEXT NOT NULL, done_status BOOLEAN NOT NULL CHECK (done_status IN (0, 1)),
+added_at DATETIME NOT NULL, modified_at DATETIME);`
 		createUserTable = `CREATE TABLE IF NOT EXISTS users(user_id TEXT NOT NULL PRIMARY KEY, name TEXT NOT NULL,
 email TEXT NOT NULL UNIQUE CHECK (email LIKE '%'), password TEXT NOT NULL);`
+		createSessionTable = `CREATE TABLE IF NOT EXISTS sessions(id TEXT PRIMARY KEY, user_id TEXT NOT NULL UNIQUE,
+token TEXT NOT NULL, expiry DATETIME NOT NULL);`
 	)
 
 	if _, err := st.DB.Exec(createTaskTable); err != nil {
@@ -72,6 +74,10 @@ email TEXT NOT NULL UNIQUE CHECK (email LIKE '%'), password TEXT NOT NULL);`
 	}
 
 	if _, err := st.DB.Exec(createUserTable); err != nil {
+		return err
+	}
+
+	if _, err := st.DB.Exec(createSessionTable); err != nil {
 		return err
 	}
 
