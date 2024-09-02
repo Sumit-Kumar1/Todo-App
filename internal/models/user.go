@@ -2,10 +2,11 @@ package models
 
 import (
 	"errors"
-	"github.com/google/uuid"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type UserData struct {
@@ -13,7 +14,7 @@ type UserData struct {
 	Name      string    `json:"name" db:"name"`
 	Email     string    `json:"email" db:"email"`
 	Password  string    `json:"password" db:"password"`
-	SeesionID uuid.UUID `json:"seesionId" db:"seesion_id"`
+	SessionID uuid.UUID `json:"sessionId" db:"session_id"`
 }
 
 type LoginReq struct {
@@ -26,10 +27,10 @@ type RegisterReq struct {
 	*LoginReq
 }
 
-type LoginSession struct {
-	ID     string    `json:"id" db:"id"`
+type UserSession struct {
+	ID     uuid.UUID `json:"id" db:"id"`
+	UserID uuid.UUID `json:"userId" db:"user_id"`
 	Token  string    `json:"token" db:"token"`
-	UserID string    `json:"userId" db:"user_id"`
 	Expiry time.Time `json:"expiry" db:"expiry"`
 }
 

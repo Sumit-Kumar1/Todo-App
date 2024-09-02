@@ -11,8 +11,8 @@ type Servicer interface {
 }
 
 type UserService interface {
-	Register(ctx context.Context, req *models.RegisterReq) (*models.LoginSession, error)
-	Login(ctx context.Context, req *models.LoginReq) (*models.LoginSession, error)
+	Register(ctx context.Context, req *models.RegisterReq) (*models.UserSession, error)
+	Login(ctx context.Context, req *models.LoginReq) (*models.UserSession, error)
 }
 
 type TodoService interface {

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"html/template"
 	"log/slog"
 	"net/http"
@@ -40,11 +41,27 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp, err := h.Service.Register(r.Context(), &user)
-	if err != nil {
+	switch {
+	case err == nil:
+	case errors.Is(err, models.ErrUserAlreadyExists):
+		h.Log.Error(err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	default:
 		h.Log.Error("error while registering the user", "error", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
+	cookie := http.Cookie{
+		Name:     "user_session",
+		Value:    resp.Token,
+		HttpOnly: true,
+		Expires:  resp.Expiry,
+		Path:     "/",
+	}
+
+	http.SetCookie(w, &cookie)
 
 	data, err := json.Marshal(resp)
 	if err != nil {
@@ -53,8 +70,9 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
 	if _, err := w.Write(data); err != nil {
 		h.Log.Error("error while writing the response body", "error", err)
 	}
@@ -70,7 +88,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.Service.Login(r.Context(), &user)
+	session, err := h.Service.Login(r.Context(), &user)
 	if err != nil {
 		if models.ErrNotFound.Is(err) {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -81,15 +99,26 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data, err := json.Marshal(resp)
+	data, err := json.Marshal(session)
 	if err != nil {
 		h.Log.Error("error while marshaling the response body", "error", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	cookie := http.Cookie{
+		Name:     "user_session",
+		Value:    session.Token,
+		HttpOnly: true,
+		Expires:  session.Expiry,
+		Path:     "/",
+	}
+
+	http.SetCookie(w, &cookie)
+
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
 	if _, err := w.Write(data); err != nil {
 		h.Log.Error("error while writing the response body", "error", err)
 	}
