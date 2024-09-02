@@ -8,6 +8,7 @@ import (
 	"time"
 	"todoapp/internal/models"
 
+	"github.com/google/uuid"
 	_ "modernc.org/sqlite"
 )
 
@@ -39,13 +40,58 @@ func New(logger *slog.Logger) (*Store, func(), error) {
 	return &Store{Log: logger, DB: db}, fn, nil
 }
 
-func (s *Store) RegisterUser(ctx context.Context, data *models.UserData) (*models.LoginSession, error) {
-	_, err := s.DB.ExecContext(ctx, registerQuery, data.ID, data.Name, data.Email, data.Password)
+func (s *Store) RegisterUser(ctx context.Context, data *models.UserData, session *models.UserSession) (*models.UserSession, error) {
+	var (
+		err  error
+		opts = sql.TxOptions{Isolation: sql.LevelReadCommitted}
+	)
+
+	tx, err := s.DB.BeginTx(ctx, &opts)
 	if err != nil {
 		return nil, err
 	}
 
-	return &models.LoginSession{}, nil
+	_, err = tx.ExecContext(ctx, registerQuery, data.ID, data.Name, data.Email, data.Password)
+	if err != nil {
+		return nil, rollback(tx, err)
+	}
+
+	_, err = tx.ExecContext(ctx, createSession, session.ID, session.UserID, session.Token, session.Expiry)
+	if err != nil {
+		return nil, rollback(tx, err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, rollback(tx, err)
+	}
+
+	return session, nil
+}
+
+func (s *Store) GetSessionByID(ctx context.Context, userID *uuid.UUID) (*models.UserSession, error) {
+	var session models.UserSession
+
+	if userID == nil {
+		return nil, errors.New("invalid user id")
+	}
+
+	row := s.DB.QueryRowContext(ctx, getSession, *userID)
+	if err := row.Scan(&session.ID, &session.UserID, &session.Token, &session.Expiry); err != nil {
+		return nil, err
+	}
+
+	return &session, nil
+}
+
+func (s *Store) RefreshSession(ctx context.Context, newSession *models.UserSession) (*models.UserSession, error) {
+	_, err := s.DB.ExecContext(ctx, refreshSession, newSession.Token, newSession.Expiry, newSession.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	s.Log.Info("session is refreshed", "userID", newSession.UserID)
+
+	return newSession, nil
 }
 
 func (s *Store) GetByEmail(ctx context.Context, userID string) (*models.UserData, error) {
@@ -55,7 +101,7 @@ func (s *Store) GetByEmail(ctx context.Context, userID string) (*models.UserData
 
 	if err := row.Scan(&user.ID, &user.Name, &user.Email, &user.Password); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, models.ErrNotFound
+			return nil, models.ErrUserNotFound
 		}
 
 		return nil, err
@@ -64,7 +110,7 @@ func (s *Store) GetByEmail(ctx context.Context, userID string) (*models.UserData
 	return &user, nil
 }
 
-func (s Store) GetAll(ctx context.Context) ([]models.Task, error) {
+func (s *Store) GetAll(ctx context.Context) ([]models.Task, error) {
 	var res = make([]models.Task, 0)
 
 	rows, err := s.DB.QueryContext(ctx, getAll)
@@ -100,8 +146,8 @@ func (s Store) GetAll(ctx context.Context) ([]models.Task, error) {
 	return res, nil
 }
 
-func (s Store) Create(ctx context.Context, id, title string) (*models.Task, error) {
-	addTS := time.Now()
+func (s *Store) Create(ctx context.Context, id, title string) (*models.Task, error) {
+	addTS := time.Now().UTC()
 
 	query, values := genInsertQuery(id, title, addTS)
 
@@ -122,7 +168,7 @@ func (s Store) Create(ctx context.Context, id, title string) (*models.Task, erro
 	return &task, nil
 }
 
-func (s Store) Update(ctx context.Context, id, title string) (*models.Task, error) {
+func (s *Store) Update(ctx context.Context, id, title string) (*models.Task, error) {
 	modifiedTS := time.Now()
 
 	query, values := genUpdateQuery(id, title, modifiedTS)
@@ -144,7 +190,7 @@ func (s Store) Update(ctx context.Context, id, title string) (*models.Task, erro
 	return &t, nil
 }
 
-func (s Store) Delete(ctx context.Context, id string) error {
+func (s *Store) Delete(ctx context.Context, id string) error {
 	_, err := s.DB.ExecContext(ctx, "DELETE FROM tasks WHERE task_id=?", id)
 	if err != nil {
 		return err
@@ -153,7 +199,7 @@ func (s Store) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-func (s Store) MarkDone(ctx context.Context, id string) (*models.Task, error) {
+func (s *Store) MarkDone(ctx context.Context, id string) (*models.Task, error) {
 	var (
 		task = models.Task{ID: id}
 		done int
