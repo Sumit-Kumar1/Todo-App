@@ -37,6 +37,10 @@ func New(logger *slog.Logger) (*Store, func(), error) {
 		}
 	}
 
+	if err := runMigration(db); err != nil {
+		return nil, fn, err
+	}
+
 	return &Store{Log: logger, DB: db}, fn, nil
 }
 
