@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"html/template"
@@ -13,7 +14,7 @@ import (
 const (
 	hxRequest        = "Hx-Request"
 	trueStr          = "true"
-	invalidReqMethod = "%s method not allowed on %s"
+	invalidReqMethod = "method not allowed"
 	notHTMX          = "not a htmx request"
 )
 
@@ -125,7 +126,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 // TODO API Handlers
-func (h *Handler) AddTask(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) HandleTasks(w http.ResponseWriter, r *http.Request) {
 	if r.Header.Get(hxRequest) != trueStr {
 		h.Log.Error(notHTMX)
 		w.WriteHeader(http.StatusBadRequest)
@@ -133,31 +134,13 @@ func (h *Handler) AddTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if r.Method != http.MethodPost {
-		h.Log.Error(invalidReqMethod, "method", r.Method, "endpoint", "/add")
+	switch r.Method {
+	case http.MethodGet:
+		h.getAll(w, r)
+	case http.MethodPost:
+		h.addTask(w, r)
+	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
-
-		return
-	}
-
-	task := r.PostFormValue("task")
-	ctx := r.Context()
-
-	t, err := h.Service.AddTask(ctx, task)
-	if err != nil {
-		h.Log.Error("error while adding task", "error", err)
-		w.WriteHeader(http.StatusBadRequest)
-
-		_, _ = w.Write([]byte(err.Error()))
-
-		return
-	}
-
-	h.Log.Info("Task is Added", "ID", t.ID)
-
-	if err := h.template.ExecuteTemplate(w, "add", *t); err != nil {
-		h.Log.Error("error while executing template:", "error", err.Error())
-		return
 	}
 }
 
@@ -222,8 +205,54 @@ func (h *Handler) HandleIDReq(w http.ResponseWriter, r *http.Request) {
 	default:
 		h.Log.Error(invalidReqMethod, "method", r.Method, "endpoint", "/delete")
 		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+}
+
+func (h *Handler) addTask(w http.ResponseWriter, r *http.Request) {
+	task := r.PostFormValue("task")
+	ctx := r.Context()
+
+	t, err := h.Service.AddTask(ctx, task)
+	if err != nil {
+		h.Log.Error("error while adding task", "error", err)
+		w.WriteHeader(http.StatusBadRequest)
+
+		_, _ = w.Write([]byte(err.Error()))
 
 		return
+	}
+
+	h.Log.Info("Task is Added", "ID", t.ID)
+
+	if err := h.template.ExecuteTemplate(w, "add", *t); err != nil {
+		h.Log.Error("error while executing template:", "error", err.Error())
+		return
+	}
+}
+
+func (h *Handler) getAll(w http.ResponseWriter, r *http.Request) {
+	type sessionKey string
+	var session sessionKey = "user_session"
+
+	cookie, err := r.Cookie("user_session")
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	ctx := context.WithValue(r.Context(), session, cookie.Value)
+
+	tasks, err := h.Service.GetAll(ctx)
+	if err != nil {
+		h.Log.Error("error while getting all tasks", "error", err)
+		w.WriteHeader(http.StatusInternalServerError)
+
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(tasks); err != nil {
+		h.Log.Error("error while writing the response body", "error", err)
 	}
 }
 
