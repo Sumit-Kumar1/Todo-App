@@ -110,6 +110,20 @@ func (mr *MockStorerMockRecorder) GetSessionByID(ctx, userID interface{}) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSessionByID", reflect.TypeOf((*MockStorer)(nil).GetSessionByID), ctx, userID)
 }
 
+// Logout mocks base method.
+func (m *MockStorer) Logout(ctx context.Context, token *uuid.UUID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Logout", ctx, token)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Logout indicates an expected call of Logout.
+func (mr *MockStorerMockRecorder) Logout(ctx, token interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Logout", reflect.TypeOf((*MockStorer)(nil).Logout), ctx, token)
+}
+
 // MarkDone mocks base method.
 func (m *MockStorer) MarkDone(ctx context.Context, id string, userID *uuid.UUID) (*models.Task, error) {
 	m.ctrl.T.Helper()
@@ -221,6 +235,20 @@ func (m *MockUserStorer) GetSessionByID(ctx context.Context, userID *uuid.UUID) 
 func (mr *MockUserStorerMockRecorder) GetSessionByID(ctx, userID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSessionByID", reflect.TypeOf((*MockUserStorer)(nil).GetSessionByID), ctx, userID)
+}
+
+// Logout mocks base method.
+func (m *MockUserStorer) Logout(ctx context.Context, token *uuid.UUID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Logout", ctx, token)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Logout indicates an expected call of Logout.
+func (mr *MockUserStorerMockRecorder) Logout(ctx, token interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Logout", reflect.TypeOf((*MockUserStorer)(nil).Logout), ctx, token)
 }
 
 // RefreshSession mocks base method.
