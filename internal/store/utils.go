@@ -22,7 +22,7 @@ added_at DATETIME NOT NULL, modified_at DATETIME);`
 		upUserTable = `DROP TABLE IF EXISTS users; CREATE TABLE IF NOT EXISTS users(user_id TEXT NOT NULL PRIMARY KEY, name TEXT NOT NULL,
 email TEXT NOT NULL UNIQUE CHECK (email LIKE '%'), password TEXT NOT NULL);`
 		upSessionTable = `DROP TABLE IF EXISTS sessions; CREATE TABLE IF NOT EXISTS sessions(id TEXT PRIMARY KEY, user_id TEXT NOT NULL UNIQUE,
-token TEXT NOT NULL, expiry DATETIME NOT NULL);`
+token TEXT NOT NULL UNIQUE, expiry DATETIME NOT NULL);`
 	)
 
 	if _, err := db.Exec(upTaskTable); err != nil {

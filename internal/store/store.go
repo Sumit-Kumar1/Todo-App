@@ -114,6 +114,33 @@ func (s *Store) GetByEmail(ctx context.Context, userID string) (*models.UserData
 	return &user, nil
 }
 
+func (s *Store) Logout(ctx context.Context, token *uuid.UUID) error {
+	tx, err := s.DB.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
+	if err != nil {
+		return err
+	}
+
+	var session models.UserSession
+
+	row := tx.QueryRowContext(ctx, "SELECT * FROM sessions where token=?", *token)
+	if err = row.Scan(&session.ID, &session.UserID, &session.Token, &session.Expiry); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return rollback(tx, models.ErrNotFound)
+		}
+	}
+
+	if _, err = tx.ExecContext(ctx, "DELETE FROM sessions WHERE id=?", session.ID); err != nil {
+		return rollback(tx, err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		s.Log.Error(err.Error(), "incident", "logout commit")
+		return err
+	}
+
+	return nil
+}
+
 func (s *Store) GetAll(ctx context.Context, userID *uuid.UUID) ([]models.Task, error) {
 	var res = make([]models.Task, 0)
 
@@ -121,8 +148,6 @@ func (s *Store) GetAll(ctx context.Context, userID *uuid.UUID) ([]models.Task, e
 	if err != nil {
 		return nil, err
 	}
-
-	s.Log.Debug("completed query with no error", "sql-query", getAll)
 
 	defer rows.Close()
 

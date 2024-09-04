@@ -31,6 +31,7 @@ func New(s Servicer, log *slog.Logger) *Handler {
 }
 
 // User API Handlers
+
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	var user models.RegisterReq
 
@@ -125,7 +126,39 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
+	c, err := r.Cookie("user_session")
+	if err != nil {
+		h.Log.Error(err.Error(), "request", "logout")
+		http.Error(w, "user not logged in", http.StatusUnauthorized)
+		return
+	}
+
+	if err := h.Service.Logout(r.Context(), c.Value); err != nil {
+		h.Log.Error(err.Error(), "request", "logout")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	cookie := http.Cookie{
+		Name:     "user_session",
+		HttpOnly: true,
+		Path:     "/",
+		MaxAge:   -1,
+	}
+
+	http.SetCookie(w, &cookie)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	if _, err := w.Write([]byte("logout success !!")); err != nil {
+		h.Log.Error("error while writing the response body", "error", err)
+	}
+}
+
 // TODO API Handlers
+
 func (h *Handler) HandleTasks(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:

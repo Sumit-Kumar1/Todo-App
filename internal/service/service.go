@@ -103,6 +103,15 @@ func (s *Service) Login(ctx context.Context, req *models.LoginReq) (*models.User
 	return session, nil
 }
 
+func (s *Service) Logout(ctx context.Context, token string) error {
+	t, err := uuid.Parse(token)
+	if err != nil {
+		return err
+	}
+
+	return s.Store.Logout(ctx, &t)
+}
+
 // Tasks endpoints
 func (s *Service) GetAll(ctx context.Context) ([]models.Task, error) {
 	userID, ok := ctx.Value(server.Key("user_id")).(uuid.UUID)
