@@ -9,6 +9,7 @@ import (
 	"todoapp/internal/models"
 
 	"github.com/golang/mock/gomock"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -26,6 +27,7 @@ func TestService_GetAll(t *testing.T) {
 
 	s := New(st, slog.Default())
 	tz2 := time.Now().Add(1000)
+	uid := uuid.New()
 
 	t1 := models.Task{
 		ID:         id,
@@ -49,9 +51,9 @@ func TestService_GetAll(t *testing.T) {
 		want    []models.Task
 		wantErr error
 	}{
-		{name: "valid case", mock: st.EXPECT().GetAll(ctx).Return([]models.Task{t1, t2}, nil), want: []models.Task{t1, t2}},
-		{name: "empty case", mock: st.EXPECT().GetAll(ctx).Return([]models.Task{}, nil), want: []models.Task{}},
-		{name: "err case", mock: st.EXPECT().GetAll(ctx).Return(nil, errSvc), want: nil, wantErr: errSvc},
+		{name: "valid case", mock: st.EXPECT().GetAll(ctx, &uid).Return([]models.Task{t1, t2}, nil), want: []models.Task{t1, t2}},
+		{name: "empty case", mock: st.EXPECT().GetAll(ctx, &uid).Return([]models.Task{}, nil), want: []models.Task{}},
+		{name: "err case", mock: st.EXPECT().GetAll(ctx, &uid).Return(nil, errSvc), want: nil, wantErr: errSvc},
 	}
 	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -69,6 +71,7 @@ func TestService_AddTask(t *testing.T) {
 	s := New(st, slog.Default())
 
 	task := models.Task{ID: id, Title: title, IsDone: false, AddedAt: ts}
+	uid := uuid.New()
 
 	tests := []struct {
 		name    string
@@ -79,9 +82,9 @@ func TestService_AddTask(t *testing.T) {
 		wantErr error
 	}{
 		{name: "invalid task title", title: "", wantErr: models.ErrInvalidTitle},
-		{name: "valid case", title: title, id: id, mock: st.EXPECT().Create(ctx, gomock.Any(), title).Return(&task, nil),
+		{name: "valid case", title: title, id: id, mock: st.EXPECT().Create(ctx, gomock.Any(), title, &uid).Return(&task, nil),
 			want: &task, wantErr: nil},
-		{name: "err case", title: title, id: id, mock: st.EXPECT().Create(ctx, gomock.Any(), title).Return(nil, errSvc),
+		{name: "err case", title: title, id: id, mock: st.EXPECT().Create(ctx, gomock.Any(), title, &uid).Return(nil, errSvc),
 			want: nil, wantErr: errSvc},
 	}
 	for i, tt := range tests {
@@ -104,6 +107,7 @@ func TestService_DeleteTask(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	st := NewMockStorer(ctrl)
 	s := New(st, slog.Default())
+	uid := uuid.New()
 
 	tests := []struct {
 		name    string
@@ -111,10 +115,10 @@ func TestService_DeleteTask(t *testing.T) {
 		mock    *gomock.Call
 		wantErr error
 	}{
-		{name: "id not found", id: id, mock: st.EXPECT().Delete(ctx, id).Return(models.ErrNotFound), wantErr: models.ErrNotFound},
+		{name: "id not found", id: id, mock: st.EXPECT().Delete(ctx, id, uid).Return(models.ErrNotFound), wantErr: models.ErrNotFound},
 		{name: "invalid id", id: "ID124cde", wantErr: models.ErrInvalidID},
 		{name: "empty id", id: "", wantErr: models.ErrInvalidID},
-		{name: "valid case", id: id, mock: st.EXPECT().Delete(ctx, id).Return(nil), wantErr: nil},
+		{name: "valid case", id: id, mock: st.EXPECT().Delete(ctx, id, uid).Return(nil), wantErr: nil},
 	}
 	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -130,6 +134,7 @@ func TestService_MarkDone(t *testing.T) {
 	st := NewMockStorer(ctrl)
 	s := New(st, slog.Default())
 	task := models.Task{ID: id, Title: title, IsDone: true, AddedAt: ts, ModifiedAt: &ts}
+	uid := uuid.New()
 
 	tests := []struct {
 		name    string
@@ -138,9 +143,9 @@ func TestService_MarkDone(t *testing.T) {
 		want    *models.Task
 		wantErr error
 	}{
-		{name: "valid case", id: id, mock: st.EXPECT().MarkDone(ctx, id).Return(&task, nil), want: &task, wantErr: nil},
+		{name: "valid case", id: id, mock: st.EXPECT().MarkDone(ctx, id, uid).Return(&task, nil), want: &task, wantErr: nil},
 		{name: "invalid id", id: "128bakdhiue", want: nil, wantErr: models.ErrInvalidID},
-		{name: "not found case", id: "abcze", mock: st.EXPECT().MarkDone(ctx, "abcze").Return(nil, models.ErrNotFound), wantErr: models.ErrNotFound},
+		{name: "not found case", id: "abcze", mock: st.EXPECT().MarkDone(ctx, "abcze", uid).Return(nil, models.ErrNotFound), wantErr: models.ErrNotFound},
 	}
 
 	for i, tt := range tests {
@@ -160,7 +165,7 @@ func TestService_UpdateTask(t *testing.T) {
 	st := NewMockStorer(ctrl)
 	s := New(st, slog.Default())
 	task := models.Task{ID: id, Title: title, IsDone: false, AddedAt: ts, ModifiedAt: &ts}
-
+	uid := uuid.New()
 	type args struct {
 		id     string
 		title  string
@@ -174,9 +179,9 @@ func TestService_UpdateTask(t *testing.T) {
 		want    *models.Task
 		wantErr error
 	}{
-		{name: "valid case", args: args{id: id, title: title, isDone: "false"}, mock: st.EXPECT().Update(ctx, id, title).Return(&task, nil), want: &task},
+		{name: "valid case", args: args{id: id, title: title, isDone: "false"}, mock: st.EXPECT().Update(ctx, id, title, uid).Return(&task, nil), want: &task},
 		{name: "invalid task", args: args{id: id, title: "", isDone: "false"}, want: nil, wantErr: models.ErrInvalidTitle},
-		{name: "invalid task", args: args{id: "abcd", title: "hello world", isDone: "false"}, mock: st.EXPECT().Update(ctx, "abcd", "hello world").
+		{name: "invalid task", args: args{id: "abcd", title: "hello world", isDone: "false"}, mock: st.EXPECT().Update(ctx, "abcd", "hello world", uid).
 			Return(nil, models.ErrNotFound), wantErr: models.ErrNotFound},
 	}
 	for i, tt := range tests {

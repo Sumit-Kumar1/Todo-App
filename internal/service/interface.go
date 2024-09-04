@@ -20,9 +20,9 @@ type UserStorer interface {
 }
 
 type TodoStorer interface {
-	GetAll(ctx context.Context) ([]models.Task, error)
-	Create(ctx context.Context, id, title string) (*models.Task, error)
-	Update(ctx context.Context, id, title string) (*models.Task, error)
-	Delete(ctx context.Context, id string) error
-	MarkDone(ctx context.Context, id string) (*models.Task, error)
+	GetAll(ctx context.Context, userID *uuid.UUID) ([]models.Task, error)
+	Create(ctx context.Context, id, title string, userID *uuid.UUID) (*models.Task, error)
+	Update(ctx context.Context, id, title string, userID *uuid.UUID) (*models.Task, error)
+	Delete(ctx context.Context, id string, userID *uuid.UUID) error
+	MarkDone(ctx context.Context, id string, userID *uuid.UUID) (*models.Task, error)
 }

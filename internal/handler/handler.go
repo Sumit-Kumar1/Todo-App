@@ -127,13 +127,6 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 // TODO API Handlers
 func (h *Handler) HandleTasks(w http.ResponseWriter, r *http.Request) {
-	if r.Header.Get(hxRequest) != trueStr {
-		h.Log.Error(notHTMX)
-		w.WriteHeader(http.StatusBadRequest)
-
-		return
-	}
-
 	switch r.Method {
 	case http.MethodGet:
 		h.getAll(w, r)
@@ -145,19 +138,6 @@ func (h *Handler) HandleTasks(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Done(w http.ResponseWriter, r *http.Request) {
-	if r.Header.Get(hxRequest) != trueStr {
-		h.Log.Error(notHTMX)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	if r.Method != http.MethodPut {
-		h.Log.Error(invalidReqMethod, "method", r.Method, "endpoint", "/done")
-		w.WriteHeader(http.StatusMethodNotAllowed)
-
-		return
-	}
-
 	id := r.PathValue("id")
 	ctx := r.Context()
 
@@ -190,13 +170,6 @@ func (h *Handler) Done(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) HandleIDReq(w http.ResponseWriter, r *http.Request) {
-	if r.Header.Get(hxRequest) != trueStr {
-		h.Log.Error(notHTMX)
-		w.WriteHeader(http.StatusForbidden)
-
-		return
-	}
-
 	switch r.Method {
 	case http.MethodDelete:
 		h.deleteTask(w, r)

@@ -114,10 +114,10 @@ func (s *Store) GetByEmail(ctx context.Context, userID string) (*models.UserData
 	return &user, nil
 }
 
-func (s *Store) GetAll(ctx context.Context) ([]models.Task, error) {
+func (s *Store) GetAll(ctx context.Context, userID *uuid.UUID) ([]models.Task, error) {
 	var res = make([]models.Task, 0)
 
-	rows, err := s.DB.QueryContext(ctx, getAll)
+	rows, err := s.DB.QueryContext(ctx, getAll, *userID)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +132,7 @@ func (s *Store) GetAll(ctx context.Context) ([]models.Task, error) {
 			done int
 		)
 
-		err := rows.Scan(&task.ID, &task.Title, &done, &task.AddedAt, &task.ModifiedAt)
+		err := rows.Scan(&task.ID, &task.UserID, &task.Title, &done, &task.AddedAt, &task.ModifiedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -150,10 +150,10 @@ func (s *Store) GetAll(ctx context.Context) ([]models.Task, error) {
 	return res, nil
 }
 
-func (s *Store) Create(ctx context.Context, id, title string) (*models.Task, error) {
+func (s *Store) Create(ctx context.Context, id, title string, userID *uuid.UUID) (*models.Task, error) {
 	addTS := time.Now().UTC()
 
-	query, values := genInsertQuery(id, title, addTS)
+	query, values := genInsertQuery(id, title, *userID, addTS)
 
 	s.Log.Debug("generated query", "sql-query", query, "values", values)
 
@@ -172,10 +172,10 @@ func (s *Store) Create(ctx context.Context, id, title string) (*models.Task, err
 	return &task, nil
 }
 
-func (s *Store) Update(ctx context.Context, id, title string) (*models.Task, error) {
+func (s *Store) Update(ctx context.Context, id, title string, userID *uuid.UUID) (*models.Task, error) {
 	modifiedTS := time.Now()
 
-	query, values := genUpdateQuery(id, title, modifiedTS)
+	query, values := genUpdateQuery(id, title, *userID, modifiedTS)
 
 	s.Log.Debug("generated query", "sql-query", query, "values", values)
 
@@ -186,6 +186,7 @@ func (s *Store) Update(ctx context.Context, id, title string) (*models.Task, err
 
 	t := models.Task{
 		ID:         id,
+		UserID:     *userID,
 		Title:      title,
 		IsDone:     false,
 		ModifiedAt: &modifiedTS,
@@ -194,8 +195,8 @@ func (s *Store) Update(ctx context.Context, id, title string) (*models.Task, err
 	return &t, nil
 }
 
-func (s *Store) Delete(ctx context.Context, id string) error {
-	_, err := s.DB.ExecContext(ctx, "DELETE FROM tasks WHERE task_id=?", id)
+func (s *Store) Delete(ctx context.Context, id string, userID *uuid.UUID) error {
+	_, err := s.DB.ExecContext(ctx, "DELETE FROM tasks WHERE task_id=? AND user_id=?", id, *userID)
 	if err != nil {
 		return err
 	}
@@ -203,13 +204,13 @@ func (s *Store) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-func (s *Store) MarkDone(ctx context.Context, id string) (*models.Task, error) {
+func (s *Store) MarkDone(ctx context.Context, id string, userID *uuid.UUID) (*models.Task, error) {
 	var (
 		task = models.Task{ID: id}
 		done int
 	)
 
-	res, err := s.DB.ExecContext(ctx, "UPDATE tasks SET done_status=? WHERE task_id=?", 1, id)
+	res, err := s.DB.ExecContext(ctx, "UPDATE tasks SET done_status=? WHERE task_id=? AND user_id=?", 1, id, *userID)
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +224,7 @@ func (s *Store) MarkDone(ctx context.Context, id string) (*models.Task, error) {
 		return nil, errors.New("not able to update")
 	}
 
-	row := s.DB.QueryRowContext(ctx, "SELECT task_title, done_status, added_at, modified_at FROM tasks WHERE task_id=?", id)
+	row := s.DB.QueryRowContext(ctx, "SELECT task_title, done_status, added_at, modified_at FROM tasks WHERE task_id=? AND user_id=?", id, *userID)
 	if err := row.Scan(&task.Title, &done, &task.AddedAt, &task.ModifiedAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, models.ErrNotFound
