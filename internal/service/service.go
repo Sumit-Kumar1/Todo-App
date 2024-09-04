@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 	"todoapp/internal/models"
+	"todoapp/internal/server"
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
@@ -103,9 +104,8 @@ func (s *Service) Login(ctx context.Context, req *models.LoginReq) (*models.User
 }
 
 // Tasks endpoints
-
 func (s *Service) GetAll(ctx context.Context) ([]models.Task, error) {
-	userID, ok := ctx.Value("user_id").(uuid.UUID)
+	userID, ok := ctx.Value(server.Key("user_id")).(uuid.UUID)
 	if !ok {
 		return nil, models.ErrUserNotFound
 	}
@@ -121,7 +121,7 @@ func (s *Service) GetAll(ctx context.Context) ([]models.Task, error) {
 }
 
 func (s *Service) AddTask(ctx context.Context, title string) (*models.Task, error) {
-	userID, ok := ctx.Value("user_id").(uuid.UUID)
+	userID, ok := ctx.Value(server.Key("user_id")).(uuid.UUID)
 	if !ok {
 		return nil, models.ErrUserNotFound
 	}
@@ -142,7 +142,7 @@ func (s *Service) AddTask(ctx context.Context, title string) (*models.Task, erro
 }
 
 func (s *Service) DeleteTask(ctx context.Context, id string) error {
-	userID, ok := ctx.Value("user_id").(uuid.UUID)
+	userID, ok := ctx.Value(server.Key("user_id")).(uuid.UUID)
 	if !ok {
 		return models.ErrUserNotFound
 	}
@@ -161,7 +161,7 @@ func (s *Service) DeleteTask(ctx context.Context, id string) error {
 }
 
 func (s *Service) MarkDone(ctx context.Context, id string) (*models.Task, error) {
-	userID, ok := ctx.Value("user_id").(uuid.UUID)
+	userID, ok := ctx.Value(server.Key("user_id")).(uuid.UUID)
 	if !ok {
 		return nil, models.ErrUserNotFound
 	}
@@ -182,7 +182,7 @@ func (s *Service) MarkDone(ctx context.Context, id string) (*models.Task, error)
 }
 
 func (s *Service) UpdateTask(ctx context.Context, id, title, isDone string) (*models.Task, error) {
-	userID, ok := ctx.Value("user_id").(uuid.UUID)
+	userID, ok := ctx.Value(server.Key("user_id")).(uuid.UUID)
 	if !ok {
 		return nil, models.ErrUserNotFound
 	}
