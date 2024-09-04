@@ -9,11 +9,11 @@ import (
 	"github.com/google/uuid"
 )
 
-type middleware func(http.HandlerFunc) http.HandlerFunc
+type Middleware func(http.HandlerFunc) http.HandlerFunc
 
 type Key string
 
-func Chain(f http.HandlerFunc, middlewares ...middleware) http.HandlerFunc {
+func Chain(f http.HandlerFunc, middlewares ...Middleware) http.HandlerFunc {
 	for _, m := range middlewares {
 		f = m(f)
 	}
@@ -21,7 +21,7 @@ func Chain(f http.HandlerFunc, middlewares ...middleware) http.HandlerFunc {
 	return f
 }
 
-func Method(m string) middleware {
+func Method(m string) Middleware {
 	return func(f http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			if r.Method != m {
@@ -34,7 +34,7 @@ func Method(m string) middleware {
 	}
 }
 
-func IsHTMX() middleware {
+func IsHTMX() Middleware {
 	return func(f http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			if r.Header.Get("Hx-Request") != "true" {
@@ -47,7 +47,7 @@ func IsHTMX() middleware {
 	}
 }
 
-func AuthMiddleware(db *sql.DB) middleware {
+func AuthMiddleware(db *sql.DB) Middleware {
 	return func(f http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			cookie, err := r.Cookie("user_session")
