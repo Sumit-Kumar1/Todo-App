@@ -12,10 +12,7 @@ import (
 )
 
 const (
-	hxRequest        = "Hx-Request"
-	trueStr          = "true"
 	invalidReqMethod = "method not allowed"
-	notHTMX          = "not a htmx request"
 )
 
 type Handler struct {
@@ -166,7 +163,7 @@ func (h *Handler) HandleTasks(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPost:
 		h.addTask(w, r)
 	default:
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		http.Error(w, invalidReqMethod, http.StatusMethodNotAllowed)
 	}
 }
 
@@ -209,8 +206,7 @@ func (h *Handler) HandleIDReq(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPut:
 		h.update(w, r)
 	default:
-		h.Log.Error(invalidReqMethod, "method", r.Method, "endpoint", "/delete")
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		http.Error(w, invalidReqMethod, http.StatusMethodNotAllowed)
 	}
 }
 
@@ -242,7 +238,8 @@ func (h *Handler) getAll(w http.ResponseWriter, r *http.Request) {
 
 	cookie, err := r.Cookie("user_session")
 	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
+		h.Log.Error(err.Error(), "request", "getAll")
+		http.Error(w, "user not logged in", http.StatusUnauthorized)
 		return
 	}
 
@@ -250,7 +247,7 @@ func (h *Handler) getAll(w http.ResponseWriter, r *http.Request) {
 
 	tasks, err := h.Service.GetAll(ctx)
 	if err != nil {
-		h.Log.Error("error while getting all tasks", "error", err)
+		h.Log.Error(err.Error(), "request", "service-getAll")
 		w.WriteHeader(http.StatusInternalServerError)
 
 		return
@@ -272,15 +269,12 @@ func (h *Handler) deleteTask(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case models.ErrNotFound.Is(err):
-			w.WriteHeader(http.StatusNotFound)
+			http.Error(w, "user not found", http.StatusNotFound)
 		default:
-			w.WriteHeader(http.StatusBadRequest)
+			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
 
-		h.Log.Error("error while deleting task", "error", err)
-
-		_, _ = w.Write([]byte(err.Error()))
-
+		h.Log.Error(err.Error(), "request", "handler-delete")
 		return
 	}
 
@@ -288,15 +282,8 @@ func (h *Handler) deleteTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
-	if r.Header.Get(hxRequest) != trueStr {
-		h.Log.Error(notHTMX)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
 	if r.Method != http.MethodPost {
-		h.Log.Error(invalidReqMethod, "method", r.Method, "endpoint", "/update")
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		http.Error(w, "invalid method", http.StatusMethodNotAllowed)
 
 		return
 	}
@@ -309,19 +296,17 @@ func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case models.ErrNotFound.Is(err):
-			w.WriteHeader(http.StatusNotFound)
+			http.Error(w, "user not found", http.StatusNotFound)
 		default:
-			w.WriteHeader(http.StatusBadRequest)
+			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
 
-		h.Log.Error("error while updating task", "error", err)
-
-		_, _ = w.Write([]byte(err.Error()))
+		h.Log.Error(err.Error(), "request", "handler-update")
 		return
 	}
 
 	if resp == nil {
-		w.WriteHeader(http.StatusNoContent)
+		http.Error(w, "user not found", http.StatusNotFound)
 		return
 	}
 
