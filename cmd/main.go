@@ -1,28 +1,29 @@
 package main
 
 import (
+	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"os"
-
 	"todoapp/internal/handler"
 	"todoapp/internal/server"
 	"todoapp/internal/service"
 	"todoapp/internal/store"
+
+	"github.com/google/uuid"
 )
 
 func main() {
+	app := server.ServerFromEnvs()
+
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
 
 	st, fn, err := store.New(logger)
 	if err != nil {
-		return
-	}
-
-	if mErr := runMigration(st); mErr != nil {
-		logger.Error("error while running migration function", "error", mErr.Error())
 		return
 	}
 
@@ -36,17 +37,11 @@ func main() {
 	http.HandleFunc("/login", h.Login)
 
 	// tasks API
-	http.HandleFunc("/tasks", h.AddTask)
-	http.HandleFunc("/task/{id}", h.HandleIDReq)
-	http.HandleFunc("/task/done/{id}", h.Done)
+	http.HandleFunc("/tasks", chain(h.HandleTasks, isHTMX(), authMiddleware(st.DB)))
+	http.HandleFunc("/task/{id}", chain(h.HandleIDReq, isHTMX(), authMiddleware(st.DB)))
+	http.HandleFunc("/task/done/{id}", chain(h.Done, isHTMX(), method(http.MethodPost), authMiddleware(st.DB)))
 
 	http.HandleFunc("/health", healthStatus)
-
-	app := server.NewServer(
-		server.WithAppName("todoApp"),
-		server.WithEnv("development"),
-		server.WithPort("9001"),
-	)
 
 	slog.Info("application is running on", "host:port", app.Addr)
 
@@ -58,33 +53,79 @@ func main() {
 	}
 }
 
-func runMigration(st *store.Store) error {
-	const (
-		createTaskTable = `CREATE TABLE IF NOT EXISTS tasks(task_id TEXT PRIMARY KEY,
-task_title TEXT NOT NULL, done_status BOOLEAN NOT NULL CHECK (done_status IN (0, 1)),
-added_at DATETIME NOT NULL, modified_at DATETIME);`
-		createUserTable = `CREATE TABLE IF NOT EXISTS users(user_id TEXT NOT NULL PRIMARY KEY, name TEXT NOT NULL,
-email TEXT NOT NULL UNIQUE CHECK (email LIKE '%'), password TEXT NOT NULL);`
-		createSessionTable = `CREATE TABLE IF NOT EXISTS sessions(id TEXT PRIMARY KEY, user_id TEXT NOT NULL UNIQUE,
-token TEXT NOT NULL, expiry DATETIME NOT NULL);`
-	)
-
-	if _, err := st.DB.Exec(createTaskTable); err != nil {
-		return err
-	}
-
-	if _, err := st.DB.Exec(createUserTable); err != nil {
-		return err
-	}
-
-	if _, err := st.DB.Exec(createSessionTable); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func healthStatus(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(json.RawMessage(`{"status":"OK"}`))
+}
+
+type middleware func(http.HandlerFunc) http.HandlerFunc
+
+func chain(f http.HandlerFunc, middlewares ...middleware) http.HandlerFunc {
+	for _, m := range middlewares {
+		f = m(f)
+	}
+
+	return f
+}
+
+func method(m string) middleware {
+	return func(f http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != m {
+				http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+				return
+			}
+
+			f(w, r)
+		}
+	}
+}
+
+func isHTMX() middleware {
+	return func(f http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			if r.Header.Get("Hx-Request") != "true" {
+				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+				return
+			}
+
+			f(w, r)
+		}
+	}
+}
+
+func authMiddleware(db *sql.DB) middleware {
+	return func(f http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			cookie, err := r.Cookie("user_session")
+			if err != nil {
+				if errors.Is(err, http.ErrNoCookie) {
+					http.Error(w, "invalid cookie", http.StatusUnauthorized)
+					return
+				}
+
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			var (
+				uid   uuid.UUID
+				token uuid.UUID
+			)
+
+			row := db.QueryRowContext(r.Context(), "select user_id, token from sessions where token = ?", cookie.Value)
+			err = row.Scan(&uid, &token)
+			if err != nil {
+				if errors.Is(err, sql.ErrNoRows) {
+					http.Error(w, "invalid cookie", http.StatusUnauthorized)
+					return
+				}
+
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			f(w, r.WithContext(context.WithValue(r.Context(), "user_id", uid)))
+		}
+	}
 }
