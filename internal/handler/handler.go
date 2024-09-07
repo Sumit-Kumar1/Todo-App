@@ -2,12 +2,10 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"html/template"
 	"log/slog"
 	"net/http"
-
 	"todoapp/internal/models"
 )
 
@@ -29,7 +27,7 @@ func New(s Servicer, log *slog.Logger) *Handler {
 	return &Handler{template: tmpl, Service: s, Log: log}
 }
 
-// rendering endpoints
+// Root rendering endpoints
 func (h *Handler) Root(w http.ResponseWriter, r *http.Request) {
 	var tempName string
 
@@ -37,8 +35,6 @@ func (h *Handler) Root(w http.ResponseWriter, r *http.Request) {
 	switch vals.Get("page") {
 	case "register":
 		tempName = "user-register"
-	case "tasks":
-		tempName = "index"
 	default:
 		tempName = "user-login"
 	}
@@ -47,11 +43,6 @@ func (h *Handler) Root(w http.ResponseWriter, r *http.Request) {
 		h.Log.Error(err.Error(), "template-render", "index")
 		return
 	}
-}
-
-func (h *Handler) TodoPage(w http.ResponseWriter, r *http.Request) {
-	h.getAll(w, r)
-
 }
 
 // User API Handlers
@@ -93,18 +84,10 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 
 	http.SetCookie(w, &cookie)
 
-	data, err := json.Marshal(resp)
-	if err != nil {
-		h.Log.Error("error while marshaling the response body", "error", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set(contentType, appJSON)
 	w.WriteHeader(http.StatusOK)
-
-	if _, err := w.Write(data); err != nil {
-		h.Log.Error("error while writing the response body", "error", err)
+	if err := h.template.ExecuteTemplate(w, "taskButton", nil); err != nil {
+		h.Log.Error(err.Error(), "template-render", "taskButton")
+		return
 	}
 }
 
@@ -125,13 +108,6 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data, err := json.Marshal(session)
-	if err != nil {
-		h.Log.Error("error while marshaling the response body", "error", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
 	cookie := http.Cookie{
 		Name:     "user_session",
 		Value:    session.Token,
@@ -142,11 +118,11 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 	http.SetCookie(w, &cookie)
 
-	w.Header().Set(contentType, appJSON)
 	w.WriteHeader(http.StatusOK)
 
-	if _, err := w.Write(data); err != nil {
-		h.Log.Error("error while writing the response body", "error", err)
+	if err := h.template.ExecuteTemplate(w, "taskButton", nil); err != nil {
+		h.Log.Error(err.Error(), "template-render", "taskButton")
+		return
 	}
 }
 
@@ -182,6 +158,11 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 }
 
 // TODO API Handlers
+
+func (h *Handler) TaskPage(w http.ResponseWriter, r *http.Request) {
+	h.getAll(w, r)
+	return
+}
 
 func (h *Handler) HandleTasks(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
@@ -249,30 +230,35 @@ func (h *Handler) addTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) getAll(w http.ResponseWriter, r *http.Request) {
-	type sessionKey string
-	var session sessionKey = "user_session"
-
 	cookie, err := r.Cookie("user_session")
 	if err != nil {
 		h.Log.Error(err.Error(), "request", "getAll")
+		w.Header().Add("HX-Redirect", "/?page=register")
 		http.Error(w, "user not logged in", http.StatusUnauthorized)
 		return
 	}
 
-	ctx := context.WithValue(r.Context(), session, cookie.Value)
+	ctx := context.WithValue(r.Context(), "user_session", cookie.Value)
 
 	tasks, err := h.Service.GetAll(ctx)
 	if err != nil {
+		if models.ErrNotFound.Is(err) {
+			w.Header().Add("HX-Redirect", "/?page=register")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
 		h.Log.Error(err.Error(), "request", "service-getAll")
 		w.WriteHeader(http.StatusInternalServerError)
 
 		return
 	}
 
-	w.Header().Set(contentType, appJSON)
 	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(tasks); err != nil {
-		h.Log.Error("error while writing the response body", "error", err)
+	if err := h.template.ExecuteTemplate(w, "index", tasks); err != nil {
+		h.Log.Error(err.Error(), "request", "service-getAll")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 }
 

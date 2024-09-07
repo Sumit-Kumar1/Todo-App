@@ -131,12 +131,22 @@ func (s *Service) Logout(ctx context.Context, token string) error {
 
 // Tasks endpoints
 func (s *Service) GetAll(ctx context.Context) ([]models.Task, error) {
-	userID, ok := ctx.Value(server.Key("user_id")).(uuid.UUID)
-	if !ok {
+	ss := ctx.Value("user_session")
+	if ss == nil {
 		return nil, models.ErrUserNotFound
 	}
 
-	tasks, err := s.Store.GetAll(ctx, &userID)
+	sessionID, err := uuid.Parse(ss.(string))
+	if err != nil {
+		return nil, models.ErrUserNotFound
+	}
+
+	session, err := s.Store.GetSessionByID(ctx, &sessionID)
+	if err != nil {
+		return nil, err
+	}
+
+	tasks, err := s.Store.GetAll(ctx, &session.UserID)
 	if err != nil {
 		s.Log.Error("error in getAll", "error", err.Error())
 
