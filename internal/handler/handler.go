@@ -12,6 +12,8 @@ import (
 )
 
 const (
+	appJSON          = "application/json"
+	contentType      = "Content-Type"
 	invalidReqMethod = "method not allowed"
 )
 
@@ -27,19 +29,48 @@ func New(s Servicer, log *slog.Logger) *Handler {
 	return &Handler{template: tmpl, Service: s, Log: log}
 }
 
+// rendering endpoints
+func (h *Handler) Root(w http.ResponseWriter, r *http.Request) {
+	var tempName string
+
+	vals := r.URL.Query()
+	switch vals.Get("page") {
+	case "register":
+		tempName = "user-register"
+	case "tasks":
+		tempName = "index"
+	default:
+		tempName = "user-login"
+	}
+
+	if err := h.template.ExecuteTemplate(w, tempName, nil); err != nil {
+		h.Log.Error(err.Error(), "template-render", "index")
+		return
+	}
+}
+
+func (h *Handler) TodoPage(w http.ResponseWriter, r *http.Request) {
+	h.getAll(w, r)
+
+}
+
 // User API Handlers
 
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	var user models.RegisterReq
 
-	err := bind(r, &user)
-	if err != nil {
-		h.Log.Error("error while binding the request body", "error", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
+	user.Name = r.FormValue("name")
+	user.LoginReq = &models.LoginReq{
+		Email:    r.FormValue("email"),
+		Password: r.FormValue("password"),
 	}
 
-	resp, err := h.Service.Register(r.Context(), &user)
+	ctx := context.Background()
+	r.Clone(ctx)
+
+	defer ctx.Done()
+
+	resp, err := h.Service.Register(ctx, &user)
 	switch {
 	case err == nil:
 	case errors.Is(err, models.ErrUserAlreadyExists):
@@ -69,7 +100,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(contentType, appJSON)
 	w.WriteHeader(http.StatusOK)
 
 	if _, err := w.Write(data); err != nil {
@@ -80,12 +111,8 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	var user models.LoginReq
 
-	err := bind(r, &user)
-	if err != nil {
-		h.Log.Error("error while binding the request body", "error", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
+	user.Email = r.FormValue("email")
+	user.Password = r.FormValue("password")
 
 	session, err := h.Service.Login(r.Context(), &user)
 	if err != nil {
@@ -115,7 +142,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 	http.SetCookie(w, &cookie)
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(contentType, appJSON)
 	w.WriteHeader(http.StatusOK)
 
 	if _, err := w.Write(data); err != nil {
@@ -146,7 +173,7 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 
 	http.SetCookie(w, &cookie)
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(contentType, appJSON)
 	w.WriteHeader(http.StatusOK)
 
 	if _, err := w.Write([]byte("logout success !!")); err != nil {
@@ -199,17 +226,6 @@ func (h *Handler) Done(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *Handler) HandleIDReq(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodDelete:
-		h.deleteTask(w, r)
-	case http.MethodPut:
-		h.update(w, r)
-	default:
-		http.Error(w, invalidReqMethod, http.StatusMethodNotAllowed)
-	}
-}
-
 func (h *Handler) addTask(w http.ResponseWriter, r *http.Request) {
 	task := r.PostFormValue("task")
 	ctx := r.Context()
@@ -253,13 +269,14 @@ func (h *Handler) getAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set(contentType, appJSON)
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(tasks); err != nil {
 		h.Log.Error("error while writing the response body", "error", err)
 	}
 }
 
-func (h *Handler) deleteTask(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	ctx := r.Context()
 
@@ -281,13 +298,7 @@ func (h *Handler) deleteTask(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "invalid method", http.StatusMethodNotAllowed)
-
-		return
-	}
-
+func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	title := r.Header.Get("HX-Prompt")
 	ctx := r.Context()

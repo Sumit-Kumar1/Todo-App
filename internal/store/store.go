@@ -72,6 +72,15 @@ func (s *Store) RegisterUser(ctx context.Context, data *models.UserData, session
 	return session, nil
 }
 
+func (s *Store) CreateSession(ctx context.Context, session *models.UserSession) error {
+	_, err := s.DB.ExecContext(ctx, createSession, session.ID, session.UserID, session.Token, session.Expiry)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s *Store) GetSessionByID(ctx context.Context, userID *uuid.UUID) (*models.UserSession, error) {
 	var session models.UserSession
 
@@ -98,10 +107,10 @@ func (s *Store) RefreshSession(ctx context.Context, newSession *models.UserSessi
 	return newSession, nil
 }
 
-func (s *Store) GetByEmail(ctx context.Context, userID string) (*models.UserData, error) {
+func (s *Store) GetByEmail(ctx context.Context, email string) (*models.UserData, error) {
 	var user models.UserData
 
-	row := s.DB.QueryRowContext(ctx, getUser, userID)
+	row := s.DB.QueryRowContext(ctx, getUser, email)
 
 	if err := row.Scan(&user.ID, &user.Name, &user.Email, &user.Password); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -235,21 +244,13 @@ func (s *Store) MarkDone(ctx context.Context, id string, userID *uuid.UUID) (*mo
 		done int
 	)
 
-	res, err := s.DB.ExecContext(ctx, "UPDATE tasks SET done_status=? WHERE task_id=? AND user_id=?", 1, id, *userID)
+	_, err := s.DB.ExecContext(ctx, "UPDATE tasks SET done_status=? WHERE task_id=? AND user_id=?", 1, id, *userID)
 	if err != nil {
 		return nil, err
 	}
 
-	val, err := res.RowsAffected()
-	if err != nil {
-		return nil, err
-	}
-
-	if val > 1 {
-		return nil, errors.New("not able to update")
-	}
-
-	row := s.DB.QueryRowContext(ctx, "SELECT task_title, done_status, added_at, modified_at FROM tasks WHERE task_id=? AND user_id=?", id, *userID)
+	row := s.DB.QueryRowContext(ctx, `SELECT task_title, done_status, added_at, modified_at FROM tasks 
+		WHERE task_id=? AND user_id=?`, id, *userID)
 	if err := row.Scan(&task.Title, &done, &task.AddedAt, &task.ModifiedAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, models.ErrNotFound

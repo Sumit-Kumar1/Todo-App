@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"log/slog"
 	"strings"
 	"time"
@@ -90,7 +92,22 @@ func (s *Service) Login(ctx context.Context, req *models.LoginReq) (*models.User
 
 	session, err := s.Store.GetSessionByID(ctx, &user.ID)
 	if err != nil {
-		return nil, err
+		if !errors.Is(err, sql.ErrNoRows) {
+			return nil, err
+		}
+
+		ss := models.UserSession{
+			ID:     uuid.New(),
+			UserID: user.ID,
+			Token:  uuid.NewString(),
+			Expiry: time.Now().Add(time.Minute * 15).UTC(),
+		}
+
+		if er := s.Store.CreateSession(ctx, &ss); er != nil {
+			return nil, er
+		}
+
+		return &ss, nil
 	}
 
 	if session.Expiry.Before(time.Now().UTC()) {

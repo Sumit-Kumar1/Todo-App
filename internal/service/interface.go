@@ -14,6 +14,7 @@ type Storer interface {
 
 type UserStorer interface {
 	Logout(ctx context.Context, token *uuid.UUID) error
+	CreateSession(ctx context.Context, session *models.UserSession) error
 	GetByEmail(ctx context.Context, email string) (*models.UserData, error)
 	GetSessionByID(ctx context.Context, userID *uuid.UUID) (*models.UserSession, error)
 	RefreshSession(ctx context.Context, newSession *models.UserSession) (*models.UserSession, error)

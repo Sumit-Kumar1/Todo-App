@@ -51,6 +51,20 @@ func (mr *MockStorerMockRecorder) Create(ctx, id, title, userID interface{}) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockStorer)(nil).Create), ctx, id, title, userID)
 }
 
+// CreateSession mocks base method.
+func (m *MockStorer) CreateSession(ctx context.Context, session *models.UserSession) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateSession", ctx, session)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateSession indicates an expected call of CreateSession.
+func (mr *MockStorerMockRecorder) CreateSession(ctx, session interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSession", reflect.TypeOf((*MockStorer)(nil).CreateSession), ctx, session)
+}
+
 // Delete mocks base method.
 func (m *MockStorer) Delete(ctx context.Context, id string, userID *uuid.UUID) error {
 	m.ctrl.T.Helper()
@@ -205,6 +219,20 @@ func NewMockUserStorer(ctrl *gomock.Controller) *MockUserStorer {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockUserStorer) EXPECT() *MockUserStorerMockRecorder {
 	return m.recorder
+}
+
+// CreateSession mocks base method.
+func (m *MockUserStorer) CreateSession(ctx context.Context, session *models.UserSession) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateSession", ctx, session)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateSession indicates an expected call of CreateSession.
+func (mr *MockUserStorerMockRecorder) CreateSession(ctx, session interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSession", reflect.TypeOf((*MockUserStorer)(nil).CreateSession), ctx, session)
 }
 
 // GetByEmail mocks base method.
