@@ -9,8 +9,8 @@ import (
 	"todoapp/internal/models"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
-	_ "modernc.org/sqlite"
 )
 
 var (
@@ -38,6 +38,8 @@ func TestStore_GetAll(t *testing.T) {
 	if err != nil {
 		return
 	}
+
+	uid := uuid.New()
 
 	s := Store{
 		DB: db,
@@ -74,7 +76,7 @@ func TestStore_GetAll(t *testing.T) {
 	}
 	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := s.GetAll(ctx)
+			got, err := s.GetAll(ctx, &uid)
 
 			assert.Equalf(t, tt.wantErr, err, "Test[%d] Failed - %s", i, tt.name)
 			assert.Equalf(t, tt.want, got, "Test[%d] Failed - %s", i, tt.name)
@@ -91,6 +93,8 @@ func TestStore_Create(t *testing.T) {
 	s := Store{
 		DB: db,
 	}
+
+	uid := uuid.New()
 
 	tests := []struct {
 		name    string
@@ -125,7 +129,7 @@ func TestStore_Create(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := s.Create(context.Background(), tt.id, tt.title)
+			got, err := s.Create(context.Background(), tt.id, tt.title, &uid)
 
 			assert.Equalf(t, tt.wantErr, err, "Test[%s] Failed", tt.name)
 
@@ -142,6 +146,7 @@ func TestStore_Update(t *testing.T) {
 	if err != nil {
 		return
 	}
+	uid := uuid.New()
 
 	s := Store{
 		DB: db,
@@ -175,7 +180,7 @@ func TestStore_Update(t *testing.T) {
 
 	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := s.Update(ctx, tt.id, tt.title)
+			got, err := s.Update(ctx, tt.id, tt.title, &uid)
 
 			assert.Equalf(t, tt.wantErr, err, "Test[%d] Failed - %s", i, tt.name)
 
@@ -196,6 +201,8 @@ func TestStore_Delete(t *testing.T) {
 	s := Store{
 		DB: db,
 	}
+
+	uid := uuid.New()
 
 	delQuery := "DELETE FROM tasks WHERE task_id=?"
 
@@ -221,7 +228,7 @@ func TestStore_Delete(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mock.ExpectExec("DELETE FROM tasks").WillReturnResult(sqlmock.NewResult(1, 1))
-			err := s.Delete(context.Background(), tt.id)
+			err := s.Delete(context.Background(), tt.id, &uid)
 
 			assert.Equalf(t, tt.wantErr, err, "Test[%s] Failed", tt.name)
 		})
@@ -237,6 +244,7 @@ func TestStore_MarkDone(t *testing.T) {
 	s := Store{
 		DB: db,
 	}
+	uid := uuid.New()
 
 	selectQuery := "SELECT task_title, done_status, added_at, modified_at FROM tasks"
 
@@ -292,7 +300,7 @@ func TestStore_MarkDone(t *testing.T) {
 
 	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := s.MarkDone(ctx, tt.id)
+			got, err := s.MarkDone(ctx, tt.id, &uid)
 
 			assert.Equalf(t, tt.wantErr, err, "Test[%d] Failed - %s", i, tt.name)
 			assert.Equalf(t, tt.want, got, "Test[%d] Failed - %s", i, tt.name)

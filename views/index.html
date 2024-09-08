@@ -1,4 +1,4 @@
-{{define "index"}}
+{{ define "index" }}
 <!DOCTYPE html>
 <html lang="en" xml:lang="en">
 
@@ -32,24 +32,24 @@
 </head>
 
 <body class="bg-[#EDE8F5] text-[#3D52A0]">
-  <h1 class="text-3xl text-center p-3 font-monteserrat">TODO APP</h1>
+  {{template "userNavbar"}}
     <div class="w-full flex items-center gap-5 flex-col p-3">
       <!-- Form data-->
-      {{template "todoForm"}}
+      {{ template "todoForm" }}
       <div id="rend" ondrop="dragDrop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)"
       class="h-[85vh] w-1/2 overflow-x-auto p-5">
-        {{range $val := .Data}}
-        {{template "add" $val}}
-        {{end}}
+        {{ range $val := . }}
+        {{ template "add" $val }}
+        {{ end }}
       </div>
     </div>
 </body>
 
 </html>
-{{end}}
+{{ end }}
 
-{{block "todoForm" .}}
-  <form hx-post="/add" hx-target="#rend" hx-swap="beforeend" class="flex gap-5 justify-center w-1/2">
+{{ block "todoForm" . }}
+  <form hx-post="/tasks" hx-target="#rend" hx-swap="beforeend" class="flex gap-5 justify-center w-1/2">
     <input placeholder="Task*" name="task" type="text" id="title" class="input input-bordered input-primary w-full max-w-xs bg-white">
     <input type="reset" class="hover:cursor-pointer"/>
     <button type="submit" class="btn btn-outline btn-primary">
@@ -62,46 +62,46 @@
           </span>
     </button>
   </form>
-{{end}}
+{{ end }}
 
-{{block "add" .}}
+{{ block "add" . }}
 <div id="{{.ID}}" draggable="true" ondragstart="dragStart(event)" class="bg-[#EDE8F5] w-full shadow-xl outline rounded-xl m-3">
   <div class="p-5 font-monteserrat">
-  {{if .IsDone}}
+  {{ if .IsDone }}
   <p class="line-through italic text-wrap whitespace-nowrap">{{.Title}}</p>
     <div class="card-actions justify-end">
-  <button hx-confirm="Really Delete??" hx-delete="/delete/{{.ID}}" hx-target="#{{.ID}}" hx-swap="outerHTML" class="p-2 hover:border hover:rounded-full hover:border-red-600">
+  <button hx-confirm="Really Delete??" hx-delete="/tasks/{{.ID}}/delete" hx-target="#{{.ID}}" hx-swap="outerHTML" class="p-2 hover:border hover:rounded-full hover:border-red-600">
     <svg width="35px" height="35px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M6.99486 7.00636C6.60433 7.39689 6.60433 8.03005 6.99486 8.42058L10.58 12.0057L6.99486 15.5909C6.60433 15.9814 6.60433 16.6146 6.99486 17.0051C7.38538 17.3956 8.01855 17.3956 8.40907 17.0051L11.9942 13.4199L15.5794 17.0051C15.9699 17.3956 16.6031 17.3956 16.9936 17.0051C17.3841 16.6146 17.3841 15.9814 16.9936 15.5909L13.4084 12.0057L16.9936 8.42059C17.3841 8.03007 17.3841 7.3969 16.9936 7.00638C16.603 6.61585 15.9699 6.61585 15.5794 7.00638L11.9942 10.5915L8.40907 7.00636C8.01855 6.61584 7.38538 6.61584 6.99486 7.00636Z" fill="#EF4444" />
     </svg>
   </button>
     </div>
-  {{else}}
+  {{ else }}
   <p class="font-monteserrat text-xl">{{.Title}}</p>
   <div class="card-actions justify-end">
-    <button hx-put="/done/{{.ID}}" hx-target="#{{.ID}}" hx-swap="outerHTML"
+    <button hx-put="/tasks/{{.ID}}/done" hx-target="#{{.ID}}" hx-swap="outerHTML"
             class="p-2 hover:border hover:rounded-full hover:border-green-500">
       <svg width="35px" height="35px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M5 14L8.23309 16.4248C8.66178 16.7463 9.26772 16.6728 9.60705 16.2581L18 6" stroke="#008000" stroke-width="2" stroke-linecap="round" />
       </svg>
     </button>
-    <button hx-prompt="Enter the task" hx-confirm="Are you sure on update?" hx-post="/update/{{.ID}}" hx-swap="outerHTML" hx-target="#{{.ID}}"
+    <button hx-prompt="Enter the task" hx-confirm="Are you sure on update?" hx-put="/tasks/{{.ID}}" hx-swap="outerHTML" hx-target="#{{.ID}}"
             class="p-2 hover:border hover:rounded-full hover:border-[#7091E6]">
       <svg width="30px" height="30px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path fill-rule="evenodd" clip-rule="evenodd" d="M20.8477 1.87868C19.6761 0.707109 17.7766 0.707105 16.605 1.87868L2.44744 16.0363C2.02864 16.4551 1.74317 16.9885 1.62702 17.5692L1.03995 20.5046C0.760062 21.904 1.9939 23.1379 3.39334 22.858L6.32868 22.2709C6.90945 22.1548 7.44285 21.8693 7.86165 21.4505L22.0192 7.29289C23.1908 6.12132 23.1908 4.22183 22.0192 3.05025L20.8477 1.87868ZM18.0192 3.29289C18.4098 2.90237 19.0429 2.90237 19.4335 3.29289L20.605 4.46447C20.9956 4.85499 20.9956 5.48815 20.605 5.87868L17.9334 8.55027L15.3477 5.96448L18.0192 3.29289ZM13.9334 7.3787L3.86165 17.4505C3.72205 17.5901 3.6269 17.7679 3.58818 17.9615L3.00111 20.8968L5.93645 20.3097C6.13004 20.271 6.30784 20.1759 6.44744 20.0363L16.5192 9.96448L13.9334 7.3787Z" fill="#7091E6" />
       </svg>
     </button>
-    <button hx-confirm="Really Delete??" hx-delete="/delete/{{.ID}}" hx-target="#{{.ID}}" hx-swap="outerHTML"
+    <button hx-confirm="Really Delete??" hx-delete="/tasks/{{.ID}}/delete" hx-target="#{{.ID}}" hx-swap="outerHTML"
             class="p-2 hover:border hover:rounded-full hover:border-red-600">
       <svg width="35px" height="35px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M6.99486 7.00636C6.60433 7.39689 6.60433 8.03005 6.99486 8.42058L10.58 12.0057L6.99486 15.5909C6.60433 15.9814 6.60433 16.6146 6.99486 17.0051C7.38538 17.3956 8.01855 17.3956 8.40907 17.0051L11.9942 13.4199L15.5794 17.0051C15.9699 17.3956 16.6031 17.3956 16.9936 17.0051C17.3841 16.6146 17.3841 15.9814 16.9936 15.5909L13.4084 12.0057L16.9936 8.42059C17.3841 8.03007 17.3841 7.3969 16.9936 7.00638C16.603 6.61585 15.9699 6.61585 15.5794 7.00638L11.9942 10.5915L8.40907 7.00636C8.01855 6.61584 7.38538 6.61584 6.99486 7.00636Z" fill="#EF4444" />
       </svg>
     </button>
   </div>
-  {{end}}
+  {{ end }}
   </div>
 </div>
-{{end}}
+{{ end }}
 
 
 {{ block "error" . }}
@@ -110,11 +110,34 @@
     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
-      {{else}}
+      {{ else }}
       <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
       </svg>
-        {{end}}
+        {{ end }}
     <span>{{.Msg}}</span>
+  </div>
+{{ end }}
+
+
+{{ block "userNavbar" .}}
+  <div class="navbar border-b border-blue-500 rounded-xl p-3">
+    <div class="flex-1">
+      <a class="btn btn-ghost text-xl">Todo App</a>
+    </div>
+    <div class="flex-none gap-2">
+      <div class="dropdown dropdown-end">
+        <div tabindex="0" role="button" class="btn btn-ghost btn-circle avatar">
+          <div class="w-10 rounded-full">
+            <img
+                    alt="Tailwind CSS Navbar component"
+                    src="https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp" />
+          </div>
+        </div>
+        <ul tabindex="0" class="menu menu-sm dropdown-content rounded-box z-[1] mt-3 w-52 p-2 shadow border border-blue-300">
+          <li><button hx-post="/logout">Logout</button></li>
+        </ul>
+      </div>
+    </div>
   </div>
 {{ end }}

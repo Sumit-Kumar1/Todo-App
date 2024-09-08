@@ -10,6 +10,9 @@ var (
 	ErrInvalidTitle      = constError("invalid task title")
 	ErrPermissionDenied  = constError("permission denied")
 	ErrInvalidDoneStatus = constError("invalid task done")
+	ErrUserNotFound      = constError("user not found")
+	ErrUserAlreadyExists = constError("user already exists")
+	ErrPsswdNotMatch     = constError("password does not match")
 )
 
 type constError string
