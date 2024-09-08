@@ -13,7 +13,7 @@ const (
 	registerQuery  = "INSERT INTO users(user_id, name, email, password) VALUES (?,?,?,?);"
 	getUser        = "SELECT * FROM users WHERE email = ?;"
 	createSession  = "INSERT INTO sessions (id, user_id, token, expiry) VALUES (?, ?, ?,?);"
-	getSession     = "SELECT * FROM sessions WHERE token = ?;"
+	getSession     = "SELECT * FROM sessions WHERE user_id = ?;"
 	refreshSession = "UPDATE sessions SET token = ?,  expiry = ? WHERE id = ?;"
 )
 

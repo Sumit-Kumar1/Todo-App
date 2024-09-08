@@ -7,12 +7,15 @@ import (
 	"log/slog"
 	"net/http"
 	"todoapp/internal/models"
+
+	"github.com/google/uuid"
 )
 
 const (
 	appJSON          = "application/json"
 	contentType      = "Content-Type"
 	invalidReqMethod = "method not allowed"
+	token            = "token"
 )
 
 type Handler struct {
@@ -75,7 +78,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cookie := http.Cookie{
-		Name:     string(models.CtxKey),
+		Name:     token,
 		Value:    resp.Token,
 		HttpOnly: true,
 		Expires:  resp.Expiry,
@@ -100,7 +103,9 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	session, err := h.Service.Login(r.Context(), &user)
 	if err != nil {
 		if models.ErrNotFound.Is(err) {
-			w.WriteHeader(http.StatusUnauthorized)
+			h.Log.Error(err.Error())
+			http.Error(w, "user not found", http.StatusUnauthorized)
+			return
 		}
 
 		h.Log.Error("error while logging in the user", "error", err)
@@ -109,7 +114,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cookie := http.Cookie{
-		Name:     string(models.CtxKey),
+		Name:     token,
 		Value:    session.Token,
 		HttpOnly: true,
 		Expires:  session.Expiry,
@@ -119,7 +124,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &cookie)
 
 	w.WriteHeader(http.StatusOK)
-
+	h.Log.Info("login success!!")
 	if err := h.template.ExecuteTemplate(w, "taskButton", nil); err != nil {
 		h.Log.Error(err.Error(), "template-render", "taskButton")
 		return
@@ -127,7 +132,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
-	c, err := r.Cookie(string(models.CtxKey))
+	c, err := r.Cookie(token)
 	if err != nil {
 		h.Log.Error(err.Error(), "request", "logout")
 		http.Error(w, "user not logged in", http.StatusUnauthorized)
@@ -141,7 +146,7 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cookie := http.Cookie{
-		Name:     string(models.CtxKey),
+		Name:     token,
 		HttpOnly: true,
 		Path:     "/",
 		MaxAge:   -1,
@@ -150,7 +155,10 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &cookie)
 
 	w.Header().Set(contentType, appJSON)
+	w.Header().Add("HX-Redirect", "/")
 	w.WriteHeader(http.StatusOK)
+
+	h.Log.Info("logout success!!")
 
 	if _, err := w.Write([]byte("logout success !!")); err != nil {
 		h.Log.Error("error while writing the response body", "error", err)
@@ -175,16 +183,22 @@ func (h *Handler) HandleTasks(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Done(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
 	ctx := r.Context()
+	userID, ok := ctx.Value("user_id").(uuid.UUID)
+	if !ok {
+		http.Error(w, "user not found", http.StatusUnauthorized)
+		return
+	}
+
+	id := r.PathValue("id")
 
 	h.Log.Info("Task Done -> ", "ID", id)
 
-	resp, err := h.Service.MarkDone(ctx, id)
+	resp, err := h.Service.MarkDone(ctx, id, &userID)
 	if err != nil {
 		switch {
 		case models.ErrNotFound.Is(err):
-			w.WriteHeader(http.StatusNotFound)
+			http.Error(w, "task not found", http.StatusNotFound)
 		default:
 			w.WriteHeader(http.StatusBadRequest)
 		}
@@ -207,10 +221,16 @@ func (h *Handler) Done(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) addTask(w http.ResponseWriter, r *http.Request) {
-	task := r.PostFormValue("task")
 	ctx := r.Context()
+	userID, ok := ctx.Value("user_id").(uuid.UUID)
+	if !ok {
+		http.Error(w, "user not found", http.StatusUnauthorized)
+		return
+	}
 
-	t, err := h.Service.AddTask(ctx, task)
+	task := r.PostFormValue("task")
+
+	t, err := h.Service.AddTask(ctx, task, &userID)
 	if err != nil {
 		h.Log.Error("error while adding task", "error", err)
 		w.WriteHeader(http.StatusBadRequest)
@@ -229,19 +249,17 @@ func (h *Handler) addTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) getAll(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie(string(models.CtxKey))
-	if err != nil {
-		h.Log.Error(err.Error(), "request", "getAll")
-		w.Header().Add("HX-Redirect", "/?page=register")
-		http.Error(w, "user not logged in", http.StatusUnauthorized)
+	ctx := r.Context()
+
+	userID, ok := ctx.Value("user_id").(uuid.UUID)
+	if !ok {
+		http.Error(w, "invalid user", http.StatusUnauthorized)
 		return
 	}
 
-	ctx := context.WithValue(r.Context(), string(models.CtxKey), cookie.Value)
-
-	tasks, err := h.Service.GetAll(ctx)
+	tasks, err := h.Service.GetAll(r.Context(), &userID)
 	if err != nil {
-		if models.ErrNotFound.Is(err) {
+		if models.ErrUserNotFound.Is(err) || models.ErrNotFound.Is(err) {
 			w.Header().Add("HX-Redirect", "/?page=register")
 			w.WriteHeader(http.StatusOK)
 			return
@@ -264,10 +282,15 @@ func (h *Handler) getAll(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	ctx := r.Context()
+	userID, ok := ctx.Value("user_id").(uuid.UUID)
+	if !ok {
+		http.Error(w, "invalid user", http.StatusUnauthorized)
+		return
+	}
 
 	h.Log.Info("Delete Request->", "ID", id)
 
-	err := h.Service.DeleteTask(ctx, id)
+	err := h.Service.DeleteTask(ctx, id, &userID)
 	if err != nil {
 		switch {
 		case models.ErrNotFound.Is(err):
@@ -284,11 +307,17 @@ func (h *Handler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	userID, ok := ctx.Value("user_id").(uuid.UUID)
+	if !ok {
+		http.Error(w, "invalid user", http.StatusUnauthorized)
+		return
+	}
+
 	id := r.PathValue("id")
 	title := r.Header.Get("HX-Prompt")
-	ctx := r.Context()
 
-	resp, err := h.Service.UpdateTask(ctx, id, title, "false")
+	resp, err := h.Service.UpdateTask(ctx, id, title, "false", &userID)
 	if err != nil {
 		switch {
 		case models.ErrNotFound.Is(err):

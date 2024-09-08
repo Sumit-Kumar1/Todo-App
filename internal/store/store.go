@@ -81,14 +81,14 @@ func (s *Store) CreateSession(ctx context.Context, session *models.UserSession) 
 	return nil
 }
 
-func (s *Store) GetSessionByID(ctx context.Context, token *uuid.UUID) (*models.UserSession, error) {
+func (s *Store) GetSessionByID(ctx context.Context, userID *uuid.UUID) (*models.UserSession, error) {
 	var session models.UserSession
 
-	if token == nil {
-		return nil, errors.New("invalid session token")
+	if userID == nil {
+		return nil, errors.New("invalid user_id provided")
 	}
 
-	row := s.DB.QueryRowContext(ctx, getSession, *token)
+	row := s.DB.QueryRowContext(ctx, getSession, *userID)
 	if err := row.Scan(&session.ID, &session.UserID, &session.Token, &session.Expiry); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, models.ErrNotFound

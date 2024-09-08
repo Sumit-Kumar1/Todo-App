@@ -2,13 +2,10 @@ package service
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 	"log/slog"
 	"strings"
 	"time"
 	"todoapp/internal/models"
-	"todoapp/internal/server"
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
@@ -61,11 +58,10 @@ func (s *Service) Register(ctx context.Context, req *models.RegisterReq) (*model
 	}
 
 	user := models.UserData{
-		ID:        userID,
-		Name:      req.Name,
-		Email:     req.Email,
-		Password:  passwd,
-		SessionID: sessionID,
+		ID:       userID,
+		Name:     req.Name,
+		Email:    req.Email,
+		Password: passwd,
 	}
 
 	return s.Store.RegisterUser(ctx, &user, &session)
@@ -92,7 +88,7 @@ func (s *Service) Login(ctx context.Context, req *models.LoginReq) (*models.User
 
 	session, err := s.Store.GetSessionByID(ctx, &user.ID)
 	if err != nil {
-		if !errors.Is(err, sql.ErrNoRows) {
+		if !models.ErrNotFound.Is(err) {
 			return nil, err
 		}
 
@@ -130,23 +126,9 @@ func (s *Service) Logout(ctx context.Context, token string) error {
 }
 
 // Tasks endpoints
-func (s *Service) GetAll(ctx context.Context) ([]models.Task, error) {
-	ss := ctx.Value("user_session")
-	if ss == nil {
-		return nil, models.ErrUserNotFound
-	}
 
-	sessionID, err := uuid.Parse(ss.(string))
-	if err != nil {
-		return nil, models.ErrUserNotFound
-	}
-
-	session, err := s.Store.GetSessionByID(ctx, &sessionID)
-	if err != nil {
-		return nil, err
-	}
-
-	tasks, err := s.Store.GetAll(ctx, &session.UserID)
+func (s *Service) GetAll(ctx context.Context, userID *uuid.UUID) ([]models.Task, error) {
+	tasks, err := s.Store.GetAll(ctx, userID)
 	if err != nil {
 		s.Log.Error("error in getAll", "error", err.Error())
 
@@ -156,19 +138,14 @@ func (s *Service) GetAll(ctx context.Context) ([]models.Task, error) {
 	return tasks, nil
 }
 
-func (s *Service) AddTask(ctx context.Context, title string) (*models.Task, error) {
-	userID, ok := ctx.Value(server.Key("user_id")).(uuid.UUID)
-	if !ok {
-		return nil, models.ErrUserNotFound
-	}
-
+func (s *Service) AddTask(ctx context.Context, title string, userID *uuid.UUID) (*models.Task, error) {
 	if strings.TrimSpace(title) == "" {
 		return nil, models.ErrInvalidTitle
 	}
 
 	id := generateID()
 
-	task, err := s.Store.Create(ctx, id, title, &userID)
+	task, err := s.Store.Create(ctx, id, title, userID)
 	if err != nil {
 		s.Log.Error("error in add task", "error", err.Error())
 		return nil, err
@@ -177,18 +154,13 @@ func (s *Service) AddTask(ctx context.Context, title string) (*models.Task, erro
 	return task, nil
 }
 
-func (s *Service) DeleteTask(ctx context.Context, id string) error {
-	userID, ok := ctx.Value(server.Key("user_id")).(uuid.UUID)
-	if !ok {
-		return models.ErrUserNotFound
-	}
-
+func (s *Service) DeleteTask(ctx context.Context, id string, userID *uuid.UUID) error {
 	if err := validateID(id); err != nil {
 		s.Log.Debug("", "error", err.Error(), "ID", id)
 		return models.ErrInvalidID
 	}
 
-	if err := s.Store.Delete(ctx, id, &userID); err != nil {
+	if err := s.Store.Delete(ctx, id, userID); err != nil {
 		s.Log.Error("error in delete task", "error", err.Error())
 		return err
 	}
@@ -196,18 +168,13 @@ func (s *Service) DeleteTask(ctx context.Context, id string) error {
 	return nil
 }
 
-func (s *Service) MarkDone(ctx context.Context, id string) (*models.Task, error) {
-	userID, ok := ctx.Value(server.Key("user_id")).(uuid.UUID)
-	if !ok {
-		return nil, models.ErrUserNotFound
-	}
-
+func (s *Service) MarkDone(ctx context.Context, id string, userID *uuid.UUID) (*models.Task, error) {
 	if err := validateID(id); err != nil {
 		s.Log.Debug("", "error", err.Error(), "ID", id)
 		return nil, models.ErrInvalidID
 	}
 
-	task, err := s.Store.MarkDone(ctx, id, &userID)
+	task, err := s.Store.MarkDone(ctx, id, userID)
 	if err != nil {
 		s.Log.Error("error in mark-done", "error", err.Error())
 
@@ -217,18 +184,13 @@ func (s *Service) MarkDone(ctx context.Context, id string) (*models.Task, error)
 	return task, nil
 }
 
-func (s *Service) UpdateTask(ctx context.Context, id, title, isDone string) (*models.Task, error) {
-	userID, ok := ctx.Value(server.Key("user_id")).(uuid.UUID)
-	if !ok {
-		return nil, models.ErrUserNotFound
-	}
-
+func (s *Service) UpdateTask(ctx context.Context, id, title, isDone string, userID *uuid.UUID) (*models.Task, error) {
 	if err := validateTask(id, title, isDone); err != nil {
 		s.Log.Debug("error while validating task", "error", err.Error(), "ID", id)
 		return nil, err
 	}
 
-	task, err := s.Store.Update(ctx, id, title, &userID)
+	task, err := s.Store.Update(ctx, id, title, userID)
 	if err != nil {
 		s.Log.Error("error in updating task", "error", err.Error())
 

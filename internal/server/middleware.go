@@ -11,8 +11,6 @@ import (
 
 type Middleware func(http.HandlerFunc) http.HandlerFunc
 
-type Key string
-
 func Chain(f http.HandlerFunc, middlewares ...Middleware) http.HandlerFunc {
 	for _, m := range middlewares {
 		f = m(f)
@@ -50,7 +48,7 @@ func IsHTMX() Middleware {
 func AuthMiddleware(db *sql.DB) Middleware {
 	return func(f http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
-			cookie, err := r.Cookie("user_session")
+			cookie, err := r.Cookie("token")
 			if err != nil {
 				if errors.Is(err, http.ErrNoCookie) {
 					http.Error(w, "invalid cookie", http.StatusUnauthorized)
@@ -78,9 +76,7 @@ func AuthMiddleware(db *sql.DB) Middleware {
 				return
 			}
 
-			var k Key = "user_id"
-
-			f(w, r.WithContext(context.WithValue(r.Context(), k, uid)))
+			f(w, r.WithContext(context.WithValue(r.Context(), "user_id", uid)))
 		}
 	}
 }

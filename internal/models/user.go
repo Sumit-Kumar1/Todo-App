@@ -10,11 +10,10 @@ import (
 )
 
 type UserData struct {
-	ID        uuid.UUID `json:"id" db:"id"`
-	Name      string    `json:"name" db:"name"`
-	Email     string    `json:"email" db:"email"`
-	Password  string    `json:"password" db:"password"`
-	SessionID uuid.UUID `json:"sessionId" db:"session_id"`
+	ID       uuid.UUID `json:"id" db:"id"`
+	Name     string    `json:"name" db:"name"`
+	Email    string    `json:"email" db:"email"`
+	Password string    `json:"password" db:"password"`
 }
 
 type LoginReq struct {
