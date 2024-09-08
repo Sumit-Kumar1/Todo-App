@@ -75,7 +75,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cookie := http.Cookie{
-		Name:     "user_session",
+		Name:     string(models.CtxKey),
 		Value:    resp.Token,
 		HttpOnly: true,
 		Expires:  resp.Expiry,
@@ -109,7 +109,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cookie := http.Cookie{
-		Name:     "user_session",
+		Name:     string(models.CtxKey),
 		Value:    session.Token,
 		HttpOnly: true,
 		Expires:  session.Expiry,
@@ -127,7 +127,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
-	c, err := r.Cookie("user_session")
+	c, err := r.Cookie(string(models.CtxKey))
 	if err != nil {
 		h.Log.Error(err.Error(), "request", "logout")
 		http.Error(w, "user not logged in", http.StatusUnauthorized)
@@ -141,7 +141,7 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cookie := http.Cookie{
-		Name:     "user_session",
+		Name:     string(models.CtxKey),
 		HttpOnly: true,
 		Path:     "/",
 		MaxAge:   -1,
@@ -161,7 +161,6 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) TaskPage(w http.ResponseWriter, r *http.Request) {
 	h.getAll(w, r)
-	return
 }
 
 func (h *Handler) HandleTasks(w http.ResponseWriter, r *http.Request) {
@@ -230,7 +229,7 @@ func (h *Handler) addTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) getAll(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie("user_session")
+	cookie, err := r.Cookie(string(models.CtxKey))
 	if err != nil {
 		h.Log.Error(err.Error(), "request", "getAll")
 		w.Header().Add("HX-Redirect", "/?page=register")
@@ -238,7 +237,7 @@ func (h *Handler) getAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx := context.WithValue(r.Context(), "user_session", cookie.Value)
+	ctx := context.WithValue(r.Context(), string(models.CtxKey), cookie.Value)
 
 	tasks, err := h.Service.GetAll(ctx)
 	if err != nil {
