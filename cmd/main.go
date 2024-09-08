@@ -29,7 +29,7 @@ func main() {
 	h := handler.New(svc, logger)
 
 	http.HandleFunc("/", server.Chain(h.Root, server.Method(http.MethodGet)))
-	http.HandleFunc("/task", server.Chain(h.TaskPage, server.Method(http.MethodGet)))
+	http.HandleFunc("/task", server.Chain(h.TaskPage, server.Method(http.MethodGet), server.AuthMiddleware(st.DB)))
 
 	// User API
 	http.HandleFunc("/register", server.Chain(h.Register, server.Method(http.MethodPost)))
@@ -42,7 +42,7 @@ func main() {
 		server.AuthMiddleware(st.DB)))
 	http.HandleFunc("/tasks/{id}/delete", server.Chain(h.DeleteTask, server.IsHTMX(), server.AuthMiddleware(st.DB),
 		server.Method(http.MethodDelete)))
-	http.HandleFunc("/tasks/{id}/done", server.Chain(h.Done, server.IsHTMX(), server.Method(http.MethodPatch),
+	http.HandleFunc("/tasks/{id}/done", server.Chain(h.Done, server.IsHTMX(), server.Method(http.MethodPut),
 		server.AuthMiddleware(st.DB)))
 
 	http.HandleFunc("/health", healthStatus)
