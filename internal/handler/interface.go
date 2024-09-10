@@ -1,27 +1,30 @@
-package handler
+package service
 
 import (
-	"context"
 	"todoapp/internal/models"
+	"todoapp/internal/server"
 
 	"github.com/google/uuid"
 )
 
-type Servicer interface {
-	TodoService
-	UserService
+type Storer interface {
+	UserStorer
+	TodoStorer
 }
 
-type UserService interface {
-	Register(ctx context.Context, req *models.RegisterReq) (*models.UserSession, error)
-	Login(ctx context.Context, req *models.LoginReq) (*models.UserSession, error)
-	Logout(ctx context.Context, token string) error
+type UserStorer interface {
+	Logout(ctx server.Context, token *uuid.UUID) error
+	CreateSession(ctx server.Context, session *models.UserSession) error
+	GetByEmail(ctx server.Context, email string) (*models.UserData, error)
+	GetSessionByID(ctx server.Context, userID *uuid.UUID) (*models.UserSession, error)
+	RefreshSession(ctx server.Context, newSession *models.UserSession) (*models.UserSession, error)
+	RegisterUser(ctx server.Context, data *models.UserData, session *models.UserSession) (*models.UserSession, error)
 }
 
-type TodoService interface {
-	GetAll(ctx context.Context, userID *uuid.UUID) ([]models.Task, error)
-	AddTask(ctx context.Context, task string, userID *uuid.UUID) (*models.Task, error)
-	DeleteTask(ctx context.Context, id string, userID *uuid.UUID) error
-	UpdateTask(ctx context.Context, id, title, isDone string, userID *uuid.UUID) (*models.Task, error)
-	MarkDone(ctx context.Context, id string, userID *uuid.UUID) (*models.Task, error)
+type TodoStorer interface {
+	GetAll(ctx server.Context, userID *uuid.UUID) ([]models.Task, error)
+	Create(ctx server.Context, id, title string, userID *uuid.UUID) (*models.Task, error)
+	Update(ctx server.Context, id, title string, userID *uuid.UUID) (*models.Task, error)
+	Delete(ctx server.Context, id string, userID *uuid.UUID) error
+	MarkDone(ctx server.Context, id string, userID *uuid.UUID) (*models.Task, error)
 }

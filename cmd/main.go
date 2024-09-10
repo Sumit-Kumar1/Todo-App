@@ -4,32 +4,30 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
-	"os"
 
-	"todoapp/internal/handler"
 	"todoapp/internal/server"
-	"todoapp/internal/service"
-	"todoapp/internal/store"
+
+	todoservice "todoapp/internal/service/todo"
+	userservice "todoapp/internal/service/user"
+	todostore "todoapp/internal/store/todo"
+	userstore "todoapp/internal/store/user"
 )
 
 func main() {
 	app := server.ServerFromEnvs()
 
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	slog.SetDefault(logger)
+	defer app.Context.Cleanup()
 
-	st, fn, err := store.New(logger)
-	if err != nil {
-		return
-	}
+	us := userstore.New()
+	ts := todostore.New()
 
-	defer fn()
+	usvc := userservice.New(us)
+	tsvc := todoservice.New(ts)
 
-	svc := service.New(st, logger)
-	h := handler.New(svc, logger)
-
-	http.HandleFunc("/", server.Chain(h.Root, server.Method(http.MethodGet)))
-	http.HandleFunc("/task", server.Chain(h.TaskPage, server.Method(http.MethodGet), server.AuthMiddleware(st.DB)))
+	app.Router.HandleFunc("GET /", h.Root)
+	app.Router.
+		http.HandleFunc("/", server.Chain(h.Root, server.Method(http.MethodGet)))
+	http.HandleFunc("/task", server.Chain(h.TaskPage, server.Method(http.MethodGet), server.AuthMiddleware(app.Context.DB)))
 
 	// User API
 	http.HandleFunc("/register", server.Chain(h.Register, server.Method(http.MethodPost)))
@@ -47,17 +45,40 @@ func main() {
 
 	http.HandleFunc("/health", healthStatus)
 
-	slog.Info("application is running on", "host:port", app.Addr)
+	slog.Info("application is running on", "host:port", app.Configs.)
 
-	err = app.ListenAndServe()
-	if err != nil {
-		slog.Error("error while running server", "error", err)
+	if err := http.ListenAndServe(); err != nil {
 
-		return
 	}
 }
 
 func healthStatus(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(json.RawMessage(`{"status":"OK"}`))
+}
+
+func runMigration(ctx server.Context) error {
+	const (
+		upTaskTable = `DROP TABLE IF EXISTS tasks; CREATE TABLE IF NOT EXISTS tasks(task_id TEXT PRIMARY KEY, user_id TEXT NOT NULL,
+task_title TEXT NOT NULL, done_status BOOLEAN NOT NULL CHECK (done_status IN (0, 1)),
+added_at DATETIME NOT NULL, modified_at DATETIME);`
+		upUserTable = `DROP TABLE IF EXISTS users; CREATE TABLE IF NOT EXISTS users(user_id TEXT NOT NULL PRIMARY KEY, name TEXT NOT NULL,
+email TEXT NOT NULL UNIQUE CHECK (email LIKE '%'), password TEXT NOT NULL);`
+		upSessionTable = `DROP TABLE IF EXISTS sessions; CREATE TABLE IF NOT EXISTS sessions(id TEXT PRIMARY KEY, user_id TEXT NOT NULL UNIQUE,
+token TEXT NOT NULL UNIQUE, expiry DATETIME NOT NULL);`
+	)
+
+	if _, err := ctx.DB.Exec(upTaskTable); err != nil {
+		return err
+	}
+
+	if _, err := ctx.DB.Exec(upUserTable); err != nil {
+		return err
+	}
+
+	if _, err := ctx.DB.Exec(upSessionTable); err != nil {
+		return err
+	}
+
+	return nil
 }

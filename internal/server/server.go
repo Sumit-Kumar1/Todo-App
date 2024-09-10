@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -13,15 +12,12 @@ import (
 type Configs struct {
 	Name string `json:"name"`
 	Env  string `json:"env"`
-}
-
-type Health struct {
-	DBStatus string `json:"dbStatus"`
-	Status   string `json:"status"`
+	Port int    `json:"port"`
 }
 
 type Server struct {
-	*http.Server
+	Context *Context
+	*http.ServeMux
 	*Configs
 }
 
@@ -29,24 +25,17 @@ type Opts func(s *Server)
 
 func NewServer(opts ...Opts) *Server {
 	s := defaultServer()
+	s.Context = NewContext()
+
+	if s.Context == nil {
+		return nil
+	}
+
 	for _, fn := range opts {
 		fn(s)
 	}
+
 	return s
-}
-
-func WithTimeouts(read, write, idle int) Opts {
-	return func(s *Server) {
-		s.ReadTimeout = time.Duration(read) * time.Second
-		s.WriteTimeout = time.Duration(write) * time.Second
-		s.IdleTimeout = time.Duration(idle) * time.Second
-	}
-}
-
-func WithPort(port string) Opts {
-	return func(s *Server) {
-		s.Addr = ":" + port
-	}
 }
 
 func WithAppName(name string) Opts {
@@ -61,9 +50,16 @@ func WithEnv(env string) Opts {
 	}
 }
 
+func WithPort(port int) Opts {
+	return func(s *Server) {
+		s.Port = port
+	}
+}
+
 func ServerFromEnvs() *Server {
 	if err := godotenv.Load(".env"); err != nil {
 		log.Print("error while loading env file")
+		return nil
 	}
 
 	opts := loadEnvVars()
@@ -78,46 +74,39 @@ func loadEnvVars() []Opts {
 		opts = append(opts, WithAppName(appName))
 	}
 
-	port := os.Getenv("HTTP_PORT")
-	if port != "" {
-		opts = append(opts, WithPort(port))
-	}
-
 	env := os.Getenv("ENV")
 	if env != "" {
 		opts = append(opts, WithEnv(env))
 	}
 
-	readTimeout := getEnvAsInt("READ_TIMEOUT", 180)   // Default to 3 minutes
-	writeTimeout := getEnvAsInt("WRITE_TIMEOUT", 180) // Default to 3 minutes
-	idleTimeout := getEnvAsInt("IDLE_TIMEOUT", 300)   // Default to 5 minutes
+	port := getEnvAsInt("HTTP_PORT", 9001)
 
-	opts = append(opts, WithTimeouts(readTimeout, writeTimeout, idleTimeout))
+	opts = append(opts, WithPort(port))
+
 	return opts
 }
 
-func getEnvAsInt(key string, defaultValue int) int {
+func getEnvAsInt(key string, defaultVal int) int {
 	value := os.Getenv(key)
 	if value == "" {
-		return defaultValue
+		return defaultVal
 	}
-	if intValue, err := strconv.Atoi(value); err == nil {
-		return intValue
+
+	if val, err := strconv.Atoi(value); err == nil {
+		return val
 	}
-	return defaultValue
+
+	return defaultVal
 }
 
 func defaultServer() *Server {
 	return &Server{
-		Server: &http.Server{
-			Addr:         ":9001",
-			ReadTimeout:  3 * time.Minute,
-			WriteTimeout: 3 * time.Minute,
-			IdleTimeout:  5 * time.Minute,
-		},
 		Configs: &Configs{
 			Name: "todoApp",
 			Env:  "dev",
+			Host: "",
+			Port: "9001",
 		},
+		Context: &Context{},
 	}
 }

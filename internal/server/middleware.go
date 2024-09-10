@@ -9,9 +9,11 @@ import (
 	"github.com/google/uuid"
 )
 
+type contextKey string
+
 type Middleware func(http.HandlerFunc) http.HandlerFunc
 
-func Chain(f http.HandlerFunc, middlewares ...Middleware) http.HandlerFunc {
+func Use(f http.HandlerFunc, middlewares ...Middleware) http.HandlerFunc {
 	for _, m := range middlewares {
 		f = m(f)
 	}
@@ -19,14 +21,9 @@ func Chain(f http.HandlerFunc, middlewares ...Middleware) http.HandlerFunc {
 	return f
 }
 
-func Method(m string) Middleware {
+func CustomHandler() Middleware {
 	return func(f http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
-			if r.Method != m {
-				http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-				return
-			}
-
 			f(w, r)
 		}
 	}
@@ -36,7 +33,7 @@ func IsHTMX() Middleware {
 	return func(f http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			if r.Header.Get("Hx-Request") != "true" {
-				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+				http.Error(w, "not an htmx request", http.StatusBadRequest)
 				return
 			}
 
@@ -45,9 +42,15 @@ func IsHTMX() Middleware {
 	}
 }
 
-func AuthMiddleware(db *sql.DB) Middleware {
+func AuthMiddleware(ctx Context) Middleware {
 	return func(f http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
+			var (
+				uid   uuid.UUID
+				token uuid.UUID
+				key   contextKey = "user_id"
+			)
+
 			cookie, err := r.Cookie("token")
 			if err != nil {
 				if errors.Is(err, http.ErrNoCookie) {
@@ -59,12 +62,7 @@ func AuthMiddleware(db *sql.DB) Middleware {
 				return
 			}
 
-			var (
-				uid   uuid.UUID
-				token uuid.UUID
-			)
-
-			row := db.QueryRowContext(r.Context(), "select user_id, token from sessions where token = ?", cookie.Value)
+			row := ctx.DB.QueryRowContext(r.Context(), "select user_id, token from sessions where token = ?", cookie.Value)
 			err = row.Scan(&uid, &token)
 			if err != nil {
 				if errors.Is(err, sql.ErrNoRows) {
@@ -76,7 +74,7 @@ func AuthMiddleware(db *sql.DB) Middleware {
 				return
 			}
 
-			f(w, r.WithContext(context.WithValue(r.Context(), "user_id", uid)))
+			f(w, r.WithContext(context.WithValue(r.Context(), key, uid)))
 		}
 	}
 }
