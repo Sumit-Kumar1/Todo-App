@@ -57,7 +57,7 @@ func TestService_GetAll(t *testing.T) {
 	}
 	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tasks, err := s.GetAll(ctx)
+			tasks, err := s.GetAll(ctx, &uid)
 
 			assert.Equalf(t, tt.wantErr, err, "TEST[%d] Failed - %s", i, tt.name)
 			assert.Equalf(t, tt.want, tasks, "TEST[%d] Failed - %s", i, tt.name)
@@ -89,7 +89,7 @@ func TestService_AddTask(t *testing.T) {
 	}
 	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resp, err := s.AddTask(ctx, tt.title)
+			resp, err := s.AddTask(ctx, tt.title, &uid)
 
 			assert.Equalf(t, tt.wantErr, err, "TEST[%d] Failed - %s", i, tt.name)
 
@@ -122,7 +122,7 @@ func TestService_DeleteTask(t *testing.T) {
 	}
 	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := s.DeleteTask(ctx, tt.id)
+			err := s.DeleteTask(ctx, tt.id, &uid)
 
 			assert.Equalf(t, tt.wantErr, err, "TEST[%d] Failed - %s", i, tt.name)
 		})
@@ -150,7 +150,7 @@ func TestService_MarkDone(t *testing.T) {
 
 	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resp, err := s.MarkDone(ctx, tt.id)
+			resp, err := s.MarkDone(ctx, tt.id, &uid)
 
 			formatTime(resp, &ts)
 
@@ -186,7 +186,7 @@ func TestService_UpdateTask(t *testing.T) {
 	}
 	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resp, err := s.UpdateTask(ctx, tt.args.id, tt.args.title, tt.args.isDone)
+			resp, err := s.UpdateTask(ctx, tt.args.id, tt.args.title, tt.args.isDone, &uid)
 
 			formatTime(resp, &ts)
 

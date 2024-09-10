@@ -20,16 +20,16 @@ spec:
           image: todoapp:latest
           imagePullPolicy: Never # for local container image
           ports:
-            - containerPort: 12344
+            - containerPort: 9001
           readinessProbe:
             tcpSocket:
-              port: 12344
+              port: 9001
             initialDelaySeconds: 15
             periodSeconds: 10
           livenessProbe:
             httpGet:
               path: /health
-              port: 12344
+              port: 9001
             initialDelaySeconds: 3
             failureThreshold: 20
             periodSeconds: 3

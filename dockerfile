@@ -22,4 +22,4 @@ USER nonroot
 
 ENTRYPOINT [ "./main" ]
 
-EXPOSE 12344
+EXPOSE 9001
