@@ -5,11 +5,9 @@
 <head>
     <title>Todo APP-User</title>
     <meta charset="UTF-8">
-    <script src="https://unpkg.com/htmx.org@2.0.2"
-        integrity="sha384-Y7hw+L/jvKeWIRRkqWYfPcvVxHzVzn5REgzbawhxAuQGwX1XWe70vji+VSeHOThJ"
-        crossorigin="anonymous"></script>
-    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet" type="text/css" />
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="/public/style.css" rel="stylesheet" type="text/css">
+    <link href="/public/fonts.css" rel="stylesheet" type="text/css">
+    <script src="/public/htmx.min.js"></script>
 </head>
 
 <body class="bg-[#EDE8F5] text-[#3D52A0] h-screen">
@@ -68,8 +66,7 @@
                 </label>
 
             </div>
-            <button type="submit"
-                class="btn btn-accent w-full">Register</button>
+            <button type="submit" class="btn btn-accent w-full">Register</button>
         </form>
 
         <p class="mt-5 text-center text-sm text-gray-500">
@@ -81,5 +78,5 @@
 {{ end }}
 
 {{block "taskButton" . }}
-    <a href="/task" class="btn btn-accent">Goto Tasks</a>
+<a href="/task" class="btn btn-accent">Goto Tasks</a>
 {{ end }}
