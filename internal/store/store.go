@@ -17,9 +17,7 @@ type Store struct {
 	Log *slog.Logger
 }
 
-func New(logger *slog.Logger) (*Store, func(), error) {
-	const dbFile string = "./tasks.db"
-
+func New(logger *slog.Logger, dbFile string) (*Store, func(), error) {
 	db, err := sql.Open("sqlite", dbFile)
 	if err != nil {
 		logger.Error("unable to connect sqlite", "error", err.Error())

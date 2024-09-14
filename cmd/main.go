@@ -18,7 +18,9 @@ func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
 
-	st, fn, err := store.New(logger)
+	dbFile := os.Getenv("DB_FILE")
+
+	st, fn, err := store.New(logger, dbFile)
 	if err != nil {
 		return
 	}

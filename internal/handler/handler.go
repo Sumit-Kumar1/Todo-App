@@ -86,12 +86,9 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.SetCookie(w, &cookie)
+	w.Header().Add("HX-Redirect", "/task")
 
 	w.WriteHeader(http.StatusOK)
-	if err := h.template.ExecuteTemplate(w, "taskButton", nil); err != nil {
-		h.Log.Error(err.Error(), "template-render", "taskButton")
-		return
-	}
 }
 
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
@@ -122,13 +119,10 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.SetCookie(w, &cookie)
+	w.Header().Add("HX-Redirect", "/task")
 
 	w.WriteHeader(http.StatusOK)
 	h.Log.Info("login success!!")
-	if err := h.template.ExecuteTemplate(w, "taskButton", nil); err != nil {
-		h.Log.Error(err.Error(), "template-render", "taskButton")
-		return
-	}
 }
 
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
