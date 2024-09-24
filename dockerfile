@@ -7,17 +7,16 @@ RUN apk add --no-cache sqlite
 
 WORKDIR /todoApp
 
-RUN mkdir views
+RUN mkdir -p {views,public}
 
-COPY views/index.html ./views/
+COPY views/*.html ./views/
+COPY public/*  ./public/
+COPY .env .
 COPY Build/main .
 
 RUN chmod +x main
 
-RUN touch tasks.db
-
 RUN chown -R nonroot:nonroot .
-
 USER nonroot
 
 ENTRYPOINT [ "./main" ]
