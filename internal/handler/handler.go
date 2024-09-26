@@ -44,6 +44,7 @@ func (h *Handler) Root(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.template.ExecuteTemplate(w, tempName, nil); err != nil {
 		h.Log.Error(err.Error(), "template-render", "index")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
@@ -69,11 +70,11 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	case err == nil:
 	case errors.Is(err, models.ErrUserAlreadyExists):
 		h.Log.Error(err.Error())
-		w.WriteHeader(http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	default:
 		h.Log.Error("error while registering the user", "error", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 

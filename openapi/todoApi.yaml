@@ -1,4 +1,5 @@
 openapi: 3.0.3
+
 info:
   title: Todo-API
   description: This is a todo task API which supports creation, updating, deletion of tasks, and user management.
@@ -8,14 +9,16 @@ info:
   license:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
+
 servers:
   - url: "http://localhost:9001"
+
 paths:
   /tasks:
     get:
       tags:
         - Todo
-      summary: Retrieve all tasks
+      summary: Retrieve all tasks for authenticated user
       responses:
         "200":
           description: A list of tasks
@@ -27,11 +30,12 @@ paths:
                   $ref: "#/components/schemas/TodoTask"
         "404":
           description: Task not found
-
+  
+  /task:
     post:
       tags:
         - Todo
-      summary: Create a new task
+      summary: Create a new task for authenticated user
       requestBody:
         required: true
         content:
@@ -50,7 +54,7 @@ paths:
     put:
       tags:
         - Todo
-      summary: Update a task
+      summary: Update a task for authenticated user
       parameters:
         - name: taskID
           in: path
@@ -78,7 +82,7 @@ paths:
     delete:
       tags:
         - Todo
-      summary: Delete a task
+      summary: Delete a task for authenticated user
       parameters:
         - name: taskId
           in: path
@@ -89,15 +93,15 @@ paths:
             format: uuid
       responses:
         "204":
-          description: Task deleted
+          description: Task deleted successfully
         "404":
           description: Task not found
 
-  /tasks/done/{taskId}:
+  /tasks/{taskId}/done:
     patch:
       tags:
         - Todo
-      summary: marks the task as done
+      summary: marks the task as done for authenticated user
       parameters:
         - name: taskId
           in : path
@@ -121,14 +125,26 @@ paths:
       requestBody:
         required: true
         content:
-          application/json:
+           application/x-www-form-urlencoded:
             schema:
               type: object
               properties:
-                username:
+                email: 
                   type: string
+                  description: "a valid email address"
+                  example: "sumit@kumar.com"
                 password:
                   type: string
+                  description: "a minimum of 8 character long password"
+                  example: "Pass#1234"
+              required:
+                - email
+                - password
+            encoding:
+              email:
+                allowReserved: true
+              password:
+                allowReserved: true
       responses:
         "200":
           description: Successful login
@@ -139,7 +155,7 @@ paths:
         "401":
           description: Invalid username or password
         "404":
-          description: Invalid username or password
+          description: User not found
 
   /register:
     post:
@@ -149,14 +165,33 @@ paths:
       requestBody:
         required: true
         content:
-          application/json:
+          application/x-www-form-urlencoded:
             schema:
               type: object
               properties:
-                username:
+                name:
                   type: string
+                  description: name of user, can't be empty
+                  example: "sumit Kumar"
+                email: 
+                  type: string
+                  description: "a valid email address, must be unique"
+                  example: "sumit@kumar.com"
                 password:
                   type: string
+                  description: "a minimum of 8 character long password"
+                  example: "Pass#1234"
+              required:
+                - name
+                - email
+                - password
+            encoding:
+              name:
+                allowReserved: true
+              email:
+                allowReserved: true
+              password:
+                allowReserved: true
       responses:
         "201":
           description: User registered
