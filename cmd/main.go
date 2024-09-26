@@ -21,12 +21,18 @@ func main() {
 	us := userstore.New()
 	ts := todostore.New()
 
-	usvc := userservice.New(us)
-	tsvc := todoservice.New(ts)
+	usrSvc := userservice.New(us)
+	tSvc := todoservice.New(ts)
 
 	app.Router.HandleFunc("GET /", h.Root)
-	app.Router.
-		http.HandleFunc("/", server.Chain(h.Root, server.Method(http.MethodGet)))
+
+	public := http.FileServer(http.Dir("public"))
+	swagger := http.FileServer(http.Dir("openapi"))
+
+	http.Handle("/public/", http.StripPrefix("/public/", public))
+	http.Handle("/swagger/", http.StripPrefix("/swagger/", swagger))
+
+	http.HandleFunc("/", server.Chain(h.Root, server.Method(http.MethodGet)))
 	http.HandleFunc("/task", server.Chain(h.TaskPage, server.Method(http.MethodGet), server.AuthMiddleware(app.Context.DB)))
 
 	// User API
@@ -43,11 +49,13 @@ func main() {
 	http.HandleFunc("/tasks/{id}/done", server.Chain(h.Done, server.IsHTMX(), server.Method(http.MethodPut),
 		server.AuthMiddleware(st.DB)))
 
-	http.HandleFunc("/health", healthStatus)
+	http.HandleFunc("/health", server.Chain(healthStatus, server.Method(http.MethodGet)))
 
 	slog.Info("application is running on", "host:port", app.Configs.)
 
-	if err := http.ListenAndServe(); err != nil {
+	err = app.ListenAndServe()
+	if err != nil {
+		slog.Error("error while running server", "error", err)
 
 	}
 }

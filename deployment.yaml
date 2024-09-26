@@ -17,19 +17,22 @@ spec:
     spec:
       containers:
         - name: todoapp
-          image: todoapp:latest
+          image: todoapp
           imagePullPolicy: Never # for local container image
           ports:
-            - containerPort: 12344
+            - containerPort: 9001
+          env:
+            - name : DB_FILE
+              value: "tasks.db"
           readinessProbe:
             tcpSocket:
-              port: 12344
+              port: 9001
             initialDelaySeconds: 15
             periodSeconds: 10
           livenessProbe:
             httpGet:
               path: /health
-              port: 12344
+              port: 9001
             initialDelaySeconds: 3
             failureThreshold: 20
             periodSeconds: 3
@@ -40,6 +43,14 @@ spec:
             limits:
               memory: "128Mi"
               cpu: "500m"
+          volumeMounts:
+            - name : sqlite-storage
+              mountPath: /todoApp
+              subPath: tasks.db
+      volumes:
+        - name : sqlite-storage
+          persistentVolumeClaim:
+            claimName: sqlite-pvc
       automountServiceAccountToken: false
 
       

@@ -24,15 +24,18 @@
 # Go workspace file
 go.work
 go.work.sum
+[Bb]uild/
 
-build/
-
+# npm dependencies
+[Nn]ode_modules
 
 #IDE specific directories
 .vscode/
 .idea/
 
-
 # air specific 
 .air.toml
 tmp/
+
+# tailwind css output
+/public/style.css

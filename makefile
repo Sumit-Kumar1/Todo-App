@@ -61,9 +61,20 @@ test/cover:
 	go test -v -race -buildvcs -coverprofile=/tmp/coverage.out ./...
 	go tool cover -html=/tmp/coverage.out
 
+## css/watch: constantly generate css and watch for new changes
+.PHONY: css/watch
+css/watch:
+	npx tailwindcss -i ./public/input.css -o ./public/style.css --watch
+
+## css/output: generate output css from used classes in views/*.html
+.PHONY: css/output
+css/output:
+	npx tailwindcss -i ./public/input.css -o ./public/style.css
+
+
 ## build: build the application
 .PHONY: build
-build:
+build: css/output
     # Include additional build steps, like TypeScript, SCSS or Tailwind compilation here...
 	go build -o=/tmp/bin/${BINARY_NAME} ${MAIN_PACKAGE_PATH}
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o=./Build/main ${MAIN_PACKAGE_PATH}
@@ -90,7 +101,7 @@ docker/image: build
 ## run/container : run the docker container from the image build
 .PHONY: run/container
 run/container : docker/image
-	docker run --name todoapp -p 12344:12344 -d todoapp:latest
+	docker run --name todoapp -p 9001:9001 -d todoapp:latest
 
 ## deploy/local : deploys the container image on local instance using kubectl
 .PHONY: deploy/local

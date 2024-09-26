@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="/public/swagger.js"></script>
+    <link rel="stylesheet" href="/public/swagger.css" />
+    <title>TODO-API Swagger</title>
+</head>
+<body>
+    <script>
+        window.onload = () => {
+          window.ui = SwaggerUIBundle({
+            url: '/swagger/todoApi.yaml',
+            dom_id: '#swagger-ui',
+          });
+        };
+      </script>
+</body>
+</html>
