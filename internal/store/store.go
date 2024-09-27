@@ -29,6 +29,8 @@ func New(logger *slog.Logger, dbFile string) (*Store, func(), error) {
 		return nil, nil, err
 	}
 
+	logger.Info("database connection established successfully", "stats", db.Stats())
+
 	fn := func() {
 		if err := db.Close(); err != nil {
 			logger.Error("DB Close", "error", err)
@@ -38,6 +40,8 @@ func New(logger *slog.Logger, dbFile string) (*Store, func(), error) {
 	if err := runMigration(db); err != nil {
 		return nil, fn, err
 	}
+
+	logger.Info("migrations run successfully")
 
 	return &Store{Log: logger, DB: db}, fn, nil
 }
@@ -104,7 +108,7 @@ func (s *Store) RefreshSession(ctx context.Context, newSession *models.UserSessi
 		return nil, err
 	}
 
-	s.Log.Info("session is refreshed", "userID", newSession.UserID)
+	s.Log.Info("session is refreshed", "user", newSession.UserID)
 
 	return newSession, nil
 }
@@ -183,6 +187,8 @@ func (s *Store) GetAll(ctx context.Context, userID *uuid.UUID) ([]models.Task, e
 		res = append(res, task)
 	}
 
+	s.Log.Info("Get all the tasks", "user", userID)
+
 	return res, nil
 }
 
@@ -213,7 +219,7 @@ func (s *Store) Update(ctx context.Context, id, title string, userID *uuid.UUID)
 
 	query, values := genUpdateQuery(id, title, *userID, modifiedTS)
 
-	s.Log.Debug("generated query", "sql-query", query, "values", values)
+	s.Log.DebugContext(ctx, "generated query", "sql-query", query, "values", values, "user", userID)
 
 	_, err := s.DB.ExecContext(ctx, query, values...)
 	if err != nil {
@@ -236,6 +242,8 @@ func (s *Store) Delete(ctx context.Context, id string, userID *uuid.UUID) error 
 	if err != nil {
 		return err
 	}
+
+	s.Log.DebugContext(ctx, "generated query", "sql-query", "DELETE FROM tasks WHERE task_id=? AND user_id=?", "task", id, "user", userID)
 
 	return nil
 }
@@ -264,6 +272,8 @@ func (s *Store) MarkDone(ctx context.Context, id string, userID *uuid.UUID) (*mo
 	if done == 1 {
 		task.IsDone = true
 	}
+
+	s.Log.Info("task done", "taskID", id, "user", userID)
 
 	return &task, nil
 }

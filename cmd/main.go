@@ -15,7 +15,8 @@ import (
 func main() {
 	app := server.ServerFromEnvs()
 
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{AddSource: true}))
+
 	slog.SetDefault(logger)
 
 	dbFile := os.Getenv("DB_FILE")
@@ -55,7 +56,7 @@ func main() {
 
 	http.HandleFunc("/health", server.Chain(healthStatus, server.Method(http.MethodGet)))
 
-	slog.Info("application is running on", "host:port", app.Addr)
+	logger.Info("application is running on", "Address", app.Addr)
 
 	err = app.ListenAndServe()
 	if err != nil {
