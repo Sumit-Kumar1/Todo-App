@@ -39,7 +39,7 @@ func (s *Service) Register(ctx context.Context, req *models.RegisterReq) (*model
 
 	// check if user already exists
 	existingUser, err := s.Store.GetByEmail(ctx, req.Email)
-	if err != nil && !models.ErrUserNotFound.Is(err) {
+	if err != nil {
 		return nil, err
 	}
 
@@ -79,7 +79,7 @@ func (s *Service) Login(ctx context.Context, req *models.LoginReq) (*models.User
 	}
 
 	if user == nil {
-		return nil, models.ErrUserNotFound
+		return nil, models.ErrNotFound("user")
 	}
 
 	if matchErr := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); matchErr != nil {
@@ -88,7 +88,7 @@ func (s *Service) Login(ctx context.Context, req *models.LoginReq) (*models.User
 
 	session, err := s.Store.GetSessionByID(ctx, &user.ID)
 	if err != nil {
-		if !models.ErrNotFound.Is(err) {
+		if models.ErrNotFound("user ID").Error() == err.Error() {
 			return nil, err
 		}
 
@@ -140,7 +140,7 @@ func (s *Service) GetAll(ctx context.Context, userID *uuid.UUID) ([]models.Task,
 
 func (s *Service) AddTask(ctx context.Context, title string, userID *uuid.UUID) (*models.Task, error) {
 	if strings.TrimSpace(title) == "" {
-		return nil, models.ErrInvalidTitle
+		return nil, models.ErrInvalid("task title")
 	}
 
 	id := generateID()
@@ -157,7 +157,7 @@ func (s *Service) AddTask(ctx context.Context, title string, userID *uuid.UUID) 
 func (s *Service) DeleteTask(ctx context.Context, id string, userID *uuid.UUID) error {
 	if err := validateID(id); err != nil {
 		s.Log.Debug("", "error", err.Error(), "ID", id)
-		return models.ErrInvalidID
+		return models.ErrInvalid("task id")
 	}
 
 	if err := s.Store.Delete(ctx, id, userID); err != nil {
@@ -170,8 +170,8 @@ func (s *Service) DeleteTask(ctx context.Context, id string, userID *uuid.UUID) 
 
 func (s *Service) MarkDone(ctx context.Context, id string, userID *uuid.UUID) (*models.Task, error) {
 	if err := validateID(id); err != nil {
-		s.Log.Debug("", "error", err.Error(), "ID", id)
-		return nil, models.ErrInvalidID
+		s.Log.ErrorContext(ctx, err.Error(), "task id", id)
+		return nil, err
 	}
 
 	task, err := s.Store.MarkDone(ctx, id, userID)
@@ -186,7 +186,7 @@ func (s *Service) MarkDone(ctx context.Context, id string, userID *uuid.UUID) (*
 
 func (s *Service) UpdateTask(ctx context.Context, id, title, isDone string, userID *uuid.UUID) (*models.Task, error) {
 	if err := validateTask(id, title, isDone); err != nil {
-		s.Log.Debug("error while validating task", "error", err.Error(), "ID", id)
+		s.Log.ErrorContext(ctx, err.Error(), "ID", id)
 		return nil, err
 	}
 

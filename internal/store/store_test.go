@@ -244,6 +244,7 @@ func TestStore_MarkDone(t *testing.T) {
 	s := Store{
 		DB: db,
 	}
+
 	uid := uuid.New()
 
 	selectQuery := "SELECT task_title, done_status, added_at, modified_at FROM tasks"
@@ -287,7 +288,7 @@ func TestStore_MarkDone(t *testing.T) {
 			id:   id,
 			mocks: []any{mock.ExpectExec("UPDATE tasks").WillReturnResult(sqlmock.NewResult(1, 1)),
 				mock.ExpectQuery(selectQuery).WillReturnRows(sqlmock.NewRows(cols).RowError(-1, errDB))},
-			wantErr: models.ErrNotFound,
+			wantErr: models.ErrNotFound("task"),
 		},
 		{
 			name: "valid mark done",

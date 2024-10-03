@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	id     = "abcde"
+	id     = uuid.NewString()
 	ts     = time.Now()
 	ctx    = context.Background()
 	title  = "Dog to walk"
@@ -108,6 +108,7 @@ func TestService_DeleteTask(t *testing.T) {
 	st := NewMockStorer(ctrl)
 	s := New(st, slog.Default())
 	uid := uuid.New()
+	id = "css-" + uid.String()
 
 	tests := []struct {
 		name    string
@@ -116,7 +117,7 @@ func TestService_DeleteTask(t *testing.T) {
 		wantErr error
 	}{
 		{name: "id not found", id: id, mock: st.EXPECT().Delete(ctx, id, uid).Return(models.ErrNotFound), wantErr: models.ErrNotFound},
-		{name: "invalid id", id: "ID124cde", wantErr: models.ErrInvalidID},
+		{name: "invalid id", id: "css-" + uuid.NewString(), wantErr: models.ErrNotFound},
 		{name: "empty id", id: "", wantErr: models.ErrInvalidID},
 		{name: "valid case", id: id, mock: st.EXPECT().Delete(ctx, id, uid).Return(nil), wantErr: nil},
 	}

@@ -87,13 +87,13 @@ func (s *Store) GetSessionByID(ctx context.Context, userID *uuid.UUID) (*models.
 	var session models.UserSession
 
 	if userID == nil {
-		return nil, errors.New("invalid user_id provided")
+		return nil, models.ErrInvalid("user ID")
 	}
 
 	row := s.DB.QueryRowContext(ctx, getSession, *userID)
 	if err := row.Scan(&session.ID, &session.UserID, &session.Token, &session.Expiry); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, models.ErrNotFound
+			return nil, models.ErrNotFound("user")
 		}
 
 		return nil, err
@@ -120,7 +120,7 @@ func (s *Store) GetByEmail(ctx context.Context, email string) (*models.UserData,
 
 	if err := row.Scan(&user.ID, &user.Name, &user.Email, &user.Password); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, models.ErrUserNotFound
+			return nil, models.ErrNotFound("user")
 		}
 
 		return nil, err
@@ -140,7 +140,7 @@ func (s *Store) Logout(ctx context.Context, token *uuid.UUID) error {
 	row := tx.QueryRowContext(ctx, "SELECT * FROM sessions where token=?", *token)
 	if err = row.Scan(&session.ID, &session.UserID, &session.Token, &session.Expiry); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return rollback(tx, models.ErrNotFound)
+			return rollback(tx, models.ErrNotFound("session with current user"))
 		}
 	}
 
@@ -263,7 +263,7 @@ func (s *Store) MarkDone(ctx context.Context, id string, userID *uuid.UUID) (*mo
 		WHERE task_id=? AND user_id=?`, id, *userID)
 	if err := row.Scan(&task.Title, &done, &task.AddedAt, &task.ModifiedAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, models.ErrNotFound
+			return nil, models.ErrNotFound("task")
 		}
 
 		return nil, err

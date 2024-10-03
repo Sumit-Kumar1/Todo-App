@@ -28,11 +28,11 @@ func validateTask(id, title, isDone string) error {
 	}
 
 	if strings.TrimSpace(title) == "" {
-		return models.ErrInvalidTitle
+		return models.ErrInvalid("task title")
 	}
 
 	if _, err := strconv.ParseBool(isDone); err != nil {
-		return models.ErrInvalidDoneStatus
+		return models.ErrInvalid("task done status")
 	}
 
 	return nil
@@ -41,12 +41,12 @@ func validateTask(id, title, isDone string) error {
 func validateID(id string) error {
 	splits := strings.Split(id, "css-")
 	if len(splits) != 2 {
-		return models.ErrInvalidID
+		return models.ErrInvalid("task id")
 	}
 
 	uid, err := uuid.Parse(splits[1])
 	if err != nil || uid == uuid.Nil {
-		return models.ErrInvalidID
+		return models.ErrInvalid("task id")
 	}
 
 	return nil

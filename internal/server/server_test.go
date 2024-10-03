@@ -9,7 +9,7 @@ import (
 )
 
 func TestNewServer(t *testing.T) {
-	timeout := 10 * time.Second
+	timeout := 3 * time.Minute
 
 	tests := []struct {
 		name string
@@ -17,7 +17,7 @@ func TestNewServer(t *testing.T) {
 		want *Server
 	}{
 		{name: "default server", opts: nil, want: &Server{
-			Server:  &http.Server{Addr: ":9001", ReadTimeout: timeout, IdleTimeout: 2 * timeout, WriteTimeout: timeout},
+			Server:  &http.Server{Addr: ":9001", ReadTimeout: timeout, IdleTimeout: 5 * time.Minute, WriteTimeout: timeout},
 			Configs: &Configs{Name: "todoApp", Env: "dev"},
 		}},
 	}
@@ -42,8 +42,8 @@ func Test_defaultServer(t *testing.T) {
 		want *Server
 	}{
 		{name: "nil case", want: &Server{
-			Server: &http.Server{Addr: ":9001", ReadTimeout: 10 * time.Second,
-				WriteTimeout: 10 * time.Second, IdleTimeout: 20 * time.Second},
+			Server: &http.Server{Addr: ":9001", ReadTimeout: 3 * time.Minute,
+				WriteTimeout: 3 * time.Minute, IdleTimeout: 5 * time.Minute},
 			Configs: &Configs{Name: "todoApp", Env: "dev"},
 		}},
 	}

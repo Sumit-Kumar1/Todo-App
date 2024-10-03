@@ -11,7 +11,7 @@ import (
 func Test_genInsertQuery(t *testing.T) {
 	ts := time.Now()
 	uid := uuid.New()
-	query := "INSERT INTO tasks (task_id, task_title, done_status, added_at) VALUES (?, ?, ?, ?);"
+	query := "INSERT INTO tasks (task_id, user_id, task_title, done_status, added_at) VALUES (?, ?, ?, ?, ?);"
 	tests := []struct {
 		name       string
 		id         string
@@ -20,7 +20,7 @@ func Test_genInsertQuery(t *testing.T) {
 		wantQuery  string
 		wantValues []any
 	}{
-		{name: "valid case", id: "abcde", title: "Dog Walk", ts: ts, wantQuery: query, wantValues: []any{"abcde", "Dog Walk", 0, ts}},
+		{name: "valid case", id: "abcde", title: "Dog Walk", ts: ts, wantQuery: query, wantValues: []any{"abcde", uid, "Dog Walk", 0, ts}},
 	}
 	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -34,7 +34,7 @@ func Test_genInsertQuery(t *testing.T) {
 
 func Test_genUpdateQuery(t *testing.T) {
 	ts := time.Now()
-	query := "UPDATE tasks SET task_title=?, done_status=?, modified_at=? WHERE task_id=?;"
+	query := "UPDATE tasks SET task_title=?, done_status=?, modified_at=? WHERE task_id=? AND user_id=?;"
 	uid := uuid.New()
 	tests := []struct {
 		name      string
@@ -44,7 +44,7 @@ func Test_genUpdateQuery(t *testing.T) {
 		wantQuery string
 		wantVals  []any
 	}{
-		{name: "valid case", id: "abcde", title: "Dog Walk", ts: ts, wantQuery: query, wantVals: []any{"Dog Walk", 0, ts, "abcde"}},
+		{name: "valid case", id: "abcde", title: "Dog Walk", ts: ts, wantQuery: query, wantVals: []any{"Dog Walk", 0, ts, "abcde", uid}},
 	}
 	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

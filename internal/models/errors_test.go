@@ -12,7 +12,7 @@ func Test_constError_Error(t *testing.T) {
 		err  constError
 		want string
 	}{
-		{name: "err not found", err: ErrNotFound, want: "not found"},
+		{name: "err not found", err: ErrNotFound, want: "task not found"},
 		{name: "invalid id", err: ErrInvalidID, want: "invalid id"},
 		{name: "invalid task title", err: ErrInvalidTitle, want: "invalid task title"},
 		{name: "permission denied", err: ErrPermissionDenied, want: "permission denied"},
@@ -34,7 +34,7 @@ func Test_constError_Is(t *testing.T) {
 		target error
 		want   bool
 	}{
-		{name: "valid case", err: ErrNotFound, target: constError("not found"), want: true},
+		{name: "valid case", err: ErrNotFound, target: constError("task not found"), want: true},
 		{name: "invalid case", err: ErrNotFound, target: constError("invalid id"), want: false},
 	}
 

@@ -14,9 +14,7 @@ import (
 
 func main() {
 	app := server.ServerFromEnvs()
-
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{AddSource: true}))
-
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{AddSource: false}))
 	slog.SetDefault(logger)
 
 	dbFile := os.Getenv("DB_FILE")

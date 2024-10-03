@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"todoapp/internal/models"
+	"todoapp/internal/server"
 
 	"github.com/google/uuid"
 )
@@ -100,7 +101,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 	session, err := h.Service.Login(r.Context(), &user)
 	if err != nil {
-		if models.ErrNotFound.Is(err) {
+		if models.ErrNotFound("user").Error() == err.Error() {
 			h.Log.Error(err.Error())
 			http.Error(w, "user not found", http.StatusUnauthorized)
 			return
@@ -121,7 +122,6 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 	http.SetCookie(w, &cookie)
 	w.Header().Add("HX-Redirect", "/task")
-
 	w.WriteHeader(http.StatusOK)
 	h.Log.Info("login success!!")
 }
@@ -179,7 +179,7 @@ func (h *Handler) HandleTasks(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) Done(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, ok := ctx.Value("user_id").(uuid.UUID)
+	userID, ok := ctx.Value(server.CtxKey).(uuid.UUID)
 	if !ok {
 		http.Error(w, "user not found", http.StatusUnauthorized)
 		return
@@ -217,7 +217,7 @@ func (h *Handler) Done(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) addTask(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, ok := ctx.Value("user_id").(uuid.UUID)
+	userID, ok := ctx.Value(server.CtxKey).(uuid.UUID)
 	if !ok {
 		http.Error(w, "user not found", http.StatusUnauthorized)
 		return
@@ -246,7 +246,7 @@ func (h *Handler) addTask(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) getAll(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, ok := ctx.Value("user_id").(uuid.UUID)
+	userID, ok := ctx.Value(server.CtxKey).(uuid.UUID)
 	if !ok {
 		http.Error(w, "invalid user", http.StatusUnauthorized)
 		return
@@ -275,13 +275,15 @@ func (h *Handler) getAll(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) DeleteTask(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
 	ctx := r.Context()
-	userID, ok := ctx.Value("user_id").(uuid.UUID)
+
+	userID, ok := ctx.Value(server.CtxKey).(uuid.UUID)
 	if !ok {
 		http.Error(w, "invalid user", http.StatusUnauthorized)
 		return
 	}
+
+	id := r.PathValue("id")
 
 	h.Log.Info("Delete Request->", "ID", id)
 
@@ -303,7 +305,7 @@ func (h *Handler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, ok := ctx.Value("user_id").(uuid.UUID)
+	userID, ok := ctx.Value(server.CtxKey).(uuid.UUID)
 	if !ok {
 		http.Error(w, "invalid user", http.StatusUnauthorized)
 		return

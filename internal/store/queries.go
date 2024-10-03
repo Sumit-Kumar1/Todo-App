@@ -7,14 +7,17 @@ import (
 )
 
 const (
-	insertQuery    = "INSERT INTO tasks (task_id, user_id, task_title, done_status, added_at) VALUES ("
-	updateQuery    = "UPDATE tasks SET "
-	getAll         = "SELECT task_id, user_id, task_title, done_status, added_at, modified_at from tasks WHERE user_id=?"
 	registerQuery  = "INSERT INTO users(user_id, name, email, password) VALUES (?,?,?,?);"
 	getUser        = "SELECT * FROM users WHERE email = ?;"
 	createSession  = "INSERT INTO sessions (id, user_id, token, expiry) VALUES (?, ?, ?,?);"
 	getSession     = "SELECT * FROM sessions WHERE user_id = ?;"
 	refreshSession = "UPDATE sessions SET token = ?,  expiry = ? WHERE id = ?;"
+)
+
+const (
+	insertQuery = "INSERT INTO tasks (task_id, user_id, task_title, done_status, added_at) VALUES ("
+	updateQuery = "UPDATE tasks SET "
+	getAll      = "SELECT task_id, user_id, task_title, done_status, added_at, modified_at from tasks WHERE user_id=?"
 )
 
 func genInsertQuery(id, title string, userID uuid.UUID, ts time.Time) (query string, values []any) {

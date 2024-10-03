@@ -11,6 +11,10 @@ import (
 
 type Middleware func(http.HandlerFunc) http.HandlerFunc
 
+type ContextKey string
+
+const CtxKey ContextKey = "user_id"
+
 func Chain(f http.HandlerFunc, middlewares ...Middleware) http.HandlerFunc {
 	for _, m := range middlewares {
 		f = m(f)
@@ -76,7 +80,7 @@ func AuthMiddleware(db *sql.DB) Middleware {
 				return
 			}
 
-			f(w, r.WithContext(context.WithValue(r.Context(), "user_id", uid)))
+			f(w, r.WithContext(context.WithValue(r.Context(), CtxKey, uid)))
 		}
 	}
 }

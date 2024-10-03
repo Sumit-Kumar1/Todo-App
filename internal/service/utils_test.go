@@ -21,11 +21,11 @@ func TestValidateID(t *testing.T) {
 		id      string
 	}{
 		{name: "valid case", id: "css-" + id, wantErr: nil},
-		{name: "nil case", id: "", wantErr: models.ErrInvalidID},
-		{name: "nil case", id: "css-" + uuid.Nil.String(), wantErr: models.ErrInvalidID},
-		{name: "invalid length", id: "abceox", wantErr: models.ErrInvalidID},
-		{name: "invalid case", id: "abc12", wantErr: models.ErrInvalidID},
-		{name: "invalid case", id: "12345", wantErr: models.ErrInvalidID},
+		{name: "nil case", id: "", wantErr: models.ErrInvalid("task id")},
+		{name: "nil case", id: "css-" + uuid.Nil.String(), wantErr: models.ErrInvalid("task id")},
+		{name: "invalid length", id: "abceox", wantErr: models.ErrInvalid("task id")},
+		{name: "invalid case", id: "abc12", wantErr: models.ErrInvalid("task id")},
+		{name: "invalid case", id: "12345", wantErr: models.ErrInvalid("task id")},
 	}
 
 	for i, tt := range tests {
@@ -75,9 +75,9 @@ func TestValidateTask(t *testing.T) {
 		isDone  string
 	}{
 		{name: "valid case", id: cssID, title: "hello", isDone: "true", wantErr: nil},
-		{name: "invalid ID", id: "css-" + uuid.Nil.String(), title: "hello", isDone: "true", wantErr: models.ErrInvalidID},
-		{name: "invalid Title", id: cssID, title: "", isDone: "true", wantErr: models.ErrInvalidTitle},
-		{name: "invalid done", id: cssID, title: "hello world", isDone: "not known", wantErr: models.ErrInvalidDoneStatus},
+		{name: "invalid ID", id: "css-" + uuid.Nil.String(), title: "hello", isDone: "true", wantErr: models.ErrInvalid("task id")},
+		{name: "invalid Title", id: cssID, title: "", isDone: "true", wantErr: models.ErrInvalid("task title")},
+		{name: "invalid done", id: cssID, title: "hello world", isDone: "not known", wantErr: models.ErrInvalid("task done")},
 	}
 
 	for i, tt := range tests {
@@ -90,22 +90,19 @@ func TestValidateTask(t *testing.T) {
 }
 
 func Test_encryptedPassword(t *testing.T) {
-	psswd := "$2a$10$w9CWfGIVrp8IAfH4Ji2a.eol1IX0nyd0p0Sfi5bPZ8YRZGwNA3Mlm"
 	tests := []struct {
 		name     string
 		password string
-		want     string
 		wantErr  error
 	}{
-		{"default case", "hello word", psswd, nil},
+		{"default case", "hello word", nil},
 	}
 
 	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := encryptedPassword(tt.password)
+			_, err := encryptedPassword(tt.password)
 
 			assert.Equal(t, tt.wantErr, err, "Test[%d] Failed - %s", i, tt.name)
-			assert.Equal(t, tt.want, got, "Test[%d] Failed - %s", i, tt.name)
 		})
 	}
 }
