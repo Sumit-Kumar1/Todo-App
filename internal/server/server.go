@@ -1,13 +1,17 @@
 package server
 
 import (
+	"database/sql"
+	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
 	"time"
 
 	"github.com/joho/godotenv"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 type Configs struct {
@@ -21,18 +25,29 @@ type Health struct {
 }
 
 type Server struct {
+	DB     *sql.DB
+	Logger *slog.Logger
 	*http.Server
 	*Configs
 }
 
 type Opts func(s *Server)
 
-func NewServer(opts ...Opts) *Server {
+func NewServer(opts ...Opts) (*Server, error) {
 	s := defaultServer()
+
+	db, err := newDB(s.Logger)
+	if err != nil {
+		return nil, err
+	}
+
+	s.DB = db
+
 	for _, fn := range opts {
 		fn(s)
 	}
-	return s
+
+	return s, nil
 }
 
 func WithTimeouts(read, write, idle int) Opts {
@@ -61,12 +76,15 @@ func WithEnv(env string) Opts {
 	}
 }
 
-func ServerFromEnvs() *Server {
+func ServerFromEnvs() (*Server, error) {
 	if err := godotenv.Load(".env"); err != nil {
 		log.Print("error while loading env file")
+
+		return nil, err
 	}
 
 	opts := loadEnvVars()
+
 	return NewServer(opts...)
 }
 
@@ -119,5 +137,38 @@ func defaultServer() *Server {
 			Name: "todoApp",
 			Env:  "dev",
 		},
+		Logger: newLogger(),
 	}
+}
+
+func newLogger() *slog.Logger {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{AddSource: false}))
+
+	slog.SetDefault(logger)
+
+	return logger
+}
+
+func newDB(logger *slog.Logger) (*sql.DB, error) {
+	dbFile := os.Getenv("DB_FILE")
+
+	if dbFile == "" {
+		dbFile = "todo.db"
+	}
+
+	db, err := sql.Open("sqlite3", dbFile)
+	if err != nil {
+		logger.Error(err.Error())
+		return nil, err
+	}
+
+	if err := db.Ping(); err != nil {
+		logger.Error(err.Error(), "Database is not reacheable", "db.ping()")
+		return nil, err
+	}
+
+	logger.Info("DB connected successfully",
+		slog.String("DB_INFO", fmt.Sprintf("OpenConnections:%+v", db.Stats())))
+
+	return db, nil
 }

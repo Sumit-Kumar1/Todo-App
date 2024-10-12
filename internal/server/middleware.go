@@ -68,9 +68,8 @@ func AuthMiddleware(db *sql.DB) Middleware {
 				token uuid.UUID
 			)
 
-			row := db.QueryRowContext(r.Context(), "select user_id, token from sessions where token = ?", cookie.Value)
-			err = row.Scan(&uid, &token)
-			if err != nil {
+			row := db.QueryRowContext(r.Context(), "SELECT user_id, token FROM sessions WHERE token=?", cookie.Value)
+			if err := row.Scan(&uid, &token); err != nil {
 				if errors.Is(err, sql.ErrNoRows) {
 					http.Error(w, "invalid cookie", http.StatusUnauthorized)
 					return
