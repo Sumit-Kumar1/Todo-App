@@ -4,30 +4,38 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
-	"os"
 
-	"todoapp/internal/handler"
+	"todoapp/internal/migrations"
 	"todoapp/internal/server"
-	"todoapp/internal/service"
-	"todoapp/internal/store"
+	"todoapp/internal/service/todosvc"
+	"todoapp/internal/store/todostore"
+
+	todohttp "todoapp/internal/handler/todo"
+	userhttp "todoapp/internal/handler/user"
+	usersvc "todoapp/internal/service/user"
+	userstore "todoapp/internal/store/user"
 )
 
 func main() {
-	app := server.ServerFromEnvs()
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{AddSource: false}))
-	slog.SetDefault(logger)
-
-	dbFile := os.Getenv("DB_FILE")
-
-	st, fn, err := store.New(logger, dbFile)
+	app, err := server.ServerFromEnvs()
 	if err != nil {
+		slog.Error(err.Error())
+
 		return
 	}
 
-	defer fn()
+	if err = migrations.RunMigrate(app.DB, "UP"); err != nil {
+		app.Logger.Error(err.Error())
+		return
+	}
 
-	svc := service.New(st, logger)
-	h := handler.New(svc, logger)
+	usrSt := userstore.New(app.DB, app.Logger)
+	userSvc := usersvc.New(usrSt, app.Logger)
+	usrHTTP := userhttp.New(userSvc, app.Logger)
+
+	todoStore := todostore.New(app.DB, app.Logger)
+	todoSvc := todosvc.New(todoStore, app.Logger)
+	todoHTTP := todohttp.New(todoSvc, app.Logger)
 
 	public := http.FileServer(http.Dir("public"))
 	swagger := http.FileServer(http.Dir("openapi"))
@@ -35,26 +43,26 @@ func main() {
 	http.Handle("/public/", http.StripPrefix("/public/", public))
 	http.Handle("/swagger/", http.StripPrefix("/swagger/", swagger))
 
-	http.HandleFunc("/", server.Chain(h.Root, server.Method(http.MethodGet)))
-	http.HandleFunc("/task", server.Chain(h.TaskPage, server.Method(http.MethodGet), server.AuthMiddleware(st.DB)))
+	http.HandleFunc("/", server.Chain(todoHTTP.Root, server.Method(http.MethodGet)))
+	http.HandleFunc("/task", server.Chain(todoHTTP.TaskPage, server.Method(http.MethodGet), server.AuthMiddleware(app.DB)))
 
 	// User API
-	http.HandleFunc("/register", server.Chain(h.Register, server.Method(http.MethodPost)))
-	http.HandleFunc("/login", server.Chain(h.Login, server.Method(http.MethodPost)))
-	http.HandleFunc("/logout", server.Chain(h.Logout, server.Method(http.MethodPost)))
+	http.HandleFunc("/register", server.Chain(usrHTTP.Register, server.Method(http.MethodPost)))
+	http.HandleFunc("/login", server.Chain(usrHTTP.Login, server.Method(http.MethodPost)))
+	http.HandleFunc("/logout", server.Chain(usrHTTP.Logout, server.Method(http.MethodPost)))
 
 	// tasks API
-	http.HandleFunc("/tasks", server.Chain(h.HandleTasks, server.IsHTMX(), server.AuthMiddleware(st.DB)))
-	http.HandleFunc("/tasks/{id}", server.Chain(h.Update, server.IsHTMX(), server.Method(http.MethodPut),
-		server.AuthMiddleware(st.DB)))
-	http.HandleFunc("/tasks/{id}/delete", server.Chain(h.DeleteTask, server.IsHTMX(), server.AuthMiddleware(st.DB),
+	http.HandleFunc("/tasks", server.Chain(todoHTTP.HandleTasks, server.IsHTMX(), server.AuthMiddleware(app.DB)))
+	http.HandleFunc("/tasks/{id}", server.Chain(todoHTTP.Update, server.IsHTMX(), server.Method(http.MethodPut),
+		server.AuthMiddleware(app.DB)))
+	http.HandleFunc("/tasks/{id}/delete", server.Chain(todoHTTP.DeleteTask, server.IsHTMX(), server.AuthMiddleware(app.DB),
 		server.Method(http.MethodDelete)))
-	http.HandleFunc("/tasks/{id}/done", server.Chain(h.Done, server.IsHTMX(), server.Method(http.MethodPut),
-		server.AuthMiddleware(st.DB)))
+	http.HandleFunc("/tasks/{id}/done", server.Chain(todoHTTP.Done, server.IsHTMX(), server.Method(http.MethodPut),
+		server.AuthMiddleware(app.DB)))
 
 	http.HandleFunc("/health", server.Chain(healthStatus, server.Method(http.MethodGet)))
 
-	logger.Info("application is running on", "Address", app.Addr)
+	app.Logger.Info("application is running on", "Address", app.Addr)
 
 	err = app.ListenAndServe()
 	if err != nil {
