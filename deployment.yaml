@@ -23,7 +23,7 @@ spec:
             - containerPort: 9001
           env:
             - name : DB_FILE
-              value: "tasks.db"
+              value: "todo.sqlite"
           readinessProbe:
             tcpSocket:
               port: 9001
