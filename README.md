@@ -14,3 +14,17 @@ This is a simple todo app created using HTMX and golang
 ## API Specification
 
 - Todo api specification can be found at `openapi/todoApi.yaml` (WIP)
+
+## Requirements
+ User Should Be able to do:
+
+- [x] Add new todos to list
+- [x] Mark todo as complete
+- [x] Delete todos from list
+- [ ] Filter by all/activet/complete todos
+- [ ] Clear all completed todos
+- [ ] Toggle light and dark mode
+- [ ] View the optimal layout for the app depending on device screen size
+- [ ] See hover states for all interactive elements on the page
+- [ ]  **Bonus**: Drag and drop to reorder items on list
+- [ ]  **Bonus**: Build this project as a full-stack application
