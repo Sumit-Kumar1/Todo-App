@@ -1,5 +1,0 @@
-CREATE TABLE IF NOT EXISTS sessions(
-    id TEXT PRIMARY KEY, 
-    user_id TEXT NOT NULL UNIQUE,
-    token TEXT NOT NULL UNIQUE, 
-    expiry DATETIME NOT NULL);
