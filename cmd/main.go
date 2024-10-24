@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"os"
 
 	"todoapp/internal/migrations"
 	"todoapp/internal/server"
@@ -20,12 +21,11 @@ func main() {
 	app, err := server.ServerFromEnvs()
 	if err != nil {
 		slog.Error(err.Error())
-
 		return
 	}
 
-	if err = migrations.RunMigrate(app.DB, "UP"); err != nil {
-		app.Logger.Error(err.Error())
+	if err = migrations.RunMigrations(app, getEnvOrDefault("MIGRATION_METHOD", "UP")); err != nil {
+		slog.Error(err.Error())
 		return
 	}
 
@@ -75,4 +75,13 @@ func main() {
 func healthStatus(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(json.RawMessage(`{"status":"OK"}`))
+}
+
+func getEnvOrDefault(key, def string) string {
+	eval := os.Getenv(key)
+	if eval == "" {
+		return def
+	}
+
+	return eval
 }

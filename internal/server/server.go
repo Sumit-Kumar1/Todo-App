@@ -142,7 +142,7 @@ func defaultServer() *Server {
 }
 
 func newLogger() *slog.Logger {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{AddSource: false}))
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{AddSource: false}))
 
 	slog.SetDefault(logger)
 

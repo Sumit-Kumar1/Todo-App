@@ -15,9 +15,10 @@ const (
 	deleteSessionByID  = "DELETE FROM sessions WHERE id=?"
 	getUser            = "SELECT * FROM users WHERE email = ?;"
 	getSessionByUserID = "SELECT * FROM sessions WHERE user_id = ?;"
-	getSessionByToken  = "SELECT * FROM sessions where token=?"
-	registerQuery      = "INSERT INTO users(user_id, name, email, password) VALUES (?,?,?,?);"
-	updateSession      = "UPDATE sessions SET token = ?,  expiry = ? WHERE id = ?;"
+	//nolint:gosec //not any hardcoded credential
+	getSessionByToken = "SELECT * FROM sessions where token=?"
+	registerQuery     = "INSERT INTO users(user_id, name, email, password) VALUES (?,?,?,?);"
+	updateSession     = "UPDATE sessions SET token = ?,  expiry = ? WHERE id = ?;"
 )
 
 type Store struct {
