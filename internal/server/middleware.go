@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"html/template"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -13,7 +14,10 @@ type Middleware func(http.HandlerFunc) http.HandlerFunc
 
 type ContextKey string
 
-const CtxKey ContextKey = "user_id"
+const (
+	CtxKey           ContextKey = "user_id"
+	invalidCookieMsg string     = "user not logged in, please login again!!"
+)
 
 func Chain(f http.HandlerFunc, middlewares ...Middleware) http.HandlerFunc {
 	for _, m := range middlewares {
@@ -52,10 +56,16 @@ func IsHTMX() Middleware {
 func AuthMiddleware(db *sql.DB) Middleware {
 	return func(f http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
+			var temp = template.Must(template.ParseGlob("views/*"))
+
 			cookie, err := r.Cookie("token")
 			if err != nil {
 				if errors.Is(err, http.ErrNoCookie) {
-					http.Error(w, "invalid cookie", http.StatusUnauthorized)
+					_ = temp.ExecuteTemplate(w, "errorPage", map[string]any{
+						"Code":    http.StatusUnauthorized,
+						"Message": invalidCookieMsg,
+					})
+
 					return
 				}
 
@@ -71,7 +81,7 @@ func AuthMiddleware(db *sql.DB) Middleware {
 			row := db.QueryRowContext(r.Context(), "SELECT user_id, token FROM sessions WHERE token=?", cookie.Value)
 			if err := row.Scan(&uid, &token); err != nil {
 				if errors.Is(err, sql.ErrNoRows) {
-					http.Error(w, "invalid cookie", http.StatusUnauthorized)
+					http.Error(w, invalidCookieMsg, http.StatusUnauthorized)
 					return
 				}
 
