@@ -46,8 +46,8 @@ paths:
       responses:
         "200":
           description: >
-            Successful login, the server return a cokkie name `token` with 15min expiry. 
-            You can include this cokkie in subsequent requests.
+            Successful login, the server return a cookie name `token` with 15min expiry. 
+            You can include this cookie in subsequent requests.
           headers:
             Set-Cookie:
               schema:
@@ -103,6 +103,25 @@ paths:
                 example: token=a420e905-acfd-4967-aeb2-ed41429debc4; Path=/; Expires=Sat, 26 Oct 2024 03:14:42 GMT; HttpOnly
         "400":
           description: Invalid input
+
+  /logout:
+    post:
+      tags:
+        - User
+      summary: Logout an existing logged in user based on cookies
+      responses:
+        "200":
+          description: User logs out successfully and deletes the cookie attached with path='/'
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: token=a420e905-acfd-4967-aeb2-ed41429debc4; Path=/; Expires=-1; HttpOnly
+        "500":
+          description: Internal server error
+        "404":
+          description: User not found
+
 
   /tasks:
     get:
