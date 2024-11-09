@@ -38,12 +38,13 @@ func main() {
 	todoHTTP := todohttp.New(todoSvc, app.Logger)
 
 	public := http.FileServer(http.Dir("public"))
-	swagger := http.FileServer(http.Dir("openapi"))
+	openapi := http.FileServer(http.Dir("openapi"))
 
 	http.Handle("/public/", http.StripPrefix("/public/", public))
-	http.Handle("/swagger/", http.StripPrefix("/swagger/", swagger))
+	http.Handle("/openapi/", http.StripPrefix("/openapi/", openapi))
 
 	http.HandleFunc("/", server.Chain(todoHTTP.Root, server.Method(http.MethodGet)))
+	http.Handle("/api", http.StripPrefix("/api", server.Chain(todoHTTP.Swagger, server.Method(http.MethodGet))))
 	http.HandleFunc("/task", server.Chain(todoHTTP.TaskPage, server.Method(http.MethodGet), server.AuthMiddleware(app.DB)))
 
 	// User API
@@ -60,7 +61,35 @@ func main() {
 	http.HandleFunc("/tasks/{id}/done", server.Chain(todoHTTP.Done, server.IsHTMX(), server.Method(http.MethodPut),
 		server.AuthMiddleware(app.DB)))
 
-	http.HandleFunc("/health", server.Chain(healthStatus, server.Method(http.MethodGet)))
+	http.HandleFunc("/health", server.Chain(func(w http.ResponseWriter, r *http.Request) {
+		if err = app.DB.Ping(); err != nil {
+			app.Health = &server.Health{
+				Status:   "Down",
+				DBStatus: "Down",
+			}
+
+			data, mErr := json.Marshal(app.Health)
+			if mErr != nil {
+				http.Error(w, "not able to marshal the health status", http.StatusInternalServerError)
+				return
+			}
+
+			_, _ = w.Write(data)
+		}
+
+		app.Health = &server.Health{
+			Status:   "Up",
+			DBStatus: "Up",
+		}
+
+		data, mErr := json.Marshal(app.Health)
+		if mErr != nil {
+			http.Error(w, "not able to marshal the health status", http.StatusInternalServerError)
+			return
+		}
+
+		_, _ = w.Write(data)
+	}, server.Method(http.MethodGet)))
 
 	app.Logger.Info("application is running on", "Address", app.Addr)
 
@@ -70,11 +99,6 @@ func main() {
 
 		return
 	}
-}
-
-func healthStatus(w http.ResponseWriter, _ *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(json.RawMessage(`{"status":"OK"}`))
 }
 
 func getEnvOrDefault(key, def string) string {

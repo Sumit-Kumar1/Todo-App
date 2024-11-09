@@ -125,8 +125,4 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	h.Log.Info("logout success!!")
-
-	if _, err := w.Write([]byte("logout success !!")); err != nil {
-		h.Log.Error("error while writing the response body", "error", err)
-	}
 }

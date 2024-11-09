@@ -31,7 +31,9 @@ func (s *Service) GetAll(ctx context.Context, userID *uuid.UUID) ([]models.Task,
 }
 
 func (s *Service) AddTask(ctx context.Context, title string, userID *uuid.UUID) (*models.Task, error) {
-	if strings.TrimSpace(title) == "" {
+	title = strings.TrimSpace(title)
+
+	if title == "" {
 		return nil, models.ErrInvalid("task title")
 	}
 
@@ -83,6 +85,8 @@ func (s *Service) MarkDone(ctx context.Context, id string, userID *uuid.UUID) (*
 }
 
 func (s *Service) UpdateTask(ctx context.Context, id, title string, isDone bool, userID *uuid.UUID) (*models.Task, error) {
+	title = strings.TrimSpace(title) // trimmed the space around the task title
+
 	if err := validateTask(id, title); err != nil {
 		s.Log.ErrorContext(ctx, err.Error(), "ID", id)
 		return nil, err

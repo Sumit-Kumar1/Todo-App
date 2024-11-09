@@ -14,6 +14,114 @@ servers:
   - url: "http://localhost:9001"
 
 paths:
+  /login:
+    post:
+      tags:
+        - User
+      summary: User login
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  description: "a valid email address"
+                  example: "sumit@kumar.com"
+                password:
+                  type: string
+                  description: "a minimum of 8 character long password"
+                  example: "Pass#1234"
+              required:
+                - email
+                - password
+            encoding:
+              email:
+                allowReserved: true
+              password:
+                allowReserved: true
+      security: [] # no authentication
+      responses:
+        "200":
+          description: >
+            Successful login, the server return a cookie name `token` with 15min expiry. 
+            You can include this cookie in subsequent requests.
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: token=a420e905-acfd-4967-aeb2-ed41429debc4; Path=/; Expires=Sat, 26 Oct 2024 03:14:42 GMT; HttpOnly
+        "401":
+          description: Invalid username or password
+        "404":
+          description: User not found
+
+  /register:
+    post:
+      tags:
+        - User
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: name of user, can't be empty
+                  example: "sumit Kumar"
+                email:
+                  type: string
+                  description: "a valid email address, must be unique"
+                  example: "sumit@kumar.com"
+                password:
+                  type: string
+                  description: "a minimum of 8 character long password"
+                  example: "Pass#1234"
+              required:
+                - name
+                - email
+                - password
+            encoding:
+              name:
+                allowReserved: true
+              email:
+                allowReserved: true
+              password:
+                allowReserved: true
+      responses:
+        "201":
+          description: User registered
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: token=a420e905-acfd-4967-aeb2-ed41429debc4; Path=/; Expires=Sat, 26 Oct 2024 03:14:42 GMT; HttpOnly
+        "400":
+          description: Invalid input
+
+  /logout:
+    post:
+      tags:
+        - User
+      summary: Logout an existing logged in user based on cookies
+      responses:
+        "200":
+          description: User logs out successfully and deletes the cookie attached with path='/'
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: token=a420e905-acfd-4967-aeb2-ed41429debc4; Path=/; Expires=-1; HttpOnly
+        "500":
+          description: Internal server error
+        "404":
+          description: User not found
+
   /tasks:
     get:
       tags:
@@ -30,8 +138,6 @@ paths:
                   $ref: "#/components/schemas/TodoTask"
         "404":
           description: Task not found
-  
-  /task:
     post:
       tags:
         - Todo
@@ -42,6 +148,8 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/TaskInput"
+      security:
+        - cookieAuth: []
       responses:
         "201":
           description: Task created
@@ -69,6 +177,8 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/TodoTask"
+      security:
+        - cookieAuth: []
       responses:
         "200":
           description: Task updated
@@ -91,6 +201,8 @@ paths:
           schema:
             type: string
             format: uuid
+      security:
+        - cookieAuth: []
       responses:
         "204":
           description: Task deleted successfully
@@ -104,99 +216,19 @@ paths:
       summary: marks the task as done for authenticated user
       parameters:
         - name: taskId
-          in : path
+          in: path
           required: true
           description: ID of the task to mark for done
           schema:
             type: string
             format: uuid
-
+      security:
+        - cookieAuth: []
       responses:
         "200":
           description: Task is marked as done
         "404":
           description: Task not found
-
-  /login:
-    post:
-      tags:
-        - User
-      summary: User login
-      requestBody:
-        required: true
-        content:
-           application/x-www-form-urlencoded:
-            schema:
-              type: object
-              properties:
-                email: 
-                  type: string
-                  description: "a valid email address"
-                  example: "sumit@kumar.com"
-                password:
-                  type: string
-                  description: "a minimum of 8 character long password"
-                  example: "Pass#1234"
-              required:
-                - email
-                - password
-            encoding:
-              email:
-                allowReserved: true
-              password:
-                allowReserved: true
-      responses:
-        "200":
-          description: Successful login
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/UserResp"
-        "401":
-          description: Invalid username or password
-        "404":
-          description: User not found
-
-  /register:
-    post:
-      tags:
-        - User
-      summary: Register a new user
-      requestBody:
-        required: true
-        content:
-          application/x-www-form-urlencoded:
-            schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                  description: name of user, can't be empty
-                  example: "sumit Kumar"
-                email: 
-                  type: string
-                  description: "a valid email address, must be unique"
-                  example: "sumit@kumar.com"
-                password:
-                  type: string
-                  description: "a minimum of 8 character long password"
-                  example: "Pass#1234"
-              required:
-                - name
-                - email
-                - password
-            encoding:
-              name:
-                allowReserved: true
-              email:
-                allowReserved: true
-              password:
-                allowReserved: true
-      responses:
-        "201":
-          description: User registered
-        "400":
-          description: Invalid input
 
 components:
   schemas:
@@ -269,12 +301,8 @@ components:
         expiry:
           type: string
           format: date-time
-
   securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-
-security:
-  - bearerAuth: []
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: token # cookie name

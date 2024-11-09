@@ -32,11 +32,21 @@ func (h *Handler) Root(w http.ResponseWriter, r *http.Request) {
 	switch vals.Get("page") {
 	case "register":
 		tempName = "user-register"
+	case "api":
+		tempName = "swagger"
 	default:
 		tempName = "user-login"
 	}
 
 	if err := h.template.ExecuteTemplate(w, tempName, nil); err != nil {
+		h.Log.Error(err.Error(), "template-render", "index")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func (h *Handler) Swagger(w http.ResponseWriter, _ *http.Request) {
+	if err := h.template.ExecuteTemplate(w, "swagger", nil); err != nil {
 		h.Log.Error(err.Error(), "template-render", "index")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -129,7 +139,10 @@ func (h *Handler) getAll(w http.ResponseWriter, r *http.Request) {
 
 	userID, ok := ctx.Value(server.CtxKey).(uuid.UUID)
 	if !ok {
-		http.Error(w, "invalid user", http.StatusUnauthorized)
+		_ = h.template.ExecuteTemplate(w, "errorPage", map[string]any{
+			"Code":    http.StatusUnauthorized,
+			"Message": "user not authorized!!",
+		})
 		return
 	}
 
