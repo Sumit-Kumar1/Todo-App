@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"log/slog"
 	"net/http"
 	"os"
@@ -60,8 +61,35 @@ func main() {
 	http.HandleFunc("/tasks/{id}/done", server.Chain(todoHTTP.Done, server.IsHTMX(), server.Method(http.MethodPut),
 		server.AuthMiddleware(app.DB)))
 
-	//TODO: Complete this health functions
-	http.HandleFunc("/health", server.Chain(func(w http.ResponseWriter, r *http.Request) {}, server.Method(http.MethodGet)))
+	http.HandleFunc("/health", server.Chain(func(w http.ResponseWriter, r *http.Request) {
+		if err = app.DB.Ping(); err != nil {
+			app.Health = &server.Health{
+				Status:   "Down",
+				DBStatus: "Down",
+			}
+
+			data, mErr := json.Marshal(app.Health)
+			if mErr != nil {
+				http.Error(w, "not able to marshal the health status", http.StatusInternalServerError)
+				return
+			}
+
+			_, _ = w.Write(data)
+		}
+
+		app.Health = &server.Health{
+			Status:   "Up",
+			DBStatus: "Up",
+		}
+
+		data, mErr := json.Marshal(app.Health)
+		if mErr != nil {
+			http.Error(w, "not able to marshal the health status", http.StatusInternalServerError)
+			return
+		}
+
+		_, _ = w.Write(data)
+	}, server.Method(http.MethodGet)))
 
 	app.Logger.Info("application is running on", "Address", app.Addr)
 

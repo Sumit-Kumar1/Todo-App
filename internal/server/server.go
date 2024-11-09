@@ -27,6 +27,7 @@ type Health struct {
 type Server struct {
 	DB     *sql.DB
 	Logger *slog.Logger
+	Health *Health
 	*http.Server
 	*Configs
 }
