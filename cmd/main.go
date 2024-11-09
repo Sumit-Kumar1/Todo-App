@@ -43,7 +43,7 @@ func main() {
 	http.Handle("/openapi/", http.StripPrefix("/openapi/", openapi))
 
 	http.HandleFunc("/", server.Chain(todoHTTP.Root, server.Method(http.MethodGet)))
-	http.Handle("/swagger/", http.StripPrefix("/swagger/", server.Chain(todoHTTP.Swagger, server.Method(http.MethodGet))))
+	http.Handle("/api", http.StripPrefix("/api", server.Chain(todoHTTP.Swagger, server.Method(http.MethodGet))))
 	http.HandleFunc("/task", server.Chain(todoHTTP.TaskPage, server.Method(http.MethodGet), server.AuthMiddleware(app.DB)))
 
 	// User API

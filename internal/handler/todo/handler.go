@@ -32,7 +32,7 @@ func (h *Handler) Root(w http.ResponseWriter, r *http.Request) {
 	switch vals.Get("page") {
 	case "register":
 		tempName = "user-register"
-	case "swagger":
+	case "api":
 		tempName = "swagger"
 	default:
 		tempName = "user-login"
