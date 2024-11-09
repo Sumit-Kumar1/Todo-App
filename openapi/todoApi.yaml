@@ -122,7 +122,6 @@ paths:
         "404":
           description: User not found
 
-
   /tasks:
     get:
       tags:
@@ -139,8 +138,6 @@ paths:
                   $ref: "#/components/schemas/TodoTask"
         "404":
           description: Task not found
-
-  /task:
     post:
       tags:
         - Todo
@@ -151,6 +148,8 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/TaskInput"
+      security:
+        - cookieAuth: []
       responses:
         "201":
           description: Task created
@@ -178,6 +177,8 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/TodoTask"
+      security:
+        - cookieAuth: []
       responses:
         "200":
           description: Task updated
@@ -200,6 +201,8 @@ paths:
           schema:
             type: string
             format: uuid
+      security:
+        - cookieAuth: []
       responses:
         "204":
           description: Task deleted successfully
@@ -219,7 +222,8 @@ paths:
           schema:
             type: string
             format: uuid
-
+      security:
+        - cookieAuth: []
       responses:
         "200":
           description: Task is marked as done
