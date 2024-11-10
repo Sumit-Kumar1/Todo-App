@@ -1,7 +1,6 @@
 package server
 
 import (
-	"database/sql"
 	"fmt"
 	"log"
 	"log/slog"
@@ -11,7 +10,7 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
-	_ "github.com/mattn/go-sqlite3"
+	"github.com/sqlitecloud/sqlitecloud-go"
 )
 
 type Configs struct {
@@ -25,7 +24,7 @@ type Health struct {
 }
 
 type Server struct {
-	DB     *sql.DB
+	DB     *sqlitecloud.SQCloud
 	Logger *slog.Logger
 	Health *Health
 	*http.Server
@@ -78,7 +77,7 @@ func WithEnv(env string) Opts {
 }
 
 func ServerFromEnvs() (*Server, error) {
-	if err := godotenv.Load(".env"); err != nil {
+	if err := godotenv.Load("../.env"); err != nil {
 		log.Print("error while loading env file")
 
 		return nil, err
@@ -115,17 +114,6 @@ func loadEnvVars() []Opts {
 	return opts
 }
 
-func getEnvAsInt(key string, defaultValue int) int {
-	value := os.Getenv(key)
-	if value == "" {
-		return defaultValue
-	}
-	if intValue, err := strconv.Atoi(value); err == nil {
-		return intValue
-	}
-	return defaultValue
-}
-
 func defaultServer() *Server {
 	return &Server{
 		Server: &http.Server{
@@ -150,26 +138,58 @@ func newLogger() *slog.Logger {
 	return logger
 }
 
-func newDB(logger *slog.Logger) (*sql.DB, error) {
-	dbFile := os.Getenv("DB_FILE")
-
-	if dbFile == "" {
-		dbFile = "todo.db"
+func newDB(logger *slog.Logger) (*sqlitecloud.SQCloud, error) {
+	config := sqlitecloud.SQCloudConfig{
+		Host:      "cwmooldgnk",
+		Port:      8860,
+		Username:  "admin",
+		Password:  "",
+		Database:  "todo",
+		Timeout:   time.Minute * 5,
+		Secure:    true,
+		ApiKey:    "pZwrn8JoKWAcryyKDd7P0hIBmuUnbIwdVGURQxMNb9A",
+		MaxRows:   20,
+		MaxRowset: 10,
 	}
 
-	db, err := sql.Open("sqlite3", dbFile)
-	if err != nil {
+	sqcl := sqlitecloud.New(config)
+
+	if err := sqcl.Connect(); err != nil {
 		logger.Error(err.Error())
 		return nil, err
 	}
 
-	if err := db.Ping(); err != nil {
-		logger.Error(err.Error(), "Database is not reacheable", "db.ping()")
+	if sqcl.IsConnected() {
+		return nil, fmt.Errorf("not able to connect to database")
+	}
+
+	info, err := sqcl.GetInfo()
+	if err != nil {
+		logger.Error(err.Error(), "event", "not able to get db info")
 		return nil, err
 	}
 
-	logger.Info("DB connected successfully",
-		slog.String("DB_INFO", fmt.Sprintf("OpenConnections:%+v", db.Stats())))
+	logger.Info("DB connected successfully", "info", fmt.Sprintf("%+v", info))
 
-	return db, nil
+	return sqcl, nil
+}
+
+func getEnvAsInt(key string, defaultValue int) int {
+	value := os.Getenv(key)
+	if value == "" {
+		return defaultValue
+	}
+	if intValue, err := strconv.Atoi(value); err == nil {
+		return intValue
+	}
+	return defaultValue
+}
+
+func getEnvOrDefault(key string, defaultVal string) string {
+	val := os.Getenv(key)
+	if val == "" {
+		return defaultVal
+	}
+
+	return val
 }
