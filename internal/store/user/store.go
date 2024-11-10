@@ -3,10 +3,11 @@ package userstore
 import (
 	"context"
 	"fmt"
-	"github.com/sqlitecloud/sqlitecloud-go"
 	"log/slog"
 	"time"
 	"todoapp/internal/models"
+
+	"github.com/sqlitecloud/sqlitecloud-go"
 
 	"github.com/google/uuid"
 )
@@ -34,7 +35,7 @@ func New(db *sqlitecloud.SQCloud, logger *slog.Logger) *Store {
 	}
 }
 
-func (s *Store) RegisterUser(ctx context.Context, data *models.UserData) error {
+func (s *Store) RegisterUser(_ context.Context, data *models.UserData) error {
 	if err := s.DB.Execute(fmt.Sprintf(registerQuery, data.ID, data.Name, data.Email, data.Password)); err != nil {
 		return err
 	}
@@ -42,7 +43,7 @@ func (s *Store) RegisterUser(ctx context.Context, data *models.UserData) error {
 	return nil
 }
 
-func (s *Store) CreateSession(ctx context.Context, session *models.UserSession) error {
+func (s *Store) CreateSession(_ context.Context, session *models.UserSession) error {
 	if err := s.DB.Execute(fmt.Sprintf(createSession, session.ID, session.UserID, session.Token, session.Expiry)); err != nil {
 		return err
 	}
@@ -50,7 +51,7 @@ func (s *Store) CreateSession(ctx context.Context, session *models.UserSession) 
 	return nil
 }
 
-func (s *Store) GetSessionByID(ctx context.Context, userID *uuid.UUID) (*models.UserSession, error) {
+func (s *Store) GetSessionByID(_ context.Context, userID *uuid.UUID) (*models.UserSession, error) {
 	var session models.UserSession
 
 	res, err := s.DB.Select(fmt.Sprintf(getSessionByUserID, *userID))
@@ -89,7 +90,7 @@ func (s *Store) GetSessionByID(ctx context.Context, userID *uuid.UUID) (*models.
 	return &session, nil
 }
 
-func (s *Store) RefreshSession(ctx context.Context, newSession *models.UserSession) error {
+func (s *Store) RefreshSession(_ context.Context, newSession *models.UserSession) error {
 	if err := s.DB.Execute(fmt.Sprintf(updateSession, newSession.Token, newSession.Expiry, newSession.ID)); err != nil {
 		return err
 	}
@@ -99,7 +100,7 @@ func (s *Store) RefreshSession(ctx context.Context, newSession *models.UserSessi
 	return nil
 }
 
-func (s *Store) GetUserByEmail(ctx context.Context, email string) (*models.UserData, error) {
+func (s *Store) GetUserByEmail(_ context.Context, email string) (*models.UserData, error) {
 	var user models.UserData
 
 	res, err := s.DB.Select(fmt.Sprintf(getUser, email))
@@ -139,7 +140,7 @@ func (s *Store) GetUserByEmail(ctx context.Context, email string) (*models.UserD
 	return &user, nil
 }
 
-func (s *Store) Logout(ctx context.Context, token *uuid.UUID) error {
+func (s *Store) Logout(_ context.Context, token *uuid.UUID) error {
 	var id uuid.UUID
 
 	res, err := s.DB.Select(fmt.Sprintf(getSessionByToken, *token))
