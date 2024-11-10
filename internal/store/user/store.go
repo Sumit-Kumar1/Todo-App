@@ -2,31 +2,32 @@ package userstore
 
 import (
 	"context"
-	"database/sql"
-	"errors"
+	"fmt"
+	"github.com/sqlitecloud/sqlitecloud-go"
 	"log/slog"
+	"time"
 	"todoapp/internal/models"
 
 	"github.com/google/uuid"
 )
 
 const (
-	createSession      = "INSERT INTO sessions (id, user_id, token, expiry) VALUES (?, ?, ?,?);"
-	deleteSessionByID  = "DELETE FROM sessions WHERE id=?"
-	getUser            = "SELECT * FROM users WHERE email = ?;"
-	getSessionByUserID = "SELECT * FROM sessions WHERE user_id = ?;"
+	createSession      = "INSERT INTO sessions (id, user_id, token, expiry) VALUES (%v, %v, %v,%v);"
+	deleteSessionByID  = "DELETE FROM sessions WHERE id=%v"
+	getUser            = "SELECT * FROM users WHERE email = %v;"
+	getSessionByUserID = "SELECT * FROM sessions WHERE user_id = %v;"
 	//nolint:gosec //not any hardcoded credential
-	getSessionByToken = "SELECT * FROM sessions where token=?"
-	registerQuery     = "INSERT INTO users(user_id, name, email, password) VALUES (?,?,?,?);"
-	updateSession     = "UPDATE sessions SET token = ?,  expiry = ? WHERE id = ?;"
+	getSessionByToken = "SELECT id FROM sessions where token=%v"
+	registerQuery     = "INSERT INTO users(user_id, name, email, password) VALUES (%v,%v,%v,%v);"
+	updateSession     = "UPDATE sessions SET token = %v,  expiry = %v WHERE id = %v;"
 )
 
 type Store struct {
-	DB  *sql.DB
+	DB  *sqlitecloud.SQCloud
 	Log *slog.Logger
 }
 
-func New(db *sql.DB, logger *slog.Logger) *Store {
+func New(db *sqlitecloud.SQCloud, logger *slog.Logger) *Store {
 	return &Store{
 		DB:  db,
 		Log: logger,
@@ -34,13 +35,7 @@ func New(db *sql.DB, logger *slog.Logger) *Store {
 }
 
 func (s *Store) RegisterUser(ctx context.Context, data *models.UserData) error {
-	vals := []any{data.ID, data.Name, data.Email, data.Password}
-	sr, err := s.DB.ExecContext(ctx, registerQuery, vals...)
-	if err != nil {
-		return err
-	}
-
-	if _, err := sr.LastInsertId(); err != nil {
+	if err := s.DB.Execute(fmt.Sprintf(registerQuery, data.ID, data.Name, data.Email, data.Password)); err != nil {
 		return err
 	}
 
@@ -48,15 +43,8 @@ func (s *Store) RegisterUser(ctx context.Context, data *models.UserData) error {
 }
 
 func (s *Store) CreateSession(ctx context.Context, session *models.UserSession) error {
-	vals := []any{session.ID, session.UserID, session.Token, session.Expiry}
-
-	rs, err := s.DB.ExecContext(ctx, createSession, vals...)
-	if err != nil {
+	if err := s.DB.Execute(fmt.Sprintf(createSession, session.ID, session.UserID, session.Token, session.Expiry)); err != nil {
 		return err
-	}
-
-	if _, err := rs.RowsAffected(); err != nil {
-		return errors.New("no rows were affected")
 	}
 
 	return nil
@@ -65,27 +53,44 @@ func (s *Store) CreateSession(ctx context.Context, session *models.UserSession) 
 func (s *Store) GetSessionByID(ctx context.Context, userID *uuid.UUID) (*models.UserSession, error) {
 	var session models.UserSession
 
-	row := s.DB.QueryRowContext(ctx, getSessionByUserID, *userID)
-	if err := row.Scan(&session.ID, &session.UserID, &session.Token, &session.Expiry); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, models.ErrNotFound("user")
+	res, err := s.DB.Select(fmt.Sprintf(getSessionByUserID, *userID))
+	if err != nil {
+		return nil, err
+	}
+
+	if res.GetNumberOfRows() == uint64(0) {
+		return nil, models.ErrNotFound("user")
+	}
+
+	for r := uint64(0); r < res.GetNumberOfRows(); r++ {
+		c1, err := res.GetStringValue(r, 0)
+		if err != nil {
+			return nil, err
+		}
+		c2, err := res.GetStringValue(r, 1)
+		if err != nil {
+			return nil, err
+		}
+		c3, err := res.GetStringValue(r, 2)
+		if err != nil {
+			return nil, err
+		}
+		c4, err := res.GetFloat64Value(r, 3)
+		if err != nil {
+			return nil, err
 		}
 
-		return nil, err
+		session.ID = uuid.MustParse(c1)
+		session.UserID = uuid.MustParse(c2)
+		session.Token = c3
+		session.Expiry = time.Unix(int64(c4), 0)
 	}
 
 	return &session, nil
 }
 
 func (s *Store) RefreshSession(ctx context.Context, newSession *models.UserSession) error {
-	var vals = []any{newSession.Token, newSession.Expiry, newSession.ID}
-
-	sr, err := s.DB.ExecContext(ctx, updateSession, vals...)
-	if err != nil {
-		return err
-	}
-
-	if _, err := sr.RowsAffected(); err != nil {
+	if err := s.DB.Execute(fmt.Sprintf(updateSession, newSession.Token, newSession.Expiry, newSession.ID)); err != nil {
 		return err
 	}
 
@@ -97,35 +102,66 @@ func (s *Store) RefreshSession(ctx context.Context, newSession *models.UserSessi
 func (s *Store) GetUserByEmail(ctx context.Context, email string) (*models.UserData, error) {
 	var user models.UserData
 
-	row := s.DB.QueryRowContext(ctx, getUser, email)
-	if err := row.Scan(&user.ID, &user.Name, &user.Email, &user.Password); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, models.ErrNotFound("user")
+	res, err := s.DB.Select(fmt.Sprintf(getUser, email))
+	if err != nil {
+		return nil, err
+	}
+
+	if res.GetNumberOfRows() == 0 {
+		return nil, models.ErrNotFound("user")
+	}
+
+	for r := uint64(0); r < res.GetNumberOfRows(); r++ {
+		c1, err := res.GetStringValue(r, 0)
+		if err != nil {
+			return nil, err
+		}
+		c2, err := res.GetStringValue(r, 1)
+		if err != nil {
+			return nil, err
+		}
+		c3, err := res.GetStringValue(r, 2)
+		if err != nil {
+			return nil, err
 		}
 
-		return nil, err
+		c4, err := res.GetStringValue(r, 3)
+		if err != nil {
+			return nil, err
+		}
+
+		user.ID = uuid.MustParse(c1)
+		user.Name = c2
+		user.Email = c3
+		user.Password = c4
 	}
 
 	return &user, nil
 }
 
 func (s *Store) Logout(ctx context.Context, token *uuid.UUID) error {
-	var session models.UserSession
+	var id uuid.UUID
 
-	row := s.DB.QueryRowContext(ctx, getSessionByToken, *token)
-	if err := row.Scan(&session.ID, &session.UserID, &session.Token, &session.Expiry); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return models.ErrNotFound("session with current user")
-		}
-	}
-
-	rs, err := s.DB.ExecContext(ctx, deleteSessionByID, session.ID)
+	res, err := s.DB.Select(fmt.Sprintf(getSessionByToken, *token))
 	if err != nil {
 		return err
 	}
 
-	if _, err := rs.RowsAffected(); err != nil {
-		return errors.New("no rows were affected")
+	if res.GetNumberOfRows() == 0 {
+		return models.ErrNotFound("session with current user")
+	}
+
+	for r := uint64(0); r < res.GetNumberOfRows(); r++ {
+		r1, err := res.GetStringValue(r, 0)
+		if err != nil {
+			return err
+		}
+
+		id = uuid.MustParse(r1)
+	}
+
+	if err := s.DB.Execute(fmt.Sprintf(deleteSessionByID, id)); err != nil {
+		return err
 	}
 
 	return nil
