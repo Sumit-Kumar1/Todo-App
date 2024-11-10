@@ -1,8 +1,6 @@
 package migrations
 
 import (
-	"database/sql"
-	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -129,36 +127,38 @@ func getLastRunMigration(s *server.Server) (string, error) {
 		queryGetLastRun = fmt.Sprintf("SELECT version FROM %s ORDER BY version DESC LIMIT 1;", migTableName)
 	)
 
-	lastRun, err := s.DB.SelectSingleString(queryGetLastRun)
+	res, err := s.DB.Select(queryGetLastRun)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			s.Logger.Info("no last run migrations found")
-			return "", nil
-		}
-
-		s.Logger.Error("not able to get the last run of the migration", slog.String("error", err.Error()))
 		return "", err
+	}
+
+	numRows := res.GetNumberOfRows()
+	if numRows == 0 {
+		s.Logger.Info("no last run migrations found")
+		return "", nil
+	}
+
+	for i := uint64(0); i < res.GetNumberOfRows(); i++ {
+		lastRun, err = res.GetStringValue(i, 0)
+		if err != nil {
+			s.Logger.Error("not able to get the last run of the migration", slog.String("error", err.Error()))
+			return "", err
+		}
 	}
 
 	return lastRun, nil
 }
 
 func performMigration(s *server.Server, val Migrator, key, method string) error {
-	var (
-		upPreRun    = fmt.Sprintf("INSERT INTO %s(version, start_time, method) VALUES (?, ?, ?)", migTableName)
-		upPostRun   = fmt.Sprintf("UPDATE %s SET end_time=? WHERE version=?", migTableName)
-		downPostRun = fmt.Sprintf("DELETE FROM %s WHERE version = ?", migTableName)
-	)
-
-	err := s.DB.BeginTransaction()
-	if err != nil {
+	if err := s.DB.BeginTransaction(); err != nil {
 		s.Logger.Error("unable to start transaction", slog.String("error", err.Error()))
 		return err
 	}
 
 	switch method {
 	case "UP":
-		if err := s.DB.Execute(fmt.Sprintf(upPreRun, key, time.Now(), method)); err != nil {
+		query := fmt.Sprintf("INSERT INTO %s(version, start_time, method) VALUES (%v, %v, %v);", migTableName, key, time.Now(), method)
+		if err := s.DB.Execute(query); err != nil {
 			s.Logger.Error("Migration table insert error", slog.String("migration", key), slog.String("error", err.Error()))
 
 			return handleRollback(s, err)
@@ -170,7 +170,8 @@ func performMigration(s *server.Server, val Migrator, key, method string) error 
 			return handleRollback(s, err)
 		}
 
-		if err := s.DB.Execute(fmt.Sprintf(upPostRun, time.Now(), key)); err != nil {
+		if err := s.DB.Execute(fmt.Sprintf("UPDATE %s SET end_time=%v WHERE version=%v",
+			migTableName, time.Now(), key)); err != nil {
 			s.Logger.Error("Migration table insert error", slog.String("migration", key), slog.String("error", err.Error()))
 
 			return handleRollback(s, err)
@@ -183,7 +184,7 @@ func performMigration(s *server.Server, val Migrator, key, method string) error 
 			return handleRollback(s, err)
 		}
 
-		if err := s.DB.Execute(fmt.Sprintf(downPostRun, key)); err != nil {
+		if err := s.DB.Execute(fmt.Sprintf("DELETE FROM %s WHERE version = %v", migTableName, key)); err != nil {
 			s.Logger.Error("Migration table insert error", slog.String("migration", key), slog.String("error", err.Error()))
 
 			return handleRollback(s, err)

@@ -77,7 +77,7 @@ func WithEnv(env string) Opts {
 }
 
 func ServerFromEnvs() (*Server, error) {
-	if err := godotenv.Load("../.env"); err != nil {
+	if err := godotenv.Load(".env"); err != nil {
 		log.Print("error while loading env file")
 
 		return nil, err
@@ -140,17 +140,19 @@ func newLogger() *slog.Logger {
 
 func newDB(logger *slog.Logger) (*sqlitecloud.SQCloud, error) {
 	config := sqlitecloud.SQCloudConfig{
-		Host:      "cwmooldgnk",
-		Port:      8860,
-		Username:  "admin",
-		Password:  "",
-		Database:  "todo",
-		Timeout:   time.Minute * 5,
-		Secure:    true,
-		ApiKey:    "pZwrn8JoKWAcryyKDd7P0hIBmuUnbIwdVGURQxMNb9A",
-		MaxRows:   20,
-		MaxRowset: 10,
+		Host:     os.Getenv("DB_HOST"),
+		Port:     getEnvAsInt("DB_PORT", 8860),
+		Database: os.Getenv("DB_NAME"),
+		ApiKey:   os.Getenv("DB_APIKEY"),
+		MaxRows:  getEnvAsInt("DB_MAXROWS", 20),
 	}
+
+	isSecure, err := strconv.ParseBool(os.Getenv("DB_SECURE_FLAG"))
+	if err != nil {
+		return nil, err
+	}
+
+	config.Secure = isSecure
 
 	sqcl := sqlitecloud.New(config)
 
@@ -159,17 +161,11 @@ func newDB(logger *slog.Logger) (*sqlitecloud.SQCloud, error) {
 		return nil, err
 	}
 
-	if sqcl.IsConnected() {
+	if !sqcl.IsConnected() {
 		return nil, fmt.Errorf("not able to connect to database")
 	}
 
-	info, err := sqcl.GetInfo()
-	if err != nil {
-		logger.Error(err.Error(), "event", "not able to get db info")
-		return nil, err
-	}
-
-	logger.Info("DB connected successfully", "info", fmt.Sprintf("%+v", info))
+	logger.Info("DB connected successfully")
 
 	return sqcl, nil
 }
@@ -183,13 +179,4 @@ func getEnvAsInt(key string, defaultValue int) int {
 		return intValue
 	}
 	return defaultValue
-}
-
-func getEnvOrDefault(key string, defaultVal string) string {
-	val := os.Getenv(key)
-	if val == "" {
-		return defaultVal
-	}
-
-	return val
 }
