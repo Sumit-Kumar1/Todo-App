@@ -1,6 +1,6 @@
 package migrations
 
-import "database/sql"
+import "github.com/sqlitecloud/sqlitecloud-go"
 
 const (
 	tasksDown = "DROP TABLE IF EXISTS tasks;"
@@ -15,10 +15,10 @@ const (
 
 type M20241013015650 string
 
-func (m M20241013015650) Up(db *sql.Tx) error {
+func (m M20241013015650) Up(db *sqlitecloud.SQCloud) error {
 	return run(db, tasksUp, m)
 }
 
-func (m M20241013015650) Down(db *sql.Tx) error {
+func (m M20241013015650) Down(db *sqlitecloud.SQCloud) error {
 	return run(db, tasksDown, m)
 }

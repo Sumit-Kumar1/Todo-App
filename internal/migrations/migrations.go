@@ -9,6 +9,8 @@ import (
 	"time"
 	"todoapp/internal/models"
 	"todoapp/internal/server"
+
+	"github.com/sqlitecloud/sqlitecloud-go"
 )
 
 const (
@@ -16,8 +18,8 @@ const (
 )
 
 type Migrator interface {
-	Up(db *sql.Tx) error
-	Down(db *sql.Tx) error
+	Up(db *sqlitecloud.SQCloud) error
+	Down(db *sqlitecloud.SQCloud) error
 }
 
 func RunMigrations(s *server.Server, method string) error {
@@ -30,7 +32,7 @@ func RunMigrations(s *server.Server, method string) error {
 	query := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s(version TEXT, start_time DATETIME, end_time DATETIME, method TEXT);",
 		migTableName)
 
-	_, err := s.DB.Exec(query)
+	err := s.DB.Execute(query)
 	if err != nil {
 		s.Logger.Error("not able to create the migration table", slog.String("error", err.Error()))
 		return err
@@ -88,17 +90,17 @@ func runDownMigrations(s *server.Server, migs map[string]Migrator) error {
 	)
 
 	getAllVersions := fmt.Sprintf("SELECT version from %s ORDER BY version DESC", migTableName)
-	rows, err := s.DB.Query(getAllVersions)
+	rows, err := s.DB.Select(getAllVersions)
 	if err != nil {
 		return err
 	}
 
-	defer rows.Close()
-
-	for rows.Next() {
+	numRows := rows.GetNumberOfRows()
+	for r := uint64(0); r < numRows; r++ {
 		var version string
-		if err := rows.Scan(&version); err != nil {
-			s.Logger.Error("failed to scan row", slog.String("error", err.Error()))
+
+		version, err := rows.GetStringValue(r, 0)
+		if err != nil {
 			return err
 		}
 
@@ -127,7 +129,7 @@ func getLastRunMigration(s *server.Server) (string, error) {
 		queryGetLastRun = fmt.Sprintf("SELECT version FROM %s ORDER BY version DESC LIMIT 1;", migTableName)
 	)
 
-	err := s.DB.QueryRow(queryGetLastRun).Scan(&lastRun)
+	lastRun, err := s.DB.SelectSingleString(queryGetLastRun)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			s.Logger.Info("no last run migrations found")
@@ -148,7 +150,7 @@ func performMigration(s *server.Server, val Migrator, key, method string) error 
 		downPostRun = fmt.Sprintf("DELETE FROM %s WHERE version = ?", migTableName)
 	)
 
-	tx, err := s.DB.Begin()
+	err := s.DB.BeginTransaction()
 	if err != nil {
 		s.Logger.Error("unable to start transaction", slog.String("error", err.Error()))
 		return err
@@ -156,35 +158,35 @@ func performMigration(s *server.Server, val Migrator, key, method string) error 
 
 	switch method {
 	case "UP":
-		if _, err := tx.Exec(upPreRun, key, time.Now(), method); err != nil {
+		if err := s.DB.Execute(fmt.Sprintf(upPreRun, key, time.Now(), method)); err != nil {
 			s.Logger.Error("Migration table insert error", slog.String("migration", key), slog.String("error", err.Error()))
 
-			return handleRollback(tx, err)
+			return handleRollback(s, err)
 		}
 
-		if err := val.Up(tx); err != nil {
+		if err := val.Up(s.DB); err != nil {
 			s.Logger.Error("Migration error", slog.String("migration", key), slog.String("error", err.Error()))
 
-			return handleRollback(tx, err)
+			return handleRollback(s, err)
 		}
 
-		if _, err := tx.Exec(upPostRun, time.Now(), key); err != nil {
+		if err := s.DB.Execute(fmt.Sprintf(upPostRun, time.Now(), key)); err != nil {
 			s.Logger.Error("Migration table insert error", slog.String("migration", key), slog.String("error", err.Error()))
 
-			return handleRollback(tx, err)
+			return handleRollback(s, err)
 		}
 
 	case "DOWN":
-		if err := val.Down(tx); err != nil {
+		if err := val.Down(s.DB); err != nil {
 			s.Logger.Error("Migration error", slog.String("migration", key), slog.String("error", err.Error()))
 
-			return handleRollback(tx, err)
+			return handleRollback(s, err)
 		}
 
-		if _, err := tx.Exec(downPostRun, key); err != nil {
+		if err := s.DB.Execute(fmt.Sprintf(downPostRun, key)); err != nil {
 			s.Logger.Error("Migration table insert error", slog.String("migration", key), slog.String("error", err.Error()))
 
-			return handleRollback(tx, err)
+			return handleRollback(s, err)
 		}
 
 	default:
@@ -192,7 +194,7 @@ func performMigration(s *server.Server, val Migrator, key, method string) error 
 		return models.ErrInvalid("migration method")
 	}
 
-	if err := tx.Commit(); err != nil {
+	if err := s.DB.EndTransaction(); err != nil {
 		s.Logger.Error("unable to commit transaction", slog.String("migration", key), slog.String("error", err.Error()))
 		return err
 	}
@@ -200,8 +202,8 @@ func performMigration(s *server.Server, val Migrator, key, method string) error 
 	return nil
 }
 
-func handleRollback(tx *sql.Tx, err error) error {
-	if rErr := tx.Rollback(); rErr != nil {
+func handleRollback(s *server.Server, err error) error {
+	if rErr := s.DB.RollBackTransaction(); rErr != nil {
 		return rErr
 	}
 
