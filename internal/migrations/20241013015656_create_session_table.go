@@ -1,6 +1,6 @@
 package migrations
 
-import "database/sql"
+import "github.com/sqlitecloud/sqlitecloud-go"
 
 const (
 	sessionDown = "DROP TABLE IF EXISTS sessions;"
@@ -13,10 +13,10 @@ const (
 
 type M20241013015656 string
 
-func (m M20241013015656) Up(db *sql.Tx) error {
+func (m M20241013015656) Up(db *sqlitecloud.SQCloud) error {
 	return run(db, sessionUp, m)
 }
 
-func (m M20241013015656) Down(db *sql.Tx) error {
+func (m M20241013015656) Down(db *sqlitecloud.SQCloud) error {
 	return run(db, sessionDown, m)
 }

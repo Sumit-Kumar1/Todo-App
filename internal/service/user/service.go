@@ -37,6 +37,7 @@ func (s *Service) Register(ctx context.Context, req *models.RegisterReq) (*model
 	existingUser, err := s.Store.GetUserByEmail(ctx, req.Email)
 	if err != nil {
 		if err.Error() != models.ErrNotFound("user").Error() {
+			s.Log.Error(err.Error(), slog.String("point", "error while fetching user by email"))
 			return nil, err
 		}
 	}
@@ -52,7 +53,7 @@ func (s *Service) Register(ctx context.Context, req *models.RegisterReq) (*model
 		ID:     sessionID,
 		UserID: userID,
 		Token:  uuid.NewString(),
-		Expiry: time.Now().Add(time.Minute * 15).UTC(),
+		Expiry: time.Now().Add(time.Minute * 15),
 	}
 
 	user := models.UserData{
@@ -100,15 +101,16 @@ func (s *Service) Login(ctx context.Context, req *models.LoginReq) (*models.User
 
 	session, err := s.Store.GetSessionByID(ctx, &user.ID)
 	if err != nil {
-		if models.ErrNotFound("user ID").Error() == err.Error() {
+		if models.ErrNotFound("user ID").Error() != err.Error() {
 			return nil, err
 		}
 
+		t := time.Now().Add(time.Minute * 15)
 		ss := models.UserSession{
 			ID:     uuid.New(),
 			UserID: user.ID,
 			Token:  uuid.NewString(),
-			Expiry: time.Now().Add(time.Minute * 15).UTC(),
+			Expiry: t,
 		}
 
 		if er := s.Store.CreateSession(ctx, &ss); er != nil {

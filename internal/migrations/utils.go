@@ -1,14 +1,14 @@
 package migrations
 
 import (
-	"context"
-	"database/sql"
 	"fmt"
 	"log/slog"
+
+	"github.com/sqlitecloud/sqlitecloud-go"
 )
 
-func run(db *sql.Tx, query string, m Migrator) error {
-	_, err := db.ExecContext(context.Background(), query)
+func run(db *sqlitecloud.SQCloud, query string, m Migrator) error {
+	err := db.Execute(query)
 	if err != nil {
 		return err
 	}

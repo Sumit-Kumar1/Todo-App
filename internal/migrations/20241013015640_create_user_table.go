@@ -1,7 +1,7 @@
 package migrations
 
 import (
-	"database/sql"
+	"github.com/sqlitecloud/sqlitecloud-go"
 )
 
 const (
@@ -15,10 +15,10 @@ const (
 
 type M20241013015640 string
 
-func (m M20241013015640) Up(db *sql.Tx) error {
+func (m M20241013015640) Up(db *sqlitecloud.SQCloud) error {
 	return run(db, userUp, m)
 }
 
-func (m M20241013015640) Down(db *sql.Tx) error {
+func (m M20241013015640) Down(db *sqlitecloud.SQCloud) error {
 	return run(db, userDown, m)
 }

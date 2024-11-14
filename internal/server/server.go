@@ -1,7 +1,6 @@
 package server
 
 import (
-	"database/sql"
 	"fmt"
 	"log"
 	"log/slog"
@@ -11,7 +10,7 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
-	_ "github.com/mattn/go-sqlite3"
+	"github.com/sqlitecloud/sqlitecloud-go"
 )
 
 type Configs struct {
@@ -25,7 +24,7 @@ type Health struct {
 }
 
 type Server struct {
-	DB     *sql.DB
+	DB     *sqlitecloud.SQCloud
 	Logger *slog.Logger
 	Health *Health
 	*http.Server
@@ -115,17 +114,6 @@ func loadEnvVars() []Opts {
 	return opts
 }
 
-func getEnvAsInt(key string, defaultValue int) int {
-	value := os.Getenv(key)
-	if value == "" {
-		return defaultValue
-	}
-	if intValue, err := strconv.Atoi(value); err == nil {
-		return intValue
-	}
-	return defaultValue
-}
-
 func defaultServer() *Server {
 	return &Server{
 		Server: &http.Server{
@@ -150,26 +138,45 @@ func newLogger() *slog.Logger {
 	return logger
 }
 
-func newDB(logger *slog.Logger) (*sql.DB, error) {
-	dbFile := os.Getenv("DB_FILE")
-
-	if dbFile == "" {
-		dbFile = "todo.db"
+func newDB(logger *slog.Logger) (*sqlitecloud.SQCloud, error) {
+	config := sqlitecloud.SQCloudConfig{
+		Host:     os.Getenv("DB_HOST"),
+		Port:     getEnvAsInt("DB_PORT", 8860),
+		Database: os.Getenv("DB_NAME"),
+		ApiKey:   os.Getenv("DB_APIKEY"),
+		MaxRows:  getEnvAsInt("DB_MAXROWS", 20),
 	}
 
-	db, err := sql.Open("sqlite3", dbFile)
+	isSecure, err := strconv.ParseBool(os.Getenv("DB_SECURE_FLAG"))
 	if err != nil {
+		return nil, err
+	}
+
+	config.Secure = isSecure
+
+	sqcl := sqlitecloud.New(config)
+
+	if err := sqcl.Connect(); err != nil {
 		logger.Error(err.Error())
 		return nil, err
 	}
 
-	if err := db.Ping(); err != nil {
-		logger.Error(err.Error(), "Database is not reacheable", "db.ping()")
-		return nil, err
+	if !sqcl.IsConnected() {
+		return nil, fmt.Errorf("not able to connect to database")
 	}
 
-	logger.Info("DB connected successfully",
-		slog.String("DB_INFO", fmt.Sprintf("OpenConnections:%+v", db.Stats())))
+	logger.Info("DB connected successfully")
 
-	return db, nil
+	return sqcl, nil
+}
+
+func getEnvAsInt(key string, defaultValue int) int {
+	value := os.Getenv(key)
+	if value == "" {
+		return defaultValue
+	}
+	if intValue, err := strconv.Atoi(value); err == nil {
+		return intValue
+	}
+	return defaultValue
 }
