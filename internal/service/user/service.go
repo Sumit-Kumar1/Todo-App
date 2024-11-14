@@ -37,6 +37,7 @@ func (s *Service) Register(ctx context.Context, req *models.RegisterReq) (*model
 	existingUser, err := s.Store.GetUserByEmail(ctx, req.Email)
 	if err != nil {
 		if err.Error() != models.ErrNotFound("user").Error() {
+			s.Log.Error(err.Error(), slog.String("point", "error while fetching user by email"))
 			return nil, err
 		}
 	}
@@ -100,7 +101,7 @@ func (s *Service) Login(ctx context.Context, req *models.LoginReq) (*models.User
 
 	session, err := s.Store.GetSessionByID(ctx, &user.ID)
 	if err != nil {
-		if models.ErrNotFound("user ID").Error() == err.Error() {
+		if models.ErrNotFound("user ID").Error() != err.Error() {
 			return nil, err
 		}
 

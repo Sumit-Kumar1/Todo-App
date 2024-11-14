@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"time"
 	"todoapp/internal/models"
 
 	"github.com/sqlitecloud/sqlitecloud-go"
@@ -13,14 +12,14 @@ import (
 )
 
 const (
-	createSession      = "INSERT INTO sessions (id, user_id, token, expiry) VALUES (%v, %v, %v,%v);"
-	deleteSessionByID  = "DELETE FROM sessions WHERE id=%v"
-	getUser            = "SELECT * FROM users WHERE email = %v;"
-	getSessionByUserID = "SELECT * FROM sessions WHERE user_id = %v;"
+	createSession      = "INSERT INTO sessions (id, user_id, token, expiry) VALUES ('%v', '%v', '%v',%v);"
+	deleteSessionByID  = "DELETE FROM sessions WHERE id='%v';"
+	getUser            = "SELECT user_id, name, email, password FROM users WHERE email='%s';"
+	getSessionByUserID = "SELECT id, user_id, token, expiry FROM sessions WHERE user_id='%v';"
 	//nolint:gosec //not any hardcoded credential
-	getSessionByToken = "SELECT id FROM sessions where token=%v"
-	registerQuery     = "INSERT INTO users(user_id, name, email, password) VALUES (%v,%v,%v,%v);"
-	updateSession     = "UPDATE sessions SET token = %v,  expiry = %v WHERE id = %v;"
+	getSessionByToken = "SELECT id FROM sessions where token='%v';"
+	registerQuery     = "INSERT INTO users(user_id, name, email, password) VALUES ('%v','%v','%v','%v');"
+	updateSession     = "UPDATE sessions SET token='%v',  expiry='%v' WHERE id='%v';"
 )
 
 type Store struct {
@@ -36,7 +35,8 @@ func New(db *sqlitecloud.SQCloud, logger *slog.Logger) *Store {
 }
 
 func (s *Store) RegisterUser(_ context.Context, data *models.UserData) error {
-	if err := s.DB.Execute(fmt.Sprintf(registerQuery, data.ID, data.Name, data.Email, data.Password)); err != nil {
+	query := fmt.Sprintf(registerQuery, data.ID, data.Name, data.Email, data.Password)
+	if err := s.DB.Execute(query); err != nil {
 		return err
 	}
 
@@ -44,7 +44,8 @@ func (s *Store) RegisterUser(_ context.Context, data *models.UserData) error {
 }
 
 func (s *Store) CreateSession(_ context.Context, session *models.UserSession) error {
-	if err := s.DB.Execute(fmt.Sprintf(createSession, session.ID, session.UserID, session.Token, session.Expiry)); err != nil {
+	query := fmt.Sprintf(createSession, session.ID, session.UserID, session.Token, session.Expiry.UnixMicro())
+	if err := s.DB.Execute(query); err != nil {
 		return err
 	}
 
@@ -60,7 +61,7 @@ func (s *Store) GetSessionByID(_ context.Context, userID *uuid.UUID) (*models.Us
 	}
 
 	if res.GetNumberOfRows() == uint64(0) {
-		return nil, models.ErrNotFound("user")
+		return nil, models.ErrNotFound("user ID")
 	}
 
 	for r := uint64(0); r < res.GetNumberOfRows(); r++ {
@@ -68,15 +69,18 @@ func (s *Store) GetSessionByID(_ context.Context, userID *uuid.UUID) (*models.Us
 		if err != nil {
 			return nil, err
 		}
+
 		c2, err := res.GetStringValue(r, 1)
 		if err != nil {
 			return nil, err
 		}
+
 		c3, err := res.GetStringValue(r, 2)
 		if err != nil {
 			return nil, err
 		}
-		c4, err := res.GetFloat64Value(r, 3)
+
+		c4, err := res.GetSQLDateTime(r, 3)
 		if err != nil {
 			return nil, err
 		}
@@ -84,14 +88,15 @@ func (s *Store) GetSessionByID(_ context.Context, userID *uuid.UUID) (*models.Us
 		session.ID = uuid.MustParse(c1)
 		session.UserID = uuid.MustParse(c2)
 		session.Token = c3
-		session.Expiry = time.Unix(int64(c4), 0)
+		session.Expiry = c4
 	}
 
 	return &session, nil
 }
 
 func (s *Store) RefreshSession(_ context.Context, newSession *models.UserSession) error {
-	if err := s.DB.Execute(fmt.Sprintf(updateSession, newSession.Token, newSession.Expiry, newSession.ID)); err != nil {
+	query := fmt.Sprintf(updateSession, newSession.Token, newSession.Expiry, newSession.ID)
+	if err := s.DB.Execute(query); err != nil {
 		return err
 	}
 

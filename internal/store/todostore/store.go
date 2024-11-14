@@ -13,12 +13,12 @@ import (
 )
 
 const (
-	deleteTask  = "DELETE FROM tasks WHERE task_id=%v AND user_id=%v"
-	getAll      = "SELECT task_id, user_id, task_title, done_status, added_at, modified_at from tasks WHERE user_id=%v"
-	getTask     = "SELECT task_title, done_status, added_at, modified_at FROM tasks WHERE task_id=%v AND user_id=%v"
-	insertQuery = "INSERT INTO tasks (task_id, user_id, task_title, done_status, added_at) VALUES (%v, %v, %v, %v, %v);"
-	setDone     = "UPDATE tasks SET done_status=%v WHERE task_id=%v AND user_id=%v"
-	updateQuery = "UPDATE tasks SET task_title=%v, done_status=%v, modified_at=%v WHERE task_id=%v AND user_id=%v;"
+	deleteTask  = "DELETE FROM tasks WHERE task_id='%v' AND user_id='%v'"
+	getAll      = "SELECT task_id, user_id, task_title, done_status, added_at, modified_at from tasks WHERE user_id='%v'"
+	getTask     = "SELECT task_title, done_status, added_at, modified_at FROM tasks WHERE task_id='%v' AND user_id='%v'"
+	insertQuery = "INSERT INTO tasks (task_id, user_id, task_title, done_status, added_at) VALUES ('%v', '%v', '%v', %v, '%v');"
+	setDone     = "UPDATE tasks SET done_status=%v WHERE task_id='%v' AND user_id='%v'"
+	updateQuery = "UPDATE tasks SET task_title='%v', done_status=%v, modified_at='%v' WHERE task_id='%v' AND user_id='%v';"
 )
 
 type Store struct {

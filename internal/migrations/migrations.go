@@ -157,7 +157,8 @@ func performMigration(s *server.Server, val Migrator, key, method string) error 
 
 	switch method {
 	case "UP":
-		query := fmt.Sprintf("INSERT INTO %s(version, start_time, method) VALUES (%v, %v, %v);", migTableName, key, time.Now(), method)
+		query := fmt.Sprintf("INSERT INTO %s (version, start_time, method) VALUES ('%s', %v,'%s');",
+			migTableName, key, time.Now().UnixMilli(), method)
 		if err := s.DB.Execute(query); err != nil {
 			s.Logger.Error("Migration table insert error", slog.String("migration", key), slog.String("error", err.Error()))
 
@@ -170,8 +171,8 @@ func performMigration(s *server.Server, val Migrator, key, method string) error 
 			return handleRollback(s, err)
 		}
 
-		if err := s.DB.Execute(fmt.Sprintf("UPDATE %s SET end_time=%v WHERE version=%v",
-			migTableName, time.Now(), key)); err != nil {
+		query = fmt.Sprintf("UPDATE %s SET end_time=%v WHERE version='%s';", migTableName, time.Now().UnixMilli(), key)
+		if err := s.DB.Execute(query); err != nil {
 			s.Logger.Error("Migration table insert error", slog.String("migration", key), slog.String("error", err.Error()))
 
 			return handleRollback(s, err)

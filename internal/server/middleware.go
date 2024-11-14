@@ -83,7 +83,7 @@ func AuthMiddleware(db *sqlitecloud.SQCloud) Middleware {
 				return
 			}
 
-			row, err := db.Select(fmt.Sprintf("SELECT user_id FROM sessions WHERE token=%s", cookie.Value))
+			row, err := db.Select(fmt.Sprintf("SELECT user_id FROM sessions WHERE token='%s';", cookie.Value))
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -98,6 +98,7 @@ func AuthMiddleware(db *sqlitecloud.SQCloud) Middleware {
 				userID, err := row.GetStringValue(r, 0)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
 				}
 
 				uid, err = uuid.Parse(userID)
