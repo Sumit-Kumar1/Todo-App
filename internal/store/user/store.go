@@ -4,15 +4,15 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 	"todoapp/internal/models"
 
-	"github.com/sqlitecloud/sqlitecloud-go"
-
 	"github.com/google/uuid"
+	"github.com/sqlitecloud/sqlitecloud-go"
 )
 
 const (
-	createSession      = "INSERT INTO sessions (id, user_id, token, expiry) VALUES ('%v', '%v', '%v',%v);"
+	createSession      = "INSERT INTO sessions (id, user_id, token, expiry) VALUES ('%v', '%v', '%v','%v');"
 	deleteSessionByID  = "DELETE FROM sessions WHERE id='%v';"
 	getUser            = "SELECT user_id, name, email, password FROM users WHERE email='%s';"
 	getSessionByUserID = "SELECT id, user_id, token, expiry FROM sessions WHERE user_id='%v';"
@@ -44,7 +44,7 @@ func (s *Store) RegisterUser(_ context.Context, data *models.UserData) error {
 }
 
 func (s *Store) CreateSession(_ context.Context, session *models.UserSession) error {
-	query := fmt.Sprintf(createSession, session.ID, session.UserID, session.Token, session.Expiry.UnixMicro())
+	query := fmt.Sprintf(createSession, session.ID, session.UserID, session.Token, session.Expiry.UnixMilli())
 	if err := s.DB.Execute(query); err != nil {
 		return err
 	}
@@ -80,7 +80,7 @@ func (s *Store) GetSessionByID(_ context.Context, userID *uuid.UUID) (*models.Us
 			return nil, err
 		}
 
-		c4, err := res.GetSQLDateTime(r, 3)
+		c4, err := res.GetInt64Value(r, 3)
 		if err != nil {
 			return nil, err
 		}
@@ -88,7 +88,8 @@ func (s *Store) GetSessionByID(_ context.Context, userID *uuid.UUID) (*models.Us
 		session.ID = uuid.MustParse(c1)
 		session.UserID = uuid.MustParse(c2)
 		session.Token = c3
-		session.Expiry = c4
+
+		session.Expiry = time.UnixMilli(c4)
 	}
 
 	return &session, nil
