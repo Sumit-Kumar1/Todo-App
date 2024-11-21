@@ -96,7 +96,7 @@ func (s *Store) GetSessionByID(_ context.Context, userID *uuid.UUID) (*models.Us
 }
 
 func (s *Store) RefreshSession(_ context.Context, newSession *models.UserSession) error {
-	query := fmt.Sprintf(updateSession, newSession.Token, newSession.Expiry, newSession.ID)
+	query := fmt.Sprintf(updateSession, newSession.Token, newSession.Expiry.UnixMilli(), newSession.ID)
 	if err := s.DB.Execute(query); err != nil {
 		return err
 	}
