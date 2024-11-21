@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"log/slog"
@@ -24,9 +25,10 @@ type Health struct {
 }
 
 type Server struct {
-	DB     *sqlitecloud.SQCloud
-	Logger *slog.Logger
-	Health *Health
+	DB          *sqlitecloud.SQCloud
+	Logger      *slog.Logger
+	ShutDownFxn func(context.Context) error
+	Health      *Health
 	*http.Server
 	*Configs
 }
@@ -118,14 +120,16 @@ func defaultServer() *Server {
 	return &Server{
 		Server: &http.Server{
 			Addr:         ":9001",
-			ReadTimeout:  3 * time.Minute,
-			WriteTimeout: 3 * time.Minute,
-			IdleTimeout:  5 * time.Minute,
+			ReadTimeout:  time.Second,
+			WriteTimeout: 10 * time.Second,
+			IdleTimeout:  20 * time.Second,
 		},
+
 		Configs: &Configs{
 			Name: "todoApp",
 			Env:  "dev",
 		},
+
 		Logger: newLogger(),
 	}
 }
@@ -175,8 +179,10 @@ func getEnvAsInt(key string, defaultValue int) int {
 	if value == "" {
 		return defaultValue
 	}
+
 	if intValue, err := strconv.Atoi(value); err == nil {
 		return intValue
 	}
+
 	return defaultValue
 }

@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
 
 	"todoapp/internal/migrations"
 	"todoapp/internal/server"
@@ -18,17 +20,42 @@ import (
 )
 
 func main() {
+	// handling SIGINT gracefully
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
 	app, err := server.ServerFromEnvs()
 	if err != nil {
 		slog.Error(err.Error())
 		return
 	}
 
+	newHTTPHandler(app)
+
 	if err = migrations.RunMigrations(app, getEnvOrDefault("MIGRATION_METHOD", "UP")); err != nil {
 		slog.Error(err.Error())
 		return
 	}
 
+	srvErr := make(chan error, 1)
+	go func() {
+		app.Logger.Info("application is running on", "Address", app.Addr)
+		srvErr <- app.ListenAndServe()
+	}()
+
+	select {
+	case err = <-srvErr:
+		app.Logger.Error(err.Error())
+		return
+	case <-ctx.Done():
+		stop()
+	}
+
+	err = app.Shutdown(context.Background())
+	app.Logger.Error(err.Error(), "point", "error from main.go")
+}
+
+func newHTTPHandler(app *server.Server) {
 	usrSt := userstore.New(app.DB, app.Logger)
 	userSvc := usersvc.New(usrSt, app.Logger)
 	usrHTTP := userhttp.New(userSvc, app.Logger)
@@ -62,7 +89,7 @@ func main() {
 		server.AuthMiddleware(app.DB)))
 
 	http.HandleFunc("/health", server.Chain(func(w http.ResponseWriter, r *http.Request) {
-		if err = app.DB.Ping(); err != nil {
+		if err := app.DB.Ping(); err != nil {
 			app.Health = &server.Health{
 				Status:   "Down",
 				DBStatus: "Down",
@@ -90,15 +117,6 @@ func main() {
 
 		_, _ = w.Write(data)
 	}, server.Method(http.MethodGet)))
-
-	app.Logger.Info("application is running on", "Address", app.Addr)
-
-	err = app.ListenAndServe()
-	if err != nil {
-		slog.Error("error while running server", "error", err)
-
-		return
-	}
 }
 
 func getEnvOrDefault(key, def string) string {
