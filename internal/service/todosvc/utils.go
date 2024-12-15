@@ -7,8 +7,12 @@ import (
 	"github.com/google/uuid"
 )
 
+const (
+	idPrefix = "task-"
+)
+
 func generateID() string {
-	return "css-" + uuid.New().String()
+	return idPrefix + uuid.New().String()
 }
 
 func validateTask(id, title string) error {
@@ -24,7 +28,7 @@ func validateTask(id, title string) error {
 }
 
 func validateID(id string) error {
-	splits := strings.Split(id, "css-")
+	splits := strings.Split(id, idPrefix)
 	if len(splits) != 2 {
 		return models.ErrInvalid("task id")
 	}
