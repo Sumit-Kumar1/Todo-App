@@ -1,7 +1,6 @@
 package userhttp
 
 import (
-	"context"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -16,14 +15,16 @@ const (
 
 type Handler struct {
 	Service UserServicer
-	Log     *slog.Logger
 }
 
-func New(usrSvc UserServicer, logger *slog.Logger) *Handler {
-	return &Handler{Service: usrSvc, Log: logger}
+func New(usrSvc UserServicer) *Handler {
+	return &Handler{Service: usrSvc}
 }
 
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	logger := models.GetLoggerFromCtx(r.Context())
+
 	var user models.RegisterReq
 
 	user.Name = r.FormValue("name")
@@ -32,20 +33,17 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		Password: r.FormValue("password"),
 	}
 
-	ctx := context.Background()
-	r.Clone(ctx)
-
 	defer ctx.Done()
 
 	resp, err := h.Service.Register(ctx, &user)
 	switch {
 	case err == nil:
 	case errors.Is(err, models.ErrUserAlreadyExists):
-		h.Log.Error(err.Error(), slog.String("error", "User already exist please login"))
+		logger.LogAttrs(ctx, slog.LevelError, "user already exists, login again", slog.String("user", user.Email))
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	default:
-		h.Log.Error("error while registering the user", slog.String("error", err.Error()))
+		logger.LogAttrs(ctx, slog.LevelError, err.Error(), slog.String("user", user.Email))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -59,27 +57,33 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.SetCookie(w, &cookie)
-	w.Header().Add("HX-Redirect", "/task")
 
+	w.Header().Add("HX-Redirect", "/task")
 	w.WriteHeader(http.StatusOK)
+	logger.LogAttrs(ctx, slog.LevelDebug, "user logged in sucessfully!", slog.String("user", user.Email))
 }
 
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
-	var user models.LoginReq
+	var (
+		user   models.LoginReq
+		ctx    = r.Context()
+		logger = models.GetLoggerFromCtx(ctx)
+	)
 
 	user.Email = r.FormValue("email")
 	user.Password = r.FormValue("password")
 
-	session, err := h.Service.Login(r.Context(), &user)
+	session, err := h.Service.Login(ctx, &user)
 	if err != nil {
 		if models.ErrNotFound("user").Error() == err.Error() {
-			h.Log.Error(err.Error())
+			logger.LogAttrs(ctx, slog.LevelError, "user not found - login", slog.String("user", user.Email))
 			http.Error(w, "user not found", http.StatusUnauthorized)
 			return
 		}
 
-		h.Log.Error("error while logging in the user", slog.String("error", err.Error()), slog.String("email", user.Email))
 		w.WriteHeader(http.StatusInternalServerError)
+		logger.LogAttrs(ctx, slog.LevelError, "error while logging in the user",
+			slog.String("error", err.Error()), slog.String("email", user.Email))
 		return
 	}
 
@@ -92,21 +96,25 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.SetCookie(w, &cookie)
+
 	w.Header().Add("HX-Redirect", "/task")
 	w.WriteHeader(http.StatusOK)
-	h.Log.Info("login success!!")
+	logger.LogAttrs(ctx, slog.LevelDebug, "login success", slog.String("user", user.Email))
 }
 
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	logger := models.GetLoggerFromCtx(ctx)
+
 	c, err := r.Cookie(token)
 	if err != nil {
-		h.Log.Error(err.Error(), "request", "logout")
+		logger.LogAttrs(ctx, slog.LevelError, err.Error(), slog.String("invalid session:", token))
 		http.Error(w, "user not logged in", http.StatusUnauthorized)
 		return
 	}
 
-	if err := h.Service.Logout(r.Context(), c.Value); err != nil {
-		h.Log.Error(err.Error(), "request", "logout")
+	if err := h.Service.Logout(ctx, c.Value); err != nil {
+		logger.LogAttrs(ctx, slog.LevelError, "error while logging out user", slog.String("error", err.Error()))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -124,5 +132,5 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("HX-Redirect", "/")
 	w.WriteHeader(http.StatusOK)
 
-	h.Log.Info("logout success!!")
+	logger.LogAttrs(ctx, slog.LevelDebug, "user logout success!", slog.String("token", c.Value))
 }

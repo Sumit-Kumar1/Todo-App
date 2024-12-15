@@ -12,14 +12,15 @@ import (
 
 type Service struct {
 	Store UserStorer
-	Log   *slog.Logger
 }
 
-func New(st UserStorer, logger *slog.Logger) *Service {
-	return &Service{Store: st, Log: logger}
+func New(st UserStorer) *Service {
+	return &Service{Store: st}
 }
 
 func (s *Service) Register(ctx context.Context, req *models.RegisterReq) (*models.UserSession, error) {
+	logger := models.GetLoggerFromCtx(ctx)
+
 	if req == nil {
 		return nil, nil
 	}
@@ -37,7 +38,8 @@ func (s *Service) Register(ctx context.Context, req *models.RegisterReq) (*model
 	existingUser, err := s.Store.GetUserByEmail(ctx, req.Email)
 	if err != nil {
 		if err.Error() != models.ErrNotFound("user").Error() {
-			s.Log.Error(err.Error(), slog.String("point", "error while fetching user by email"))
+			logger.LogAttrs(ctx, slog.LevelError, "user not found - Service.Register", slog.String("error", err.Error()),
+				slog.String("user", req.Email))
 			return nil, err
 		}
 	}
@@ -68,14 +70,15 @@ func (s *Service) Register(ctx context.Context, req *models.RegisterReq) (*model
 		return nil, err
 	}
 
-	s.Log.Info("user has been created successfully!!", slog.String("email", req.Email), slog.String("userID", userID.String()))
+	logger.LogAttrs(ctx, slog.LevelInfo, "user created successfully!!",
+		slog.String("email", req.Email), slog.String("userID", userID.String()))
 
 	err = s.Store.CreateSession(ctx, &session)
 	if err != nil {
 		return nil, err
 	}
 
-	s.Log.Info("session has been created successfully!!", slog.String("userID", userID.String()))
+	logger.LogAttrs(ctx, slog.LevelInfo, "session created successfully!!", slog.String("userID", userID.String()))
 
 	return &session, nil
 }

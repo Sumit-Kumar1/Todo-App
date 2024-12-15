@@ -23,19 +23,18 @@ const (
 )
 
 type Store struct {
-	DB  *sqlitecloud.SQCloud
-	Log *slog.Logger
+	DB *sqlitecloud.SQCloud
 }
 
-func New(db *sqlitecloud.SQCloud, logger *slog.Logger) *Store {
-	return &Store{
-		DB:  db,
-		Log: logger,
-	}
+func New(db *sqlitecloud.SQCloud) *Store {
+	return &Store{DB: db}
 }
 
-func (s *Store) GetAll(_ context.Context, userID *uuid.UUID) ([]models.Task, error) {
-	var res = make([]models.Task, 0)
+func (s *Store) GetAll(ctx context.Context, userID *uuid.UUID) ([]models.Task, error) {
+	var (
+		res    = make([]models.Task, 0)
+		logger = models.GetLoggerFromCtx(ctx)
+	)
 
 	rows, err := s.DB.Select(fmt.Sprintf(getAll, *userID))
 	if err != nil {
@@ -90,40 +89,53 @@ func (s *Store) GetAll(_ context.Context, userID *uuid.UUID) ([]models.Task, err
 		res = append(res, task)
 	}
 
-	s.Log.Info("Get all the tasks", "user", userID)
+	logger.LogAttrs(ctx, slog.LevelDebug, "get all tasks", slog.String("user", userID.String()))
 
 	return res, nil
 }
 
-func (s *Store) Create(_ context.Context, task *models.Task) error {
+func (s *Store) Create(ctx context.Context, task *models.Task) error {
+	logger := models.GetLoggerFromCtx(ctx)
+
 	query := fmt.Sprintf(insertQuery, task.ID, task.UserID, task.Title, task.IsDone, task.AddedAt.UnixMilli())
 	if err := s.DB.Execute(query); err != nil {
 		return err
 	}
 
+	logger.LogAttrs(ctx, slog.LevelDebug, "task inserted successfully", slog.String("task", task.ID))
+
 	return nil
 }
 
-func (s *Store) Update(_ context.Context, task *models.Task) error {
+func (s *Store) Update(ctx context.Context, task *models.Task) error {
+	logger := models.GetLoggerFromCtx(ctx)
+
 	query := fmt.Sprintf(updateQuery, task.Title, task.IsDone, task.ModifiedAt.UnixMilli(), task.ID, task.UserID)
 	if err := s.DB.Execute(query); err != nil {
 		return err
 	}
 
+	logger.LogAttrs(ctx, slog.LevelDebug, "task updated successfully", slog.String("task", task.ID))
+
 	return nil
 }
 
-func (s *Store) Delete(_ context.Context, id string, userID *uuid.UUID) error {
+func (s *Store) Delete(ctx context.Context, id string, userID *uuid.UUID) error {
+	logger := models.GetLoggerFromCtx(ctx)
+
 	if err := s.DB.Execute(fmt.Sprintf(deleteTask, id, *userID)); err != nil {
 		return err
 	}
 
+	logger.LogAttrs(ctx, slog.LevelDebug, "task deleted successfully", slog.String("task", id))
+
 	return nil
 }
 
-func (s *Store) MarkDone(_ context.Context, id string, userID *uuid.UUID) (*models.Task, error) {
+func (s *Store) MarkDone(ctx context.Context, id string, userID *uuid.UUID) (*models.Task, error) {
 	var (
-		task = models.Task{ID: id}
+		task   = models.Task{ID: id}
+		logger = models.GetLoggerFromCtx(ctx)
 	)
 
 	if err := s.DB.Execute(fmt.Sprintf(setDone, true, time.Now().UnixMilli(), id, *userID)); err != nil {
@@ -170,7 +182,8 @@ func (s *Store) MarkDone(_ context.Context, id string, userID *uuid.UUID) (*mode
 		task.ModifiedAt = &t
 	}
 
-	s.Log.Info("task done", "taskID", id, "user", userID)
+	logger.LogAttrs(ctx, slog.LevelDebug, "task marked done",
+		slog.String("task", id), slog.String("user", userID.String()))
 
 	return &task, nil
 }

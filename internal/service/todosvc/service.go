@@ -12,17 +12,19 @@ import (
 
 type Service struct {
 	Store TodoStorer
-	Log   *slog.Logger
 }
 
-func New(st TodoStorer, logger *slog.Logger) *Service {
-	return &Service{Store: st, Log: logger}
+func New(st TodoStorer) *Service {
+	return &Service{Store: st}
 }
 
 func (s *Service) GetAll(ctx context.Context, userID *uuid.UUID) ([]models.Task, error) {
+	logger := models.GetLoggerFromCtx(ctx)
+
 	tasks, err := s.Store.GetAll(ctx, userID)
 	if err != nil {
-		s.Log.Error("error in getAll", "error", err.Error())
+		logger.LogAttrs(ctx, slog.LevelError, "error while fetcing all tasks",
+			slog.String("error", err.Error()), slog.String("user", userID.String()))
 
 		return nil, err
 	}
@@ -31,6 +33,7 @@ func (s *Service) GetAll(ctx context.Context, userID *uuid.UUID) ([]models.Task,
 }
 
 func (s *Service) AddTask(ctx context.Context, title string, userID *uuid.UUID) (*models.Task, error) {
+	logger := models.GetLoggerFromCtx(ctx)
 	title = strings.TrimSpace(title)
 
 	if title == "" {
@@ -47,7 +50,8 @@ func (s *Service) AddTask(ctx context.Context, title string, userID *uuid.UUID) 
 
 	err := s.Store.Create(ctx, &task)
 	if err != nil {
-		s.Log.Error("error in add task", "error", err.Error())
+		logger.LogAttrs(ctx, slog.LevelError, "error while creating task - store.Create", slog.String("error", err.Error()),
+			slog.String("task", task.ID))
 		return nil, err
 	}
 
@@ -55,13 +59,16 @@ func (s *Service) AddTask(ctx context.Context, title string, userID *uuid.UUID) 
 }
 
 func (s *Service) DeleteTask(ctx context.Context, id string, userID *uuid.UUID) error {
+	logger := models.GetLoggerFromCtx(ctx)
+
 	if err := validateID(id); err != nil {
-		s.Log.Debug("", "error", err.Error(), "ID", id)
 		return models.ErrInvalid("task id")
 	}
 
 	if err := s.Store.Delete(ctx, id, userID); err != nil {
-		s.Log.Error("error in delete task", "error", err.Error())
+		logger.LogAttrs(ctx, slog.LevelError, "error while deleting task", slog.String("error", err.Error()),
+			slog.String("task", id))
+
 		return err
 	}
 
@@ -69,14 +76,16 @@ func (s *Service) DeleteTask(ctx context.Context, id string, userID *uuid.UUID) 
 }
 
 func (s *Service) MarkDone(ctx context.Context, id string, userID *uuid.UUID) (*models.Task, error) {
+	logger := models.GetLoggerFromCtx(ctx)
+
 	if err := validateID(id); err != nil {
-		s.Log.ErrorContext(ctx, err.Error(), "task id", id)
 		return nil, err
 	}
 
 	task, err := s.Store.MarkDone(ctx, id, userID)
 	if err != nil {
-		s.Log.Error("error in mark-done", "error", err.Error())
+		logger.LogAttrs(ctx, slog.LevelError, "error while marking task done", slog.String("error", err.Error()),
+			slog.String("task", id))
 
 		return nil, err
 	}
@@ -85,10 +94,11 @@ func (s *Service) MarkDone(ctx context.Context, id string, userID *uuid.UUID) (*
 }
 
 func (s *Service) UpdateTask(ctx context.Context, id, title string, isDone bool, userID *uuid.UUID) (*models.Task, error) {
+	logger := models.GetLoggerFromCtx(ctx)
+
 	title = strings.TrimSpace(title) // trimmed the space around the task title
 
 	if err := validateTask(id, title); err != nil {
-		s.Log.ErrorContext(ctx, err.Error(), "ID", id)
 		return nil, err
 	}
 
@@ -104,12 +114,11 @@ func (s *Service) UpdateTask(ctx context.Context, id, title string, isDone bool,
 
 	err := s.Store.Update(ctx, &task)
 	if err != nil {
-		s.Log.Error("error in updating task", "error", err.Error())
+		logger.LogAttrs(ctx, slog.LevelError, "error while updating task", slog.String("error", err.Error()),
+			slog.String("task", id))
 
 		return nil, err
 	}
-
-	s.Log.Info("\nUpdated task", "task: %+v", task)
 
 	return &task, nil
 }

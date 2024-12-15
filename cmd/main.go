@@ -9,6 +9,7 @@ import (
 	"os/signal"
 
 	"todoapp/internal/migrations"
+	"todoapp/internal/models"
 	"todoapp/internal/server"
 	"todoapp/internal/service/todosvc"
 	"todoapp/internal/store/todostore"
@@ -30,39 +31,42 @@ func main() {
 		return
 	}
 
-	newHTTPHandler(app)
+	// add logger into context
+	ctx = context.WithValue(ctx, models.Logger, app.Logger)
+
+	newHTTPHandler(ctx, app)
 
 	if err = migrations.RunMigrations(app, getEnvOrDefault("MIGRATION_METHOD", "UP")); err != nil {
-		slog.Error(err.Error())
+		app.Logger.LogAttrs(ctx, slog.LevelError, err.Error())
 		return
 	}
 
 	srvErr := make(chan error, 1)
 	go func() {
-		app.Logger.Info("application is running on", "Address", app.Addr)
+		app.Logger.LogAttrs(ctx, slog.LevelInfo, "application is running on", slog.String("Address", app.Addr))
 		srvErr <- app.ListenAndServe()
 	}()
 
 	select {
 	case err = <-srvErr:
-		app.Logger.Error(err.Error())
+		app.Logger.LogAttrs(ctx, slog.LevelError, err.Error())
 		return
 	case <-ctx.Done():
 		stop()
 	}
 
 	err = app.Shutdown(context.Background())
-	app.Logger.Error(err.Error(), "point", "error from main.go")
+	app.Logger.LogAttrs(ctx, slog.LevelError, "error while shutting down application", slog.String("error", err.Error()))
 }
 
-func newHTTPHandler(app *server.Server) {
-	usrSt := userstore.New(app.DB, app.Logger)
-	userSvc := usersvc.New(usrSt, app.Logger)
-	usrHTTP := userhttp.New(userSvc, app.Logger)
+func newHTTPHandler(ctx context.Context, app *server.Server) {
+	usrStore := userstore.New(app.DB)
+	userSvc := usersvc.New(usrStore)
+	usrHTTP := userhttp.New(userSvc)
 
-	todoStore := todostore.New(app.DB, app.Logger)
-	todoSvc := todosvc.New(todoStore, app.Logger)
-	todoHTTP := todohttp.New(todoSvc, app.Logger)
+	todoStore := todostore.New(app.DB)
+	todoSvc := todosvc.New(todoStore)
+	todoHTTP := todohttp.New(todoSvc)
 
 	public := http.FileServer(http.Dir("public"))
 	openapi := http.FileServer(http.Dir("openapi"))
@@ -72,7 +76,7 @@ func newHTTPHandler(app *server.Server) {
 
 	http.HandleFunc("/", server.Chain(todoHTTP.Root, server.Method(http.MethodGet)))
 	http.Handle("/api", http.StripPrefix("/api", server.Chain(todoHTTP.Swagger, server.Method(http.MethodGet))))
-	http.HandleFunc("/task", server.Chain(todoHTTP.TaskPage, server.Method(http.MethodGet), server.AuthMiddleware(app.DB)))
+	http.HandleFunc("/task", server.Chain(todoHTTP.TaskPage, server.Method(http.MethodGet), server.AuthMiddleware(ctx, app.DB)))
 
 	// User API
 	http.HandleFunc("/register", server.Chain(usrHTTP.Register, server.Method(http.MethodPost)))
@@ -80,13 +84,13 @@ func newHTTPHandler(app *server.Server) {
 	http.HandleFunc("/logout", server.Chain(usrHTTP.Logout, server.Method(http.MethodPost)))
 
 	// tasks API
-	http.HandleFunc("/tasks", server.Chain(todoHTTP.HandleTasks, server.IsHTMX(), server.AuthMiddleware(app.DB)))
+	http.HandleFunc("/tasks", server.Chain(todoHTTP.HandleTasks, server.IsHTMX(), server.AuthMiddleware(ctx, app.DB)))
 	http.HandleFunc("/tasks/{id}", server.Chain(todoHTTP.Update, server.IsHTMX(), server.Method(http.MethodPut),
-		server.AuthMiddleware(app.DB)))
-	http.HandleFunc("/tasks/{id}/delete", server.Chain(todoHTTP.DeleteTask, server.IsHTMX(), server.AuthMiddleware(app.DB),
+		server.AuthMiddleware(ctx, app.DB)))
+	http.HandleFunc("/tasks/{id}/delete", server.Chain(todoHTTP.DeleteTask, server.IsHTMX(), server.AuthMiddleware(ctx, app.DB),
 		server.Method(http.MethodDelete)))
 	http.HandleFunc("/tasks/{id}/done", server.Chain(todoHTTP.Done, server.IsHTMX(), server.Method(http.MethodPut),
-		server.AuthMiddleware(app.DB)))
+		server.AuthMiddleware(ctx, app.DB)))
 
 	http.HandleFunc("/health", server.Chain(func(w http.ResponseWriter, r *http.Request) {
 		if err := app.DB.Ping(); err != nil {
@@ -102,6 +106,7 @@ func newHTTPHandler(app *server.Server) {
 			}
 
 			_, _ = w.Write(data)
+			return
 		}
 
 		app.Health = &server.Health{

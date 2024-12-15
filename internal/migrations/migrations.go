@@ -50,7 +50,7 @@ func RunMigrations(s *server.Server, method string) error {
 		return err
 	}
 
-	s.Logger.Info(fmt.Sprintf("Completed the migration in time: %v seconds", time.Since(t).Seconds()))
+	s.Logger.Info("Database migrations successful", slog.Float64("time taken(sec)", time.Since(t).Seconds()))
 
 	return nil
 }

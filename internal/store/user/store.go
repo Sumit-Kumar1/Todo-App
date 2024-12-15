@@ -23,44 +23,52 @@ const (
 )
 
 type Store struct {
-	DB  *sqlitecloud.SQCloud
-	Log *slog.Logger
+	DB *sqlitecloud.SQCloud
 }
 
-func New(db *sqlitecloud.SQCloud, logger *slog.Logger) *Store {
+func New(db *sqlitecloud.SQCloud) *Store {
 	return &Store{
-		DB:  db,
-		Log: logger,
+		DB: db,
 	}
 }
 
-func (s *Store) RegisterUser(_ context.Context, data *models.UserData) error {
+func (s *Store) RegisterUser(ctx context.Context, data *models.UserData) error {
+	logger := models.GetLoggerFromCtx(ctx)
+
 	query := fmt.Sprintf(registerQuery, data.ID, data.Name, data.Email, data.Password)
 	if err := s.DB.Execute(query); err != nil {
+		logger.LogAttrs(ctx, slog.LevelError, "error while running Register query", slog.String("error", err.Error()))
 		return err
 	}
 
 	return nil
 }
 
-func (s *Store) CreateSession(_ context.Context, session *models.UserSession) error {
+func (s *Store) CreateSession(ctx context.Context, session *models.UserSession) error {
+	logger := models.GetLoggerFromCtx(ctx)
+
 	query := fmt.Sprintf(createSession, session.ID, session.UserID, session.Token, session.Expiry.UnixMilli())
 	if err := s.DB.Execute(query); err != nil {
+		logger.LogAttrs(ctx, slog.LevelError, "error while running session create query", slog.String("error", err.Error()))
 		return err
 	}
 
 	return nil
 }
 
-func (s *Store) GetSessionByID(_ context.Context, userID *uuid.UUID) (*models.UserSession, error) {
+func (s *Store) GetSessionByID(ctx context.Context, userID *uuid.UUID) (*models.UserSession, error) {
+	logger := models.GetLoggerFromCtx(ctx)
+
 	var session models.UserSession
 
 	res, err := s.DB.Select(fmt.Sprintf(getSessionByUserID, *userID))
 	if err != nil {
+		logger.LogAttrs(ctx, slog.LevelError, "error while fetching session by userID", slog.String("error", err.Error()))
 		return nil, err
 	}
 
 	if res.GetNumberOfRows() == uint64(0) {
+		logger.LogAttrs(ctx, slog.LevelError, "no user session found")
 		return nil, models.ErrNotFound("user ID")
 	}
 
@@ -95,22 +103,26 @@ func (s *Store) GetSessionByID(_ context.Context, userID *uuid.UUID) (*models.Us
 	return &session, nil
 }
 
-func (s *Store) RefreshSession(_ context.Context, newSession *models.UserSession) error {
+func (s *Store) RefreshSession(ctx context.Context, newSession *models.UserSession) error {
+	logger := models.GetLoggerFromCtx(ctx)
+
 	query := fmt.Sprintf(updateSession, newSession.Token, newSession.Expiry.UnixMilli(), newSession.ID)
 	if err := s.DB.Execute(query); err != nil {
+		logger.LogAttrs(ctx, slog.LevelError, "error in refreshing session", slog.String("error", err.Error()))
 		return err
 	}
-
-	s.Log.Info("session is refreshed", "user", newSession.UserID)
 
 	return nil
 }
 
-func (s *Store) GetUserByEmail(_ context.Context, email string) (*models.UserData, error) {
+func (s *Store) GetUserByEmail(ctx context.Context, email string) (*models.UserData, error) {
+	logger := models.GetLoggerFromCtx(ctx)
+
 	var user models.UserData
 
 	res, err := s.DB.Select(fmt.Sprintf(getUser, email))
 	if err != nil {
+		logger.LogAttrs(ctx, slog.LevelError, "error in fetching user by email", slog.String("error", err.Error()))
 		return nil, err
 	}
 
@@ -146,11 +158,14 @@ func (s *Store) GetUserByEmail(_ context.Context, email string) (*models.UserDat
 	return &user, nil
 }
 
-func (s *Store) Logout(_ context.Context, token *uuid.UUID) error {
+func (s *Store) Logout(ctx context.Context, token *uuid.UUID) error {
+	logger := models.GetLoggerFromCtx(ctx)
+
 	var id uuid.UUID
 
 	res, err := s.DB.Select(fmt.Sprintf(getSessionByToken, *token))
 	if err != nil {
+		logger.LogAttrs(ctx, slog.LevelError, "error while logging out user", slog.String("error", err.Error()))
 		return err
 	}
 
