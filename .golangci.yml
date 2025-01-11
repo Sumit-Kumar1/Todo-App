@@ -78,11 +78,15 @@ linters-settings:
 linters:
   disable-all: true
   enable:
+    - asciicheck
+    - bidichk
     - bodyclose
+    - cyclop
     - copyloopvar
     - depguard
     - dogsled
     - dupl
+    - err113
     - errcheck
     - errorlint
     - funlen
