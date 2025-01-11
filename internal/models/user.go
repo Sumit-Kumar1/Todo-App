@@ -1,12 +1,15 @@
 package models
 
 import (
-	"errors"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+)
+
+const (
+	emailReg = `^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,4}$`
 )
 
 type UserData struct {
@@ -36,23 +39,22 @@ type UserSession struct {
 func (l *LoginReq) Validate() error {
 	email := strings.ToLower(strings.TrimSpace(l.Email))
 	passwd := strings.TrimSpace(l.Password)
-
-	emailRegex := regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,4}$`)
+	emailRegex := regexp.MustCompile(emailReg)
 
 	if email == "" {
-		return errors.New("email is required")
+		return ErrRequired("email")
 	}
 
 	if !emailRegex.MatchString(email) {
-		return errors.New("invalid email")
+		return ErrInvalid("email")
 	}
 
 	if passwd == "" {
-		return errors.New("password is required")
+		return ErrRequired("password")
 	}
 
 	if len(passwd) < 8 {
-		return errors.New("password is too short")
+		return ErrInvalid("password is too short")
 	}
 
 	return nil
@@ -61,11 +63,11 @@ func (l *LoginReq) Validate() error {
 func (r *RegisterReq) Validate() error {
 	name := strings.TrimSpace(r.Name)
 	if name == "" {
-		return errors.New("name is required")
+		return ErrRequired("name")
 	}
 
 	if len(name) < 3 {
-		return errors.New("name is too short")
+		return ErrInvalid("name is too short")
 	}
 
 	return r.LoginReq.Validate()
