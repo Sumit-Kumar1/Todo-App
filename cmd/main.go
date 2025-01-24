@@ -32,7 +32,7 @@ func main() {
 
 	newHTTPHandler(app)
 
-	if err = migrations.RunMigrations(app, getEnvOrDefault("MIGRATION_METHOD", "UP")); err != nil {
+	if err = migrations.RunMigrations(ctx, app, getEnvOrDefault("MIGRATION_METHOD", "UP")); err != nil {
 		slog.Error(err.Error())
 		return
 	}
@@ -88,7 +88,7 @@ func newHTTPHandler(app *server.Server) {
 	http.HandleFunc("/tasks/{id}/done", server.Chain(todoHTTP.Done, server.IsHTMX(), server.Method(http.MethodPut),
 		server.AuthMiddleware(app.DB)))
 
-	http.HandleFunc("/health", server.Chain(func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/health", server.Chain(func(w http.ResponseWriter, _ *http.Request) {
 		if err := app.DB.Ping(); err != nil {
 			app.Health = &server.Health{
 				Status:   "Down",
