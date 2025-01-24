@@ -6,14 +6,15 @@ import (
 )
 
 const (
-	notFoundFormat = "%s not found"
-	invalidFormat  = "invalid %s"
+	notFoundFormat = "Not Found: %s"
+	invalidFormat  = "Invalid attribute: %s"
+	missingFormat  = "Missing attribute: %s"
 )
 
 var (
-	ErrPermissionDenied  = constError("permission denied")
-	ErrUserAlreadyExists = constError("user already exists")
-	ErrPsswdNotMatch     = constError("password does not match")
+	ErrPermissionDenied  = constError("Permission denied")
+	ErrUserAlreadyExists = constError("User already exists")
+	ErrPsswdNotMatch     = constError("Password does not match")
 )
 
 type constError string
@@ -43,4 +44,8 @@ func ErrNotFound(entity string) error {
 
 func ErrInvalid(entity string) error {
 	return NewConstError(fmt.Sprintf(invalidFormat, entity))
+}
+
+func ErrRequired(entity string) error {
+	return NewConstError(fmt.Sprintf(missingFormat, entity))
 }
