@@ -2,12 +2,15 @@ package main
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"time"
 
+	"todoapp/internal/handler"
 	"todoapp/internal/migrations"
 	"todoapp/internal/models"
 	"todoapp/internal/server"
@@ -34,94 +37,86 @@ func main() {
 	// add logger into context
 	ctx = context.WithValue(ctx, models.Logger, app.Logger)
 
-	newHTTPHandler(ctx, app)
+	setupRoutes(ctx, app)
 
-	if err = migrations.RunMigrations(app, getEnvOrDefault("MIGRATION_METHOD", "UP")); err != nil {
+	if err = migrations.RunMigrations(ctx, app, getEnvOrDefault("MIGRATION_METHOD", "UP")); err != nil {
 		slog.Error(err.Error())
 		return
 	}
 
 	srvErr := make(chan error, 1)
+
+	httpServer := &http.Server{
+		Addr:         net.JoinHostPort(app.Configs.Host, app.Configs.Port),
+		Handler:      app.Mux,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 5 * time.Second,
+		IdleTimeout:  10 * time.Second,
+	}
+
 	go func() {
-		app.Logger.LogAttrs(ctx, slog.LevelInfo, "application is running on", slog.String("Address", app.Addr))
-		srvErr <- app.ListenAndServe()
+		app.Logger.LogAttrs(ctx, slog.LevelInfo, "Server started", slog.String("Address", httpServer.Addr))
+		srvErr <- httpServer.ListenAndServe()
 	}()
 
 	select {
 	case err = <-srvErr:
-		app.Logger.LogAttrs(ctx, slog.LevelError, err.Error())
+		if !errors.Is(err, http.ErrServerClosed) {
+			app.Logger.LogAttrs(ctx, slog.LevelError, "error listening and serving", slog.String("error", err.Error()))
+		}
+
 		return
 	case <-ctx.Done():
 		stop()
 	}
 
-	err = app.Shutdown(context.Background())
-	app.Logger.LogAttrs(ctx, slog.LevelError, "error while shutting down application", slog.String("error", err.Error()))
+	err = httpServer.Shutdown(context.Background())
+	app.Logger.LogAttrs(ctx, slog.LevelError, "error while shutting down the server", slog.String("error", err.Error()))
 }
 
-func newHTTPHandler(ctx context.Context, app *server.Server) {
-	usrStore := userstore.New(app.DB)
-	userSvc := usersvc.New(usrStore)
-	usrHTTP := userhttp.New(userSvc)
+func setupRoutes(ctx context.Context, app *server.Server) {
+	setupPublicRoutes(app)
+	setupUserRoutes(app)
+	setupTasksRoutes(ctx, app)
+}
 
+func setupTasksRoutes(ctx context.Context, app *server.Server) {
 	todoStore := todostore.New(app.DB)
 	todoSvc := todosvc.New(todoStore)
 	todoHTTP := todohttp.New(todoSvc)
 
+	// tasks API
+	app.Mux.HandleFunc("/task", server.Chain(todoHTTP.TaskPage, server.Method(http.MethodGet), server.AuthMiddleware(ctx, app.DB)))
+	app.Mux.HandleFunc("/tasks", server.Chain(todoHTTP.HandleTasks, server.IsHTMX(), server.AuthMiddleware(ctx, app.DB)))
+	app.Mux.HandleFunc("/tasks/{id}", server.Chain(todoHTTP.Update, server.IsHTMX(), server.Method(http.MethodPut),
+		server.AuthMiddleware(ctx, app.DB)))
+	app.Mux.HandleFunc("/tasks/{id}/delete", server.Chain(todoHTTP.DeleteTask, server.IsHTMX(), server.AuthMiddleware(ctx, app.DB),
+		server.Method(http.MethodDelete)))
+	app.Mux.HandleFunc("/tasks/{id}/done", server.Chain(todoHTTP.Done, server.IsHTMX(), server.Method(http.MethodPut),
+		server.AuthMiddleware(context.Background(), app.DB)))
+}
+
+func setupUserRoutes(app *server.Server) {
+	usrSt := userstore.New(app.DB)
+	userSvc := usersvc.New(usrSt)
+	usrHTTP := userhttp.New(userSvc)
+
+	// User API
+	app.Mux.HandleFunc("/register", server.Chain(usrHTTP.Register, server.Method(http.MethodPost)))
+	app.Mux.HandleFunc("/login", server.Chain(usrHTTP.Login, server.Method(http.MethodPost)))
+	app.Mux.HandleFunc("/logout", server.Chain(usrHTTP.Logout, server.Method(http.MethodPost)))
+}
+
+func setupPublicRoutes(app *server.Server) {
+	h := handler.New()
+
 	public := http.FileServer(http.Dir("public"))
 	openapi := http.FileServer(http.Dir("openapi"))
 
-	http.Handle("/public/", http.StripPrefix("/public/", public))
-	http.Handle("/openapi/", http.StripPrefix("/openapi/", openapi))
-
-	http.HandleFunc("/", server.Chain(todoHTTP.Root, server.Method(http.MethodGet)))
-	http.Handle("/api", http.StripPrefix("/api", server.Chain(todoHTTP.Swagger, server.Method(http.MethodGet))))
-	http.HandleFunc("/task", server.Chain(todoHTTP.TaskPage, server.Method(http.MethodGet), server.AuthMiddleware(ctx, app.DB)))
-
-	// User API
-	http.HandleFunc("/register", server.Chain(usrHTTP.Register, server.Method(http.MethodPost)))
-	http.HandleFunc("/login", server.Chain(usrHTTP.Login, server.Method(http.MethodPost)))
-	http.HandleFunc("/logout", server.Chain(usrHTTP.Logout, server.Method(http.MethodPost)))
-
-	// tasks API
-	http.HandleFunc("/tasks", server.Chain(todoHTTP.HandleTasks, server.IsHTMX(), server.AuthMiddleware(ctx, app.DB)))
-	http.HandleFunc("/tasks/{id}", server.Chain(todoHTTP.Update, server.IsHTMX(), server.Method(http.MethodPut),
-		server.AuthMiddleware(ctx, app.DB)))
-	http.HandleFunc("/tasks/{id}/delete", server.Chain(todoHTTP.DeleteTask, server.IsHTMX(), server.AuthMiddleware(ctx, app.DB),
-		server.Method(http.MethodDelete)))
-	http.HandleFunc("/tasks/{id}/done", server.Chain(todoHTTP.Done, server.IsHTMX(), server.Method(http.MethodPut),
-		server.AuthMiddleware(ctx, app.DB)))
-
-	http.HandleFunc("/health", server.Chain(func(w http.ResponseWriter, _ *http.Request) {
-		if err := app.DB.Ping(); err != nil {
-			app.Health = &server.Health{
-				Status:   "Down",
-				DBStatus: "Down",
-			}
-
-			data, mErr := json.Marshal(app.Health)
-			if mErr != nil {
-				http.Error(w, "not able to marshal the health status", http.StatusInternalServerError)
-				return
-			}
-
-			_, _ = w.Write(data)
-			return
-		}
-
-		app.Health = &server.Health{
-			Status:   "Up",
-			DBStatus: "Up",
-		}
-
-		data, mErr := json.Marshal(app.Health)
-		if mErr != nil {
-			http.Error(w, "not able to marshal the health status", http.StatusInternalServerError)
-			return
-		}
-
-		_, _ = w.Write(data)
-	}, server.Method(http.MethodGet)))
+	app.Mux.HandleFunc("/", server.Chain(h.Root, server.Method(http.MethodGet)))
+	app.Mux.Handle("/public/", http.StripPrefix("/public/", public))
+	app.Mux.Handle("/openapi/", http.StripPrefix("/openapi/", openapi))
+	app.Mux.Handle("/api", http.StripPrefix("/api", server.Chain(h.Swagger, server.Method(http.MethodGet))))
 }
 
 func getEnvOrDefault(key, def string) string {

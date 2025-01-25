@@ -2,13 +2,11 @@ package server
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
-	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/sqlitecloud/sqlitecloud-go"
@@ -75,20 +73,6 @@ func ServerFromEnvs() (*Server, error) {
 	return NewServer(opts...)
 }
 
-func defaultServer() *Server {
-	mux := http.NewServeMux()
-
-	return &Server{
-		Mux: mux,
-		Configs: &Configs{
-			Name: "todoApp",
-			Env:  "dev",
-			Host: "localhost",
-			Port: "9000",
-		},
-	}
-}
-
 func loadEnvVars() []Opts {
 	var opts []Opts
 
@@ -102,70 +86,19 @@ func loadEnvVars() []Opts {
 		opts = append(opts, WithEnv(env))
 	}
 
-	readTimeout := getEnvAsInt("READ_TIMEOUT", 180)   // Default to 3 minutes
-	writeTimeout := getEnvAsInt("WRITE_TIMEOUT", 180) // Default to 3 minutes
-	idleTimeout := getEnvAsInt("IDLE_TIMEOUT", 300)   // Default to 5 minutes
-
-	opts = append(opts, WithTimeouts(readTimeout, writeTimeout, idleTimeout))
 	return opts
 }
 
 func defaultServer() *Server {
 	return &Server{
-		Server: &http.Server{
-			Addr:         ":9001",
-			ReadTimeout:  time.Second,
-			WriteTimeout: 10 * time.Second,
-			IdleTimeout:  20 * time.Second,
-		},
-
 		Configs: &Configs{
 			Name: "todoApp",
 			Env:  "dev",
+			Host: "localhost",
+			Port: "9001",
 		},
-
-		Logger: newLogger(),
+		Mux: http.NewServeMux(),
 	}
-}
-
-func newLogger() *slog.Logger {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{AddSource: false}))
-
-	slog.SetDefault(logger)
-
-	return logger
-}
-
-func newDB(logger *slog.Logger) (*sqlitecloud.SQCloud, error) {
-	config := sqlitecloud.SQCloudConfig{
-		Host:     os.Getenv("DB_HOST"),
-		Port:     getEnvAsInt("DB_PORT", 8860),
-		Database: os.Getenv("DB_NAME"),
-		ApiKey:   os.Getenv("DB_APIKEY"),
-		MaxRows:  getEnvAsInt("DB_MAXROWS", 20),
-	}
-
-	isSecure, err := strconv.ParseBool(os.Getenv("DB_SECURE_FLAG"))
-	if err != nil {
-		return nil, err
-	}
-
-	config.Secure = isSecure
-
-	sqcl := sqlitecloud.New(config)
-
-	if err := sqcl.Connect(); err != nil {
-		logger.Error(err.Error())
-		return nil, err
-	}
-
-	if !sqcl.IsConnected() {
-		return nil, fmt.Errorf("not able to connect to database")
-	}
-
-	logger.Info("DB connected successfully")
-
-	return sqcl, nil
 }
 
 func getEnvAsInt(key string, defaultValue int) int {
