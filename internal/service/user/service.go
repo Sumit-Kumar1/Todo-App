@@ -29,11 +29,6 @@ func (s *Service) Register(ctx context.Context, req *models.RegisterReq) (*model
 		return nil, err
 	}
 
-	passwd, err := encryptedPassword(req.Password)
-	if err != nil {
-		return nil, err
-	}
-
 	// check if user already exists
 	existingUser, err := s.Store.GetUserByEmail(ctx, req.Email)
 	if err != nil {
@@ -48,16 +43,18 @@ func (s *Service) Register(ctx context.Context, req *models.RegisterReq) (*model
 		return nil, models.ErrUserAlreadyExists
 	}
 
-	userID := uuid.New()
-	sessionID := uuid.New()
+	passwd, err := encryptedPassword(req.Password)
+	if err != nil {
+		return nil, err
+	}
 
+	userID := uuid.New()
 	session := models.UserSession{
-		ID:     sessionID,
+		ID:     uuid.New(),
 		UserID: userID,
 		Token:  uuid.NewString(),
 		Expiry: time.Now().Add(time.Minute * 15),
 	}
-
 	user := models.UserData{
 		ID:       userID,
 		Name:     req.Name,

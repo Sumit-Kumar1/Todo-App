@@ -8,11 +8,11 @@ import (
 )
 
 const (
-	idPrefix = "task-"
+	prefixTask = "task-"
 )
 
 func generateID() string {
-	return idPrefix + uuid.New().String()
+	return prefixTask + uuid.New().String()
 }
 
 func validateTask(id, title string) error {
@@ -28,7 +28,7 @@ func validateTask(id, title string) error {
 }
 
 func validateID(id string) error {
-	splits := strings.Split(id, idPrefix)
+	splits := strings.Split(id, prefixTask)
 	if len(splits) != 2 {
 		return models.ErrInvalid("task id")
 	}
