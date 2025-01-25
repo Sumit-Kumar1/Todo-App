@@ -26,42 +26,6 @@ func New(todoSvc TodoServicer) *Handler {
 	return &Handler{template: tmpl, Service: todoSvc}
 }
 
-// Root rendering endpoints
-func (h *Handler) Root(w http.ResponseWriter, r *http.Request) {
-	var (
-		template string
-		ctx      = r.Context()
-		logger   = models.GetLoggerFromCtx(ctx)
-	)
-
-	vals := r.URL.Query()
-	switch vals.Get("page") {
-	case "register":
-		template = "user-register"
-	case "api":
-		template = "swagger"
-	default:
-		template = "user-login"
-	}
-
-	if err := h.template.ExecuteTemplate(w, template, nil); err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, "error while rendering template", slog.String("template", "index"))
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
-func (h *Handler) Swagger(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	logger := models.GetLoggerFromCtx(ctx)
-
-	if err := h.template.ExecuteTemplate(w, "swagger", nil); err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, "error while rendering template", slog.String("template", "swagger"))
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
 func (h *Handler) TaskPage(w http.ResponseWriter, r *http.Request) {
 	h.getAll(w, r)
 }

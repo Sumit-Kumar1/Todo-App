@@ -60,7 +60,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Add("HX-Redirect", "/task")
 	w.WriteHeader(http.StatusOK)
-	logger.LogAttrs(ctx, slog.LevelDebug, "user logged in sucessfully!", slog.String("user", user.Email))
+	logger.LogAttrs(ctx, slog.LevelDebug, "user logged in successfully!", slog.String("user", user.Email))
 }
 
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
