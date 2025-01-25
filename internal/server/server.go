@@ -13,10 +13,14 @@ import (
 )
 
 type Configs struct {
-	Name string
-	Env  string
-	Host string
-	Port string
+	Name            string
+	Env             string
+	Host            string
+	Port            string
+	ReadTimeout     int
+	WriteTimeout    int
+	IdleTimeout     int
+	MigrationMethod string
 }
 
 type Server struct {
@@ -30,63 +34,13 @@ type Server struct {
 
 type Opts func(s *Server)
 
-func NewServer(opts ...Opts) (*Server, error) {
-	s := defaultServer()
-
-	s.Logger = newLogger()
-
-	db, err := newDB(s.Logger)
+func NewServer() (*Server, error) {
+	s, err := configureServer()
 	if err != nil {
 		return nil, err
 	}
 
-	s.DB = db
-
-	for _, fn := range opts {
-		fn(s)
-	}
-
 	return s, nil
-}
-
-func WithAppName(name string) Opts {
-	return func(s *Server) {
-		s.Name = name
-	}
-}
-
-func WithEnv(env string) Opts {
-	return func(s *Server) {
-		s.Env = env
-	}
-}
-
-func ServerFromEnvs() (*Server, error) {
-	if err := godotenv.Load(".env"); err != nil {
-		log.Print("error while loading env file")
-
-		return nil, err
-	}
-
-	opts := loadEnvVars()
-
-	return NewServer(opts...)
-}
-
-func loadEnvVars() []Opts {
-	var opts []Opts
-
-	appName := os.Getenv("APP_NAME")
-	if appName != "" {
-		opts = append(opts, WithAppName(appName))
-	}
-
-	env := os.Getenv("ENV")
-	if env != "" {
-		opts = append(opts, WithEnv(env))
-	}
-
-	return opts
 }
 
 func defaultServer() *Server {
@@ -101,15 +55,52 @@ func defaultServer() *Server {
 	}
 }
 
+func configureServer() (*Server, error) {
+	s := defaultServer()
+
+	if err := godotenv.Load(".env"); err != nil {
+		log.Print("error while loading env file")
+		return nil, err
+	}
+
+	s.Name = getEnvOrDefault("APP_NAME", "todo-app")
+	s.Port = getEnvOrDefault("HTTP_PORT", "9001")
+	s.Env = getEnvOrDefault("ENV", "dev")
+	s.ReadTimeout = getEnvAsInt("READ_TIMEOUT", 2)
+	s.WriteTimeout = getEnvAsInt("WRITE_TIMEOUT", 3)
+	s.IdleTimeout = getEnvAsInt("IDLE_TIMEOUT", 5)
+	s.MigrationMethod = getEnvOrDefault("MIGRATION_METHOD", "UP")
+
+	s.Logger = newLogger()
+
+	db, err := newDB(s.Logger)
+	if err != nil {
+		return nil, err
+	}
+
+	s.DB = db
+
+	return s, nil
+}
+
 func getEnvAsInt(key string, defaultValue int) int {
-	value := os.Getenv(key)
-	if value == "" {
+	env := os.Getenv(key)
+	if env == "" {
 		return defaultValue
 	}
 
-	if intValue, err := strconv.Atoi(value); err == nil {
-		return intValue
+	if iVal, err := strconv.Atoi(env); err == nil {
+		return iVal
 	}
 
 	return defaultValue
+}
+
+func getEnvOrDefault(key, def string) string {
+	eval := os.Getenv(key)
+	if eval == "" {
+		return def
+	}
+
+	return eval
 }
