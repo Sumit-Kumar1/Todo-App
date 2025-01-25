@@ -1,15 +1,18 @@
 package server
 
 import (
-	"fmt"
+	"context"
 	"log/slog"
 	"os"
 	"strconv"
+	"todoapp/internal/models"
 
 	"github.com/sqlitecloud/sqlitecloud-go"
 )
 
 func newDB(logger *slog.Logger) (*sqlitecloud.SQCloud, error) {
+	ctx := context.Background()
+
 	config := sqlitecloud.SQCloudConfig{
 		Host:     os.Getenv("DB_HOST"),
 		Port:     getEnvAsInt("DB_PORT", 8860),
@@ -28,15 +31,15 @@ func newDB(logger *slog.Logger) (*sqlitecloud.SQCloud, error) {
 	sqcl := sqlitecloud.New(config)
 
 	if err := sqcl.Connect(); err != nil {
-		logger.Error(err.Error())
+		logger.LogAttrs(ctx, slog.LevelError, "error while connecting to Database", slog.String("error", err.Error()))
 		return nil, err
 	}
 
 	if !sqcl.IsConnected() {
-		return nil, fmt.Errorf("not able to connect to database")
+		return nil, models.NewConstError("database is not connected after conn success")
 	}
 
-	logger.Info("DB connected successfully")
+	logger.LogAttrs(ctx, slog.LevelInfo, "DB connected successfully")
 
 	return sqcl, nil
 }
