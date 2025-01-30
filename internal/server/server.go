@@ -23,12 +23,18 @@ type Configs struct {
 	MigrationMethod string
 }
 
+type Health struct {
+	DBStatus      bool   `json:"dbStatus"`
+	ServiceStatus bool   `json:"serviceStatus"`
+	Msg           string `json:"msg"`
+}
+
 type Server struct {
 	DB          *sqlitecloud.SQCloud
 	Logger      *slog.Logger
 	ShutDownFxn func(context.Context) error
-	Health      *Health
 	Mux         *http.ServeMux
+	Health      *Health
 	*Configs
 }
 
@@ -41,18 +47,6 @@ func NewServer() (*Server, error) {
 	}
 
 	return s, nil
-}
-
-func defaultServer() *Server {
-	return &Server{
-		Configs: &Configs{
-			Name: "todoApp",
-			Env:  "dev",
-			Host: "localhost",
-			Port: "9001",
-		},
-		Mux: http.NewServeMux(),
-	}
 }
 
 func configureServer() (*Server, error) {
@@ -81,6 +75,23 @@ func configureServer() (*Server, error) {
 	s.DB = db
 
 	return s, nil
+}
+
+func defaultServer() *Server {
+	return &Server{
+		Configs: &Configs{
+			Name: "todoApp",
+			Env:  "dev",
+			Host: "localhost",
+			Port: "9001",
+		},
+		Mux: http.NewServeMux(),
+		Health: &Health{
+			DBStatus:      false,
+			ServiceStatus: false,
+			Msg:           "INIT HEALTH",
+		},
+	}
 }
 
 func getEnvAsInt(key string, defaultValue int) int {
