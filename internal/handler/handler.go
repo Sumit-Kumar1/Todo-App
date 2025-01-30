@@ -21,11 +21,13 @@ func New() *UIHandler {
 
 // Root rendering endpoints
 func (h *UIHandler) Root(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	logger := models.GetLoggerFromCtx(ctx)
-	tempName := "user-login"
+	var (
+		tempName string
+		ctx      = r.Context()
+		logger   = models.GetLoggerFromCtx(ctx)
+		vals     = r.URL.Query()
+	)
 
-	vals := r.URL.Query()
 	switch vals.Get("page") {
 	case "register":
 		tempName = "user-register"

@@ -2,8 +2,10 @@ package server
 
 import (
 	"context"
+	"encoding/json"
+	"log/slog"
 	"net/http"
-
+	"time"
 	"todoapp/internal/handler"
 	"todoapp/internal/service/todosvc"
 	"todoapp/internal/store/todostore"
@@ -55,4 +57,62 @@ func setupPublicRoutes(app *Server) {
 	app.Mux.Handle("/public/", http.StripPrefix("/public/", public))
 	app.Mux.Handle("/openapi/", http.StripPrefix("/openapi/", openapi))
 	app.Mux.Handle("/api", http.StripPrefix("/api", Chain(h.Swagger, Method(http.MethodGet))))
+	app.Mux.Handle("/healthz", Chain(func(w http.ResponseWriter, r *http.Request) {
+		t := time.Now()
+
+		app.Health = &Health{DBStatus: false, ServiceStatus: false, Msg: "StartedHealth"}
+
+		if app.DB != nil && !app.DB.IsConnected() {
+			app.Health.DBStatus = false
+			app.Health.Msg = "DB is not connected"
+		}
+
+		if err := app.DB.Ping(); err != nil {
+			app.Health.DBStatus = false
+			app.Health.Msg = err.Error()
+		}
+
+		if isServiceHealthy(r.Context(), app.Port) {
+			app.Health.ServiceStatus = false
+			app.Health.Msg = "Service Down"
+		}
+
+		app.Health.ServiceStatus = true
+		app.Health.DBStatus = true
+		app.Health.Msg = "OK"
+
+		data, err := json.Marshal(app.Health)
+		if err != nil {
+			app.Logger.LogAttrs(r.Context(), slog.LevelError, err.Error())
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(data)
+
+		endTime := time.Since(t)
+		app.Logger.LogAttrs(r.Context(), slog.LevelInfo, "GET/healthz", slog.Any("status", app.Health),
+			slog.Int64("time taken(ms)", endTime.Milliseconds()))
+	}, Method(http.MethodGet)))
+}
+
+func isServiceHealthy(ctx context.Context, port string) bool {
+	var url = "http://localhost:" + port
+
+	client := http.Client{Timeout: 100 * time.Millisecond}
+	r, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
+	if err != nil {
+		return false
+	}
+
+	resp, err := client.Do(r)
+	if err != nil {
+		return false
+	}
+
+	defer resp.Body.Close()
+
+	return (resp.StatusCode == http.StatusOK)
 }
