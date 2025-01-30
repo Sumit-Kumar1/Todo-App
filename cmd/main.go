@@ -16,7 +16,7 @@ import (
 	"todoapp/internal/server"
 )
 
-func run(c context.Context, w io.Writer, args []string) error {
+func run(c context.Context, _ io.Writer, _ []string) error {
 	ctx, stop := signal.NotifyContext(c, os.Interrupt)
 	defer stop()
 
@@ -62,8 +62,9 @@ func run(c context.Context, w io.Writer, args []string) error {
 		stop()
 	}
 
-	err = httpServer.Shutdown(context.Background())
-	app.Logger.LogAttrs(ctx, slog.LevelError, "error while shutting down the server", slog.String("error", err.Error()))
+	if err = httpServer.Shutdown(context.Background()); err != nil {
+		slog.LogAttrs(ctx, slog.LevelError, "error while shutting down the server", slog.String("error", err.Error()))
+	}
 
 	return nil
 }
@@ -73,4 +74,6 @@ func main() {
 	if err := run(ctx, os.Stdout, nil); err != nil {
 		slog.Error(err.Error())
 	}
+
+	slog.Info("server is stopped!!")
 }
