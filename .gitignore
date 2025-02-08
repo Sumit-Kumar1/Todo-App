@@ -40,3 +40,8 @@ tmp/
 
 # tailwind css output
 /public/style.css
+
+# IDE specific directories
+.fleet
+.vscode
+.idea
