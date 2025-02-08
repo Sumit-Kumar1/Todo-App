@@ -141,3 +141,12 @@ func (s *Service) Logout(ctx context.Context, token string) error {
 
 	return s.Store.Logout(ctx, &t)
 }
+
+func encryptedPassword(password string) (string, error) {
+	passwd, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+
+	return string(passwd), nil
+}
