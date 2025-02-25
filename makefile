@@ -45,21 +45,30 @@ audit:
 # DEVELOPMENT
 # ==================================================================================== #
 
+## setup : to install required go tooling
+.PHONY: setup
+setup:
+	go install gotest.tools/gotestsum@latest
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.60.3
+	go install github.com/golang/mock/mockgen@latest
+
+## mocks: to generate mock interfaces
+.PHONY: mocks
+mocks:
+	go generate ./...
+
 ## lint: check for lint errors
 .PHONY: lint
 lint:
-	golangci-lint run ./...
+	golangci-lint run -n --build-tags=integration ./...
 
-## test: run all tests
-.PHONY: test
-test:
-	go test -v -race -buildvcs ./...
 
-## test/cover: run all tests and display coverage
-.PHONY: test/cover
-test/cover:
-	go test -v -race -buildvcs -coverprofile=/tmp/coverage.out ./...
-	go tool cover -html=/tmp/coverage.out
+#tests: run unit tests with gotestsum
+.PHONY: tests
+tests:
+	gotestsum --format testname -- -count=1 -p 1 -coverprofile=cover.out ./...
+	go tool cover -html=cover.out
+
 
 ## css/watch: constantly generate css and watch for new changes
 .PHONY: css/watch
