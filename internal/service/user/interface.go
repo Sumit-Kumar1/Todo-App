@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 )
 
+//go:generate mockgen --source=interface.go --destination=mock_interface.go --package=usersvc
 type UserStorer interface {
 	Logout(ctx context.Context, token *uuid.UUID) error
 	CreateSession(ctx context.Context, session *models.UserSession) error
