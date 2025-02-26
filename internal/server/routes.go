@@ -6,13 +6,14 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
-	"todoapp/internal/handler"
-	"todoapp/internal/service/todosvc"
-	"todoapp/internal/store/todostore"
 
+	"todoapp/internal/handler"
 	todohttp "todoapp/internal/handler/todo"
 	userhttp "todoapp/internal/handler/user"
+	todosvc "todoapp/internal/service/todosvc"
 	usersvc "todoapp/internal/service/user"
+	sessionstore "todoapp/internal/store/session"
+	todostore "todoapp/internal/store/todo"
 	userstore "todoapp/internal/store/user"
 )
 
@@ -39,7 +40,8 @@ func setupTasksRoutes(ctx context.Context, app *Server) {
 
 func setupUserRoutes(app *Server) {
 	usrSt := userstore.New(app.DB)
-	userSvc := usersvc.New(usrSt)
+	sessionSt := sessionstore.New(app.DB)
+	userSvc := usersvc.New(usrSt, sessionSt)
 	usrHTTP := userhttp.New(userSvc)
 
 	app.Mux.HandleFunc("/register", Chain(usrHTTP.Register, Method(http.MethodPost)))

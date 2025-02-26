@@ -11,32 +11,32 @@ import (
 )
 
 type Service struct {
-	Store UserStorer
+	UserStore    UserStorer
+	SessionStore SessionStorer
 }
 
-func New(st UserStorer) *Service {
-	return &Service{Store: st}
+func New(st UserStorer, ss SessionStorer) *Service {
+	return &Service{UserStore: st, SessionStore: ss}
 }
 
 func (s *Service) Register(ctx context.Context, req *models.RegisterReq) (*models.UserSession, error) {
-	logger := models.GetLoggerFromCtx(ctx)
-
 	if req == nil {
 		return nil, nil
 	}
+
+	logger := models.GetLoggerFromCtx(ctx)
 
 	if err := req.Validate(); err != nil {
 		return nil, err
 	}
 
 	// check if user already exists
-	existingUser, err := s.Store.GetUserByEmail(ctx, req.Email)
-	if err != nil {
-		if err.Error() != models.ErrNotFound("user").Error() {
-			logger.LogAttrs(ctx, slog.LevelError, "user not found - Service.Register", slog.String("error", err.Error()),
-				slog.String("user", req.Email))
-			return nil, err
-		}
+	existingUser, err := s.UserStore.GetUserByEmail(ctx, req.Email)
+	if err != nil && err.Error() != models.ErrNotFound("user").Error() {
+		logger.LogAttrs(ctx, slog.LevelError, "user not found - Service.Register", slog.String("error", err.Error()),
+			slog.String("user", req.Email))
+
+		return nil, err
 	}
 
 	if existingUser != nil {
@@ -62,7 +62,7 @@ func (s *Service) Register(ctx context.Context, req *models.RegisterReq) (*model
 		Password: passwd,
 	}
 
-	err = s.Store.RegisterUser(ctx, &user)
+	err = s.UserStore.RegisterUser(ctx, &user)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +70,7 @@ func (s *Service) Register(ctx context.Context, req *models.RegisterReq) (*model
 	logger.LogAttrs(ctx, slog.LevelInfo, "user created successfully!!",
 		slog.String("email", req.Email), slog.String("userID", userID.String()))
 
-	err = s.Store.CreateSession(ctx, &session)
+	err = s.SessionStore.CreateSession(ctx, &session)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +86,7 @@ func (s *Service) Login(ctx context.Context, req *models.LoginReq) (*models.User
 	}
 
 	// Get the user's data
-	user, err := s.Store.GetUserByEmail(ctx, req.Email)
+	user, err := s.UserStore.GetUserByEmail(ctx, req.Email)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +99,7 @@ func (s *Service) Login(ctx context.Context, req *models.LoginReq) (*models.User
 		return nil, models.ErrPsswdNotMatch
 	}
 
-	session, err := s.Store.GetSessionByID(ctx, &user.ID)
+	session, err := s.SessionStore.GetSessionByID(ctx, &user.ID)
 	if err != nil {
 		if models.ErrNotFound("user ID").Error() != err.Error() {
 			return nil, err
@@ -113,7 +113,7 @@ func (s *Service) Login(ctx context.Context, req *models.LoginReq) (*models.User
 			Expiry: t,
 		}
 
-		if er := s.Store.CreateSession(ctx, &ss); er != nil {
+		if er := s.SessionStore.CreateSession(ctx, &ss); er != nil {
 			return nil, er
 		}
 
@@ -124,7 +124,7 @@ func (s *Service) Login(ctx context.Context, req *models.LoginReq) (*models.User
 		session.Expiry = time.Now().Add(time.Minute * 15).UTC()
 		session.Token = uuid.NewString()
 
-		err := s.Store.RefreshSession(ctx, session)
+		err := s.SessionStore.RefreshSession(ctx, session)
 		if err != nil {
 			return nil, err
 		}
@@ -139,7 +139,7 @@ func (s *Service) Logout(ctx context.Context, token string) error {
 		return err
 	}
 
-	return s.Store.Logout(ctx, &t)
+	return s.SessionStore.Logout(ctx, &t)
 }
 
 func encryptedPassword(password string) (string, error) {

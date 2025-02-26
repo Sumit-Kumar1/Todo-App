@@ -36,35 +36,6 @@ func (m *MockUserStorer) EXPECT() *MockUserStorerMockRecorder {
 	return m.recorder
 }
 
-// CreateSession mocks base method.
-func (m *MockUserStorer) CreateSession(ctx context.Context, session *models.UserSession) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateSession", ctx, session)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// CreateSession indicates an expected call of CreateSession.
-func (mr *MockUserStorerMockRecorder) CreateSession(ctx, session interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSession", reflect.TypeOf((*MockUserStorer)(nil).CreateSession), ctx, session)
-}
-
-// GetSessionByID mocks base method.
-func (m *MockUserStorer) GetSessionByID(ctx context.Context, userID *uuid.UUID) (*models.UserSession, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetSessionByID", ctx, userID)
-	ret0, _ := ret[0].(*models.UserSession)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetSessionByID indicates an expected call of GetSessionByID.
-func (mr *MockUserStorerMockRecorder) GetSessionByID(ctx, userID interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSessionByID", reflect.TypeOf((*MockUserStorer)(nil).GetSessionByID), ctx, userID)
-}
-
 // GetUserByEmail mocks base method.
 func (m *MockUserStorer) GetUserByEmail(ctx context.Context, email string) (*models.UserData, error) {
 	m.ctrl.T.Helper()
@@ -80,34 +51,6 @@ func (mr *MockUserStorerMockRecorder) GetUserByEmail(ctx, email interface{}) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserByEmail", reflect.TypeOf((*MockUserStorer)(nil).GetUserByEmail), ctx, email)
 }
 
-// Logout mocks base method.
-func (m *MockUserStorer) Logout(ctx context.Context, token *uuid.UUID) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Logout", ctx, token)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Logout indicates an expected call of Logout.
-func (mr *MockUserStorerMockRecorder) Logout(ctx, token interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Logout", reflect.TypeOf((*MockUserStorer)(nil).Logout), ctx, token)
-}
-
-// RefreshSession mocks base method.
-func (m *MockUserStorer) RefreshSession(ctx context.Context, newSession *models.UserSession) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RefreshSession", ctx, newSession)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// RefreshSession indicates an expected call of RefreshSession.
-func (mr *MockUserStorerMockRecorder) RefreshSession(ctx, newSession interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RefreshSession", reflect.TypeOf((*MockUserStorer)(nil).RefreshSession), ctx, newSession)
-}
-
 // RegisterUser mocks base method.
 func (m *MockUserStorer) RegisterUser(ctx context.Context, data *models.UserData) error {
 	m.ctrl.T.Helper()
@@ -120,4 +63,84 @@ func (m *MockUserStorer) RegisterUser(ctx context.Context, data *models.UserData
 func (mr *MockUserStorerMockRecorder) RegisterUser(ctx, data interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterUser", reflect.TypeOf((*MockUserStorer)(nil).RegisterUser), ctx, data)
+}
+
+// MockSessionStorer is a mock of SessionStorer interface.
+type MockSessionStorer struct {
+	ctrl     *gomock.Controller
+	recorder *MockSessionStorerMockRecorder
+}
+
+// MockSessionStorerMockRecorder is the mock recorder for MockSessionStorer.
+type MockSessionStorerMockRecorder struct {
+	mock *MockSessionStorer
+}
+
+// NewMockSessionStorer creates a new mock instance.
+func NewMockSessionStorer(ctrl *gomock.Controller) *MockSessionStorer {
+	mock := &MockSessionStorer{ctrl: ctrl}
+	mock.recorder = &MockSessionStorerMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockSessionStorer) EXPECT() *MockSessionStorerMockRecorder {
+	return m.recorder
+}
+
+// CreateSession mocks base method.
+func (m *MockSessionStorer) CreateSession(ctx context.Context, session *models.UserSession) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateSession", ctx, session)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateSession indicates an expected call of CreateSession.
+func (mr *MockSessionStorerMockRecorder) CreateSession(ctx, session interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSession", reflect.TypeOf((*MockSessionStorer)(nil).CreateSession), ctx, session)
+}
+
+// GetSessionByID mocks base method.
+func (m *MockSessionStorer) GetSessionByID(ctx context.Context, userID *uuid.UUID) (*models.UserSession, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSessionByID", ctx, userID)
+	ret0, _ := ret[0].(*models.UserSession)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSessionByID indicates an expected call of GetSessionByID.
+func (mr *MockSessionStorerMockRecorder) GetSessionByID(ctx, userID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSessionByID", reflect.TypeOf((*MockSessionStorer)(nil).GetSessionByID), ctx, userID)
+}
+
+// Logout mocks base method.
+func (m *MockSessionStorer) Logout(ctx context.Context, token *uuid.UUID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Logout", ctx, token)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Logout indicates an expected call of Logout.
+func (mr *MockSessionStorerMockRecorder) Logout(ctx, token interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Logout", reflect.TypeOf((*MockSessionStorer)(nil).Logout), ctx, token)
+}
+
+// RefreshSession mocks base method.
+func (m *MockSessionStorer) RefreshSession(ctx context.Context, newSession *models.UserSession) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RefreshSession", ctx, newSession)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RefreshSession indicates an expected call of RefreshSession.
+func (mr *MockSessionStorerMockRecorder) RefreshSession(ctx, newSession interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RefreshSession", reflect.TypeOf((*MockSessionStorer)(nil).RefreshSession), ctx, newSession)
 }
