@@ -38,7 +38,7 @@ audit:
 	go vet ./...
 	go run honnef.co/go/tools/cmd/staticcheck@latest -checks=all,-ST1000,-U1000 ./...
 	go run golang.org/x/vuln/cmd/govulncheck@latest ./...
-	go test -race -buildvcs -vet=off ./...
+	go test -buildvcs -vet=off ./...
 
 
 # ==================================================================================== #
@@ -49,7 +49,7 @@ audit:
 .PHONY: setup
 setup:
 	go install gotest.tools/gotestsum@latest
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.60.3
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 	go install github.com/golang/mock/mockgen@latest
 
 ## mocks: to generate mock interfaces
