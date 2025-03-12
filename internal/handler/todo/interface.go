@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 )
 
+//go:generate mockgen --source=interface.go --destination=mock_interface.go --package=todohttp
 type TodoServicer interface {
 	GetAll(ctx context.Context, userID *uuid.UUID) ([]models.Task, error)
 	AddTask(ctx context.Context, task string, userID *uuid.UUID) (*models.Task, error)

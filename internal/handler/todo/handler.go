@@ -5,52 +5,25 @@ import (
 	"log/slog"
 	"net/http"
 	"todoapp/internal/models"
-	"todoapp/internal/server"
 
 	"github.com/google/uuid"
 )
 
-const invalidReqMethod = "method not allowed"
+const (
+	invalidReqMethod = "method not allowed"
+	templAddTask     = "add"
+	templIndex       = "index"
+)
 
 type Handler struct {
 	Service  TodoServicer
-	Log      *slog.Logger
 	template *template.Template
 }
 
-func New(todoSvc TodoServicer, log *slog.Logger) *Handler {
+func New(todoSvc TodoServicer) *Handler {
 	tmpl := models.NewTemplate()
 
-	return &Handler{template: tmpl, Log: log, Service: todoSvc}
-}
-
-// Root rendering endpoints
-func (h *Handler) Root(w http.ResponseWriter, r *http.Request) {
-	var tempName string
-
-	vals := r.URL.Query()
-	switch vals.Get("page") {
-	case "register":
-		tempName = "user-register"
-	case "api":
-		tempName = "swagger"
-	default:
-		tempName = "user-login"
-	}
-
-	if err := h.template.ExecuteTemplate(w, tempName, nil); err != nil {
-		h.Log.Error(err.Error(), "template-render", "index")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
-func (h *Handler) Swagger(w http.ResponseWriter, _ *http.Request) {
-	if err := h.template.ExecuteTemplate(w, "swagger", nil); err != nil {
-		h.Log.Error(err.Error(), "template-render", "index")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	return &Handler{template: tmpl, Service: todoSvc}
 }
 
 func (h *Handler) TaskPage(w http.ResponseWriter, r *http.Request) {
@@ -69,16 +42,18 @@ func (h *Handler) HandleTasks(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Done(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	userID, ok := ctx.Value(server.CtxKey).(uuid.UUID)
+	var (
+		ctx    = r.Context()
+		logger = models.GetLoggerFromCtx(ctx)
+	)
+
+	userID, ok := ctx.Value(models.CtxKeyUserID).(uuid.UUID)
 	if !ok {
 		http.Error(w, "user not found", http.StatusUnauthorized)
 		return
 	}
 
 	id := r.PathValue("id")
-
-	h.Log.Info("Task Done -> ", "ID", id)
 
 	resp, err := h.Service.MarkDone(ctx, id, &userID)
 	if err != nil {
@@ -89,10 +64,10 @@ func (h *Handler) Done(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 		}
 
-		h.Log.Error("error while marking task done", "error", err)
+		logger.LogAttrs(ctx, slog.LevelError, "error while marking task done",
+			slog.String("error", err.Error()), slog.String("task", id))
 
-		_, _ = w.Write([]byte(err.Error()))
-
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -101,14 +76,19 @@ func (h *Handler) Done(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.template.ExecuteTemplate(w, "add", *resp); err != nil {
-		h.Log.Error("template done render", "ID", id, "error", err.Error())
+	if err := h.template.ExecuteTemplate(w, templAddTask, *resp); err != nil {
+		logger.LogAttrs(ctx, slog.LevelError, "error while rendering template", slog.String("template", templAddTask))
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
 func (h *Handler) addTask(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	userID, ok := ctx.Value(server.CtxKey).(uuid.UUID)
+	var (
+		ctx    = r.Context()
+		logger = models.GetLoggerFromCtx(ctx)
+	)
+
+	userID, ok := ctx.Value(models.CtxKeyUserID).(uuid.UUID)
 	if !ok {
 		http.Error(w, "user not found", http.StatusUnauthorized)
 		return
@@ -118,31 +98,29 @@ func (h *Handler) addTask(w http.ResponseWriter, r *http.Request) {
 
 	t, err := h.Service.AddTask(ctx, task, &userID)
 	if err != nil {
-		h.Log.Error("error while adding task", "error", err)
-		w.WriteHeader(http.StatusBadRequest)
-
-		_, _ = w.Write([]byte(err.Error()))
-
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	h.Log.Info("Task is Added", "ID", t.ID)
-
-	if err := h.template.ExecuteTemplate(w, "add", *t); err != nil {
-		h.Log.Error("error while executing template:", "error", err.Error())
-		return
+	if err := h.template.ExecuteTemplate(w, templAddTask, *t); err != nil {
+		logger.LogAttrs(ctx, slog.LevelError, "error while rendering template", slog.String("template", templAddTask))
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
 func (h *Handler) getAll(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+	var (
+		ctx    = r.Context()
+		logger = models.GetLoggerFromCtx(ctx)
+	)
 
-	userID, ok := ctx.Value(server.CtxKey).(uuid.UUID)
+	userID, ok := ctx.Value(models.CtxKeyUserID).(uuid.UUID)
 	if !ok {
 		_ = h.template.ExecuteTemplate(w, "errorPage", map[string]any{
 			"Code":    http.StatusUnauthorized,
 			"Message": "user not authorized!!",
 		})
+
 		return
 	}
 
@@ -154,24 +132,26 @@ func (h *Handler) getAll(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		h.Log.Error(err.Error(), "request", "service-getAll")
-		w.WriteHeader(http.StatusInternalServerError)
+		logger.LogAttrs(ctx, slog.LevelError, err.Error(), slog.String("user", userID.String()))
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	if err := h.template.ExecuteTemplate(w, "index", tasks); err != nil {
-		h.Log.Error(err.Error(), "request", "service-getAll")
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+	if err := h.template.ExecuteTemplate(w, templIndex, tasks); err != nil {
+		logger.LogAttrs(ctx, slog.LevelError, "error while rendering template", slog.String("template", templIndex))
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
 func (h *Handler) DeleteTask(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+	var (
+		ctx    = r.Context()
+		logger = models.GetLoggerFromCtx(ctx)
+	)
 
-	userID, ok := ctx.Value(server.CtxKey).(uuid.UUID)
+	userID, ok := ctx.Value(models.CtxKeyUserID).(uuid.UUID)
 	if !ok {
 		http.Error(w, "invalid user", http.StatusUnauthorized)
 		return
@@ -179,10 +159,7 @@ func (h *Handler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 
 	id := r.PathValue("id")
 
-	h.Log.Info("Delete Request->", "ID", id)
-
-	err := h.Service.DeleteTask(ctx, id, &userID)
-	if err != nil {
+	if err := h.Service.DeleteTask(ctx, id, &userID); err != nil {
 		switch {
 		case models.ErrNotFound("user").Error() == err.Error():
 			http.Error(w, "user not found", http.StatusNotFound)
@@ -190,7 +167,7 @@ func (h *Handler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
 
-		h.Log.Error(err.Error(), "request", "handler-delete")
+		logger.LogAttrs(ctx, slog.LevelError, err.Error(), slog.String("user", userID.String()), slog.String("task", id))
 		return
 	}
 
@@ -198,8 +175,12 @@ func (h *Handler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	userID, ok := ctx.Value(server.CtxKey).(uuid.UUID)
+	var (
+		ctx    = r.Context()
+		logger = models.GetLoggerFromCtx(ctx)
+	)
+
+	userID, ok := ctx.Value(models.CtxKeyUserID).(uuid.UUID)
 	if !ok {
 		http.Error(w, "invalid user", http.StatusUnauthorized)
 		return
@@ -217,7 +198,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
 
-		h.Log.Error(err.Error(), "request", "handler-update")
+		logger.LogAttrs(ctx, slog.LevelError, err.Error(), slog.String("user", userID.String()), slog.String("task", id))
 		return
 	}
 
@@ -226,10 +207,11 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.template.ExecuteTemplate(w, "add", *resp); err != nil {
-		h.Log.Error("/updated template render", "ID", id, "error", err.Error())
+	if err := h.template.ExecuteTemplate(w, templAddTask, *resp); err != nil {
+		logger.LogAttrs(ctx, slog.LevelError, "error while rendering template", slog.String("template", templAddTask))
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	h.Log.Info("Task Updated", "ID", id)
+	logger.LogAttrs(ctx, slog.LevelDebug, "task update done!", slog.String("user", userID.String()), slog.String("task", id))
 }

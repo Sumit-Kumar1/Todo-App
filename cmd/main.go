@@ -2,128 +2,78 @@ package main
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
+	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"time"
 
 	"todoapp/internal/migrations"
+	"todoapp/internal/models"
 	"todoapp/internal/server"
-	"todoapp/internal/service/todosvc"
-	"todoapp/internal/store/todostore"
-
-	todohttp "todoapp/internal/handler/todo"
-	userhttp "todoapp/internal/handler/user"
-	usersvc "todoapp/internal/service/user"
-	userstore "todoapp/internal/store/user"
 )
 
-func main() {
-	// handling SIGINT gracefully
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+func run(c context.Context, _ io.Writer, _ []string) error {
+	ctx, stop := signal.NotifyContext(c, os.Interrupt)
 	defer stop()
 
-	app, err := server.ServerFromEnvs()
+	app, err := server.NewServer()
 	if err != nil {
 		slog.Error(err.Error())
-		return
+		return err
 	}
 
-	newHTTPHandler(app)
+	// add logger into context
+	ctx = context.WithValue(ctx, models.Logger, app.Logger)
 
-	if err = migrations.RunMigrations(ctx, app, getEnvOrDefault("MIGRATION_METHOD", "UP")); err != nil {
+	server.SetupRoutes(ctx, app)
+
+	if err = migrations.RunMigrations(ctx, app, app.MigrationMethod); err != nil {
 		slog.Error(err.Error())
-		return
+		return err
 	}
 
 	srvErr := make(chan error, 1)
+
+	httpServer := &http.Server{
+		Addr:         net.JoinHostPort(app.Host, app.Port),
+		Handler:      app.Mux,
+		ReadTimeout:  time.Duration(app.ReadTimeout * int(time.Second)),
+		WriteTimeout: time.Duration(app.WriteTimeout * int(time.Second)),
+		IdleTimeout:  time.Duration(app.IdleTimeout * int(time.Second)),
+	}
+
 	go func() {
-		app.Logger.Info("application is running on", "Address", app.Addr)
-		srvErr <- app.ListenAndServe()
+		app.Logger.LogAttrs(ctx, slog.LevelInfo, "Server started", slog.String("Address", httpServer.Addr))
+		srvErr <- httpServer.ListenAndServe()
 	}()
 
 	select {
 	case err = <-srvErr:
-		app.Logger.Error(err.Error())
-		return
+		if !errors.Is(err, http.ErrServerClosed) {
+			app.Logger.LogAttrs(ctx, slog.LevelError, "error listening and serving", slog.String("error", err.Error()))
+		}
+
+		return nil
 	case <-ctx.Done():
 		stop()
 	}
 
-	err = app.Shutdown(context.Background())
-	app.Logger.Error(err.Error(), "point", "error from main.go")
-}
-
-func newHTTPHandler(app *server.Server) {
-	usrSt := userstore.New(app.DB, app.Logger)
-	userSvc := usersvc.New(usrSt, app.Logger)
-	usrHTTP := userhttp.New(userSvc, app.Logger)
-
-	todoStore := todostore.New(app.DB, app.Logger)
-	todoSvc := todosvc.New(todoStore, app.Logger)
-	todoHTTP := todohttp.New(todoSvc, app.Logger)
-
-	public := http.FileServer(http.Dir("public"))
-	openapi := http.FileServer(http.Dir("openapi"))
-
-	http.Handle("/public/", http.StripPrefix("/public/", public))
-	http.Handle("/openapi/", http.StripPrefix("/openapi/", openapi))
-
-	http.HandleFunc("/", server.Chain(todoHTTP.Root, server.Method(http.MethodGet)))
-	http.Handle("/api", http.StripPrefix("/api", server.Chain(todoHTTP.Swagger, server.Method(http.MethodGet))))
-	http.HandleFunc("/task", server.Chain(todoHTTP.TaskPage, server.Method(http.MethodGet), server.AuthMiddleware(app.DB)))
-
-	// User API
-	http.HandleFunc("/register", server.Chain(usrHTTP.Register, server.Method(http.MethodPost)))
-	http.HandleFunc("/login", server.Chain(usrHTTP.Login, server.Method(http.MethodPost)))
-	http.HandleFunc("/logout", server.Chain(usrHTTP.Logout, server.Method(http.MethodPost)))
-
-	// tasks API
-	http.HandleFunc("/tasks", server.Chain(todoHTTP.HandleTasks, server.IsHTMX(), server.AuthMiddleware(app.DB)))
-	http.HandleFunc("/tasks/{id}", server.Chain(todoHTTP.Update, server.IsHTMX(), server.Method(http.MethodPut),
-		server.AuthMiddleware(app.DB)))
-	http.HandleFunc("/tasks/{id}/delete", server.Chain(todoHTTP.DeleteTask, server.IsHTMX(), server.AuthMiddleware(app.DB),
-		server.Method(http.MethodDelete)))
-	http.HandleFunc("/tasks/{id}/done", server.Chain(todoHTTP.Done, server.IsHTMX(), server.Method(http.MethodPut),
-		server.AuthMiddleware(app.DB)))
-
-	http.HandleFunc("/health", server.Chain(func(w http.ResponseWriter, _ *http.Request) {
-		if err := app.DB.Ping(); err != nil {
-			app.Health = &server.Health{
-				Status:   "Down",
-				DBStatus: "Down",
-			}
-
-			data, mErr := json.Marshal(app.Health)
-			if mErr != nil {
-				http.Error(w, "not able to marshal the health status", http.StatusInternalServerError)
-				return
-			}
-
-			_, _ = w.Write(data)
-		}
-
-		app.Health = &server.Health{
-			Status:   "Up",
-			DBStatus: "Up",
-		}
-
-		data, mErr := json.Marshal(app.Health)
-		if mErr != nil {
-			http.Error(w, "not able to marshal the health status", http.StatusInternalServerError)
-			return
-		}
-
-		_, _ = w.Write(data)
-	}, server.Method(http.MethodGet)))
-}
-
-func getEnvOrDefault(key, def string) string {
-	eval := os.Getenv(key)
-	if eval == "" {
-		return def
+	if err = httpServer.Shutdown(context.Background()); err != nil {
+		slog.LogAttrs(ctx, slog.LevelError, "error while shutting down the server", slog.String("error", err.Error()))
 	}
 
-	return eval
+	return nil
+}
+
+func main() {
+	ctx := context.Background()
+	if err := run(ctx, os.Stdout, nil); err != nil {
+		slog.Error(err.Error())
+	}
+
+	slog.Info("server is stopped!!")
 }

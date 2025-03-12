@@ -11,12 +11,12 @@ import (
 )
 
 type Service struct {
-	Store UserStorer
-	Log   *slog.Logger
+	UserStore    UserStorer
+	SessionStore SessionStorer
 }
 
-func New(st UserStorer, logger *slog.Logger) *Service {
-	return &Service{Store: st, Log: logger}
+func New(st UserStorer, ss SessionStorer) *Service {
+	return &Service{UserStore: st, SessionStore: ss}
 }
 
 func (s *Service) Register(ctx context.Context, req *models.RegisterReq) (*models.UserSession, error) {
@@ -24,8 +24,23 @@ func (s *Service) Register(ctx context.Context, req *models.RegisterReq) (*model
 		return nil, nil
 	}
 
+	logger := models.GetLoggerFromCtx(ctx)
+
 	if err := req.Validate(); err != nil {
 		return nil, err
+	}
+
+	// check if user already exists
+	existingUser, err := s.UserStore.GetUserByEmail(ctx, req.Email)
+	if err != nil && err.Error() != models.ErrNotFound("user").Error() {
+		logger.LogAttrs(ctx, slog.LevelError, "user not found - Service.Register", slog.String("error", err.Error()),
+			slog.String("user", req.Email))
+
+		return nil, err
+	}
+
+	if existingUser != nil {
+		return nil, models.ErrUserAlreadyExists
 	}
 
 	passwd, err := encryptedPassword(req.Password)
@@ -33,29 +48,13 @@ func (s *Service) Register(ctx context.Context, req *models.RegisterReq) (*model
 		return nil, err
 	}
 
-	// check if user already exists
-	existingUser, err := s.Store.GetUserByEmail(ctx, req.Email)
-	if err != nil {
-		if err.Error() != models.ErrNotFound("user").Error() {
-			s.Log.Error(err.Error(), slog.String("point", "error while fetching user by email"))
-			return nil, err
-		}
-	}
-
-	if existingUser != nil {
-		return nil, models.ErrUserAlreadyExists
-	}
-
 	userID := uuid.New()
-	sessionID := uuid.New()
-
 	session := models.UserSession{
-		ID:     sessionID,
+		ID:     uuid.New(),
 		UserID: userID,
 		Token:  uuid.NewString(),
 		Expiry: time.Now().Add(time.Minute * 15),
 	}
-
 	user := models.UserData{
 		ID:       userID,
 		Name:     req.Name,
@@ -63,19 +62,20 @@ func (s *Service) Register(ctx context.Context, req *models.RegisterReq) (*model
 		Password: passwd,
 	}
 
-	err = s.Store.RegisterUser(ctx, &user)
+	err = s.UserStore.RegisterUser(ctx, &user)
 	if err != nil {
 		return nil, err
 	}
 
-	s.Log.Info("user has been created successfully!!", slog.String("email", req.Email), slog.String("userID", userID.String()))
+	logger.LogAttrs(ctx, slog.LevelInfo, "user created successfully!!",
+		slog.String("email", req.Email), slog.String("userID", userID.String()))
 
-	err = s.Store.CreateSession(ctx, &session)
+	err = s.SessionStore.CreateSession(ctx, &session)
 	if err != nil {
 		return nil, err
 	}
 
-	s.Log.Info("session has been created successfully!!", slog.String("userID", userID.String()))
+	logger.LogAttrs(ctx, slog.LevelInfo, "session created successfully!!", slog.String("userID", userID.String()))
 
 	return &session, nil
 }
@@ -86,7 +86,7 @@ func (s *Service) Login(ctx context.Context, req *models.LoginReq) (*models.User
 	}
 
 	// Get the user's data
-	user, err := s.Store.GetUserByEmail(ctx, req.Email)
+	user, err := s.UserStore.GetUserByEmail(ctx, req.Email)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +99,7 @@ func (s *Service) Login(ctx context.Context, req *models.LoginReq) (*models.User
 		return nil, models.ErrPsswdNotMatch
 	}
 
-	session, err := s.Store.GetSessionByID(ctx, &user.ID)
+	session, err := s.SessionStore.GetSessionByID(ctx, &user.ID)
 	if err != nil {
 		if models.ErrNotFound("user ID").Error() != err.Error() {
 			return nil, err
@@ -113,7 +113,7 @@ func (s *Service) Login(ctx context.Context, req *models.LoginReq) (*models.User
 			Expiry: t,
 		}
 
-		if er := s.Store.CreateSession(ctx, &ss); er != nil {
+		if er := s.SessionStore.CreateSession(ctx, &ss); er != nil {
 			return nil, er
 		}
 
@@ -124,7 +124,7 @@ func (s *Service) Login(ctx context.Context, req *models.LoginReq) (*models.User
 		session.Expiry = time.Now().Add(time.Minute * 15).UTC()
 		session.Token = uuid.NewString()
 
-		err := s.Store.RefreshSession(ctx, session)
+		err := s.SessionStore.RefreshSession(ctx, session)
 		if err != nil {
 			return nil, err
 		}
@@ -139,5 +139,14 @@ func (s *Service) Logout(ctx context.Context, token string) error {
 		return err
 	}
 
-	return s.Store.Logout(ctx, &t)
+	return s.SessionStore.Logout(ctx, &t)
+}
+
+func encryptedPassword(password string) (string, error) {
+	passwd, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+
+	return string(passwd), nil
 }
