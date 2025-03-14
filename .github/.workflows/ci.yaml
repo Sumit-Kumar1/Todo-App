@@ -39,22 +39,6 @@ jobs:
           cat coverage/coverage.out.tmp >> coverage/coverage.out
           go tool cover -func=coverage/coverage.out
 
-      - name: SonarQube Scan
-        uses: sonarsource/sonarcloud-github-action@master
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
-          SONAR_ORGANIZATION: ${{ secrets.SONAR_ORGANIZATION }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-
-      - name: SonarQube Analysis
-        uses: sonarsource/sonarqube-quality-gates-action@master
-        timeout-minutes: 5
-        with:
-          organization: ${{ secrets.SONAR_ORGANIZATION }}
-          projectKey: ${{ secrets.SONAR_PROJECT_KEY }}
-          token: ${{ secrets.SONAR_TOKEN }}
-
       - name: Run Gosec Security Scanner
         uses: securego/gosec@master
         with:

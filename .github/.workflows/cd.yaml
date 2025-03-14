@@ -4,15 +4,11 @@ on:
   pull_request:
     branches:
       - "*"
-  push: 
+  push:
     branches:
       - main
       - development
 
-
 jobs:
   ci:
     uses: ./.github/workflows/ci.yaml
-  
-  
-
