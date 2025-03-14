@@ -2,6 +2,10 @@
 
 This is a simple todo app created using HTMX and golang
 
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=Sumit-Kumar1_Todo-App&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Sumit-Kumar1_Todo-App)
+[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=Sumit-Kumar1_Todo-App&metric=bugs)](https://sonarcloud.io/summary/new_code?id=Sumit-Kumar1_Todo-App)
+[![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=Sumit-Kumar1_Todo-App&metric=code_smells)](https://sonarcloud.io/summary/new_code?id=Sumit-Kumar1_Todo-App)[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=Sumit-Kumar1_Todo-App&metric=coverage)](https://sonarcloud.io/summary/new_code?id=Sumit-Kumar1_Todo-App)
+
 ## Steps to run the project
 
 - Clone the repo & make sure you install `go v1.22 or newer` and `make`  
