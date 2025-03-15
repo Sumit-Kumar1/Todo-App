@@ -1,0 +1,27 @@
+{{define "swagger" }}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="SwaggerUI" />
+  <title>Todo-App API</title>
+  <link rel="stylesheet" href="public/swagger-ui.css" />
+</head>
+
+<body>
+  <div id="swagger-ui"></div>
+  <script src="public/swagger-ui-bundle.js" crossorigin></script>
+  <script>
+    window.onload = () => {
+      window.ui = SwaggerUIBundle({
+        url: '/openapi/todoApi.yaml',
+        dom_id: '#swagger-ui',
+      });
+    };
+  </script>
+</body>
+
+</html>
+{{end}}

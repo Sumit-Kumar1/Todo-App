@@ -1,11 +1,22 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type Task struct {
-	ID         string
-	Title      string
-	IsDone     bool
-	AddedAt    time.Time
-	ModifiedAt *time.Time
+	ID         string     `json:"id"`
+	UserID     uuid.UUID  `json:"user_id"`
+	Title      string     `json:"title"`
+	IsDone     bool       `json:"isDone"`
+	AddedAt    time.Time  `json:"addedAt"`
+	ModifiedAt *time.Time `json:"modifiedAt"`
+}
+
+type Error struct {
+	Type    string `json:"type"`
+	IsError bool   `json:"isError"`
+	Msg     string `json:"msg"`
 }

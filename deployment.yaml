@@ -1,3 +1,15 @@
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: storage-limit-range
+  namespace: default
+spec:
+  limits:
+    - default:
+        ephemeral-storage: "1Gi"
+    - defaultRequest:
+        ephemeral-storage: "10Mi"
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -17,19 +29,22 @@ spec:
     spec:
       containers:
         - name: todoapp
-          image: todoapp:latest
-          imagePullPolicy: Never # for local container image
+          image: todoapp@latest
+          imagePullPolicy: Never
           ports:
-            - containerPort: 12344
+            - containerPort: 9001
+          env:
+            - name: DB_FILE
+              value: "todo.sqlite"
           readinessProbe:
             tcpSocket:
-              port: 12344
+              port: 9001
             initialDelaySeconds: 15
             periodSeconds: 10
           livenessProbe:
             httpGet:
               path: /health
-              port: 12344
+              port: 9001
             initialDelaySeconds: 3
             failureThreshold: 20
             periodSeconds: 3
@@ -37,9 +52,17 @@ spec:
             requests:
               memory: "64Mi"
               cpu: "250m"
+              ephemeral-storage: "10Mi"
             limits:
               memory: "128Mi"
               cpu: "500m"
+              ephemeral-storage: "1Gi"
+          volumeMounts:
+            - name: sqlite-storage
+              mountPath: /todoApp
+              subPath: tasks.db
+      volumes:
+        - name: sqlite-storage
+          persistentVolumeClaim:
+            claimName: sqlite-pvc
       automountServiceAccountToken: false
-
-      

@@ -1,5 +1,5 @@
 # Change these variables as necessary.
-MAIN_PACKAGE_PATH := ./
+MAIN_PACKAGE_PATH := ./cmd
 BINARY_NAME := todoapp 
 
 # ==================================================================================== #
@@ -38,32 +38,52 @@ audit:
 	go vet ./...
 	go run honnef.co/go/tools/cmd/staticcheck@latest -checks=all,-ST1000,-U1000 ./...
 	go run golang.org/x/vuln/cmd/govulncheck@latest ./...
-	go test -race -buildvcs -vet=off ./...
+	go test -buildvcs -vet=off ./...
 
 
 # ==================================================================================== #
 # DEVELOPMENT
 # ==================================================================================== #
 
+## setup : to install required go tooling
+.PHONY: setup
+setup:
+	go install gotest.tools/gotestsum@latest
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	go install github.com/golang/mock/mockgen@latest
+
+## mocks: to generate mock interfaces
+.PHONY: mocks
+mocks:
+	go generate ./...
+
 ## lint: check for lint errors
 .PHONY: lint
 lint:
-	golangci-lint run ./...
+	golangci-lint run -n --build-tags=integration ./...
 
-## test: run all tests
-.PHONY: test
-test:
-	go test -v -race -buildvcs ./...
 
-## test/cover: run all tests and display coverage
-.PHONY: test/cover
-test/cover:
-	go test -v -race -buildvcs -coverprofile=/tmp/coverage.out ./...
-	go tool cover -html=/tmp/coverage.out
+#tests: run unit tests with gotestsum
+.PHONY: tests
+tests:
+	gotestsum --format testname -- -count=1 -p 1 -coverprofile=cover.out ./...
+	go tool cover -html=cover.out
+
+
+## css/watch: constantly generate css and watch for new changes
+.PHONY: css/watch
+css/watch:
+	npx tailwindcss -i ./public/input.css -o ./public/style.css --watch
+
+## css/output: generate output css from used classes in views/*.html
+.PHONY: css/output
+css/output:
+	npx tailwindcss -i ./public/input.css -o ./public/style.css
+
 
 ## build: build the application
 .PHONY: build
-build:
+build: css/output
     # Include additional build steps, like TypeScript, SCSS or Tailwind compilation here...
 	go build -o=/tmp/bin/${BINARY_NAME} ${MAIN_PACKAGE_PATH}
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o=./Build/main ${MAIN_PACKAGE_PATH}
@@ -76,7 +96,7 @@ run: build
 ## run/live: run the application with reloading on file changes
 .PHONY: run/live
 run/live:
-	go run github.com/cosmtrek/air@v1.43.0 \
+	go run github.com/air-verse/air@v1.61.1 \
         --build.cmd "make build" --build.bin "/tmp/bin/${BINARY_NAME}" --build.delay "100" \
         --build.exclude_dir "" \
         --build.include_ext "go, tpl, tmpl, html, css, scss, js, ts, sql, jpeg, jpg, gif, png, bmp, svg, webp, ico" \
@@ -90,7 +110,7 @@ docker/image: build
 ## run/container : run the docker container from the image build
 .PHONY: run/container
 run/container : docker/image
-	docker run --name todoapp -p 12344:12344 -d todoapp:latest
+	docker run --name todoapp -p 9001:9001 -d todoapp:latest
 
 ## deploy/local : deploys the container image on local instance using kubectl
 .PHONY: deploy/local

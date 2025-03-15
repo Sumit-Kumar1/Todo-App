@@ -17,6 +17,7 @@
 *.db
 *.env
 **/*.env
+*.sqlite
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
@@ -24,15 +25,23 @@
 # Go workspace file
 go.work
 go.work.sum
+[Bb]uild/
 
-build/
-
+# npm dependencies
+[Nn]ode_modules
 
 #IDE specific directories
 .vscode/
 .idea/
 
-
 # air specific 
 .air.toml
 tmp/
+
+# tailwind css output
+/public/style.css
+
+# IDE specific directories
+.fleet
+.vscode
+.idea

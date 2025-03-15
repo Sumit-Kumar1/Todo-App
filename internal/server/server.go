@@ -1,80 +1,117 @@
 package server
 
 import (
+	"context"
+	"log"
+	"log/slog"
 	"net/http"
-	"time"
+	"os"
+	"strconv"
+
+	"github.com/joho/godotenv"
+	"github.com/sqlitecloud/sqlitecloud-go"
 )
 
 type Configs struct {
-	Name string `json:"name"`
-	Env  string `json:"env"`
+	Name            string
+	Env             string
+	Host            string
+	Port            string
+	ReadTimeout     int
+	WriteTimeout    int
+	IdleTimeout     int
+	MigrationMethod string
 }
 
 type Health struct {
-	DBStatus string `json:"dbStatus"`
-	Status   string `json:"status"`
+	DBStatus      bool   `json:"dbStatus"`
+	ServiceStatus bool   `json:"serviceStatus"`
+	Msg           string `json:"msg"`
 }
 
 type Server struct {
-	*http.Server
+	DB          *sqlitecloud.SQCloud
+	Logger      *slog.Logger
+	ShutDownFxn func(context.Context) error
+	Mux         *http.ServeMux
+	Health      *Health
 	*Configs
 }
 
 type Opts func(s *Server)
 
-func NewServer(opts ...Opts) *Server {
+func NewServer() (*Server, error) {
+	s, err := configureServer()
+	if err != nil {
+		return nil, err
+	}
+
+	return s, nil
+}
+
+func configureServer() (*Server, error) {
 	s := defaultServer()
 
-	for _, fn := range opts {
-		fn(s)
+	if err := godotenv.Load(".env"); err != nil {
+		log.Print("error while loading env file")
+		return nil, err
 	}
 
-	return s
-}
+	s.Name = getEnvOrDefault("APP_NAME", "todo-app")
+	s.Port = getEnvOrDefault("HTTP_PORT", "9001")
+	s.Env = getEnvOrDefault("ENV", "dev")
+	s.ReadTimeout = getEnvAsInt("READ_TIMEOUT", 2)
+	s.WriteTimeout = getEnvAsInt("WRITE_TIMEOUT", 3)
+	s.IdleTimeout = getEnvAsInt("IDLE_TIMEOUT", 5)
+	s.MigrationMethod = getEnvOrDefault("MIGRATION_METHOD", "UP")
 
-func WithTimeouts(read, write, idle int) Opts {
-	return func(s *Server) {
-		s.ReadTimeout = time.Duration(read * int(time.Second))
-		s.WriteTimeout = time.Duration(write * int(time.Second))
-		s.IdleTimeout = time.Duration(idle * int(time.Second))
-	}
-}
+	s.Logger = newLogger()
 
-func WithPort(port string) Opts {
-	return func(s *Server) {
-		s.Addr = ":" + port
+	db, err := newDB(s.Logger)
+	if err != nil {
+		return nil, err
 	}
-}
 
-func WithAppName(name string) Opts {
-	return func(s *Server) {
-		s.Name = name
-	}
-}
+	s.DB = db
 
-func WithEnv(env string) Opts {
-	return func(s *Server) {
-		s.Env = env
-	}
+	return s, nil
 }
 
 func defaultServer() *Server {
-	port := "9001"
-	name := "todoApp"
-	env := "dev"
-	host := ""
-	timeout := 10 * time.Second
-
 	return &Server{
-		Server: &http.Server{
-			Addr:         host + ":" + port,
-			ReadTimeout:  timeout,
-			WriteTimeout: timeout,
-			IdleTimeout:  2 * timeout,
-		},
 		Configs: &Configs{
-			Name: name,
-			Env:  env,
+			Name: "todoApp",
+			Env:  "dev",
+			Host: "localhost",
+			Port: "9001",
+		},
+		Mux: http.NewServeMux(),
+		Health: &Health{
+			DBStatus:      false,
+			ServiceStatus: false,
+			Msg:           "INIT HEALTH",
 		},
 	}
+}
+
+func getEnvAsInt(key string, defaultValue int) int {
+	env := os.Getenv(key)
+	if env == "" {
+		return defaultValue
+	}
+
+	if iVal, err := strconv.Atoi(env); err == nil {
+		return iVal
+	}
+
+	return defaultValue
+}
+
+func getEnvOrDefault(key, def string) string {
+	eval := os.Getenv(key)
+	if eval == "" {
+		return def
+	}
+
+	return eval
 }
