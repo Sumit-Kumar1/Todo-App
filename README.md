@@ -8,7 +8,7 @@ This is a simple todo app created using HTMX and golang
 
 ## Steps to run the project
 
-- Clone the repo & make sure you install `go v1.22 or newer` and `make`  
+- Clone the repo & make sure you install `go v1.23 or newer` and `make`  
 - cd `Todo-App` and open a terminal in the directory
 - In terminal run `make help` : will list you all available make commands
 - or run directly the `make run`
@@ -20,6 +20,7 @@ This is a simple todo app created using HTMX and golang
 - Todo api specification can be found at `openapi/todoApi.yaml` (WIP)
 
 ## Requirements
+
  User Should Be able to do:
 
 - [x] Add new todos to list
