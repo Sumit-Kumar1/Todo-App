@@ -12,7 +12,7 @@ import (
 	"github.com/golang/mock/gomock"
 )
 
-func TestService_Register(t *testing.T) {
+func TestServiceRegister(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	userMock := NewMockUserStorer(ctrl)
 	sessionMock := NewMockSessionStorer(ctrl)
@@ -68,31 +68,38 @@ func TestService_Register(t *testing.T) {
 	}
 }
 
-func TestService_Login(t *testing.T) {
-	type fields struct {
-		Store UserStorer
+func TestServiceLogin(t *testing.T) {
+	// req := models.LoginReq{Email: "abcd@cdef.com", Password: "abcd@abcd"}
+	ctrl := gomock.NewController(t)
+	mockSession := NewMockSessionStorer(ctrl)
+	mockUser := NewMockUserStorer(ctrl)
+
+	tests := []struct {
+		name     string
+		req      *models.LoginReq
+		mockCall *gomock.Call
+		want     *models.UserSession
+		wantErr  error
+	}{
+		{name: "nil request", req: nil, want: nil, wantErr: nil},
+		{name: "invalid request", req: &models.LoginReq{Email: ""}, wantErr: models.ErrRequired("email")},
+		// {name: "user not found", req: &req, wantErr: nil},
+		// {name: "invalid password", req: &req, wantErr: nil},
+		// {name: "error while creating session", req: &req, wantErr: nil},
 	}
-	type args struct {
-		ctx context.Context
-		req *models.LoginReq
-	}
-	var tests []struct {
-		name    string
-		fields  fields
-		args    args
-		want    *models.UserSession
-		wantErr bool
-	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &Service{
-				UserStore: tt.fields.Store,
-			}
-			got, err := s.Login(tt.args.ctx, tt.args.req)
-			if (err != nil) != tt.wantErr {
+			ctx := context.Background()
+			s := &Service{UserStore: mockUser, SessionStore: mockSession}
+
+			got, err := s.Login(ctx, tt.req)
+
+			if err != tt.wantErr {
 				t.Errorf("Service.Login() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Service.Login() = %v, want %v", got, tt.want)
 			}
@@ -100,7 +107,7 @@ func TestService_Login(t *testing.T) {
 	}
 }
 
-func TestService_Logout(t *testing.T) {
+func TestServiceLogout(t *testing.T) {
 	type fields struct {
 		Store UserStorer
 	}
@@ -126,7 +133,7 @@ func TestService_Logout(t *testing.T) {
 	}
 }
 
-func Test_encryptedPassword(t *testing.T) {
+func TestEncryptedPassword(t *testing.T) {
 	tests := []struct {
 		name     string
 		password string

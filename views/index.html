@@ -105,7 +105,7 @@
   </div>
   <div class="flex-none gap-2">
     <div class="dropdown dropdown-end">
-      <div tabindex="0" role="button" class="btn btn-ghost btn-circle avatar">
+      <button tabindex="0" class="btn btn-ghost btn-circle avatar" onKeyDown="if(event.key === 'Enter') this.click()">
         <div class="w-10 rounded-full border-2 border-black">
           <svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
              viewBox="0 0 200 200" enable-background="new 0 0 200 200" xml:space="preserve">
@@ -120,11 +120,11 @@
             C117.932,72.248,110.132,62.648,100.432,62.648z"/>
           </svg>          
         </div>
-      </div>
-      <ul tabindex="0"
-        class="menu menu-sm dropdown-content rounded-box z-[1] mt-3 w-52 p-2 shadow border border-blue-300">
-        <li><button hx-post="/logout">Logout</button></li>
-      </ul>
+      </button>
+      <button tabindex="0"
+        class="menu menu-sm dropdown-content rounded-box z-[1] mt-3 w-52 p-2 shadow border border-blue-300" onKeyDown="if(event.key === 'Enter') this.click()">
+        <button hx-post="/logout">Logout</button>
+    </button>
     </div>
   </div>
 </div>
