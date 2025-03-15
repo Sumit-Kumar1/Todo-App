@@ -13,6 +13,8 @@ const (
 	invalidReqMethod = "method not allowed"
 	templAddTask     = "add"
 	templIndex       = "index"
+	userNotFound     = "user not found"
+	renderErr        = "error while rendering template"
 )
 
 type Handler struct {
@@ -49,7 +51,7 @@ func (h *Handler) Done(w http.ResponseWriter, r *http.Request) {
 
 	userID, ok := ctx.Value(models.CtxKeyUserID).(uuid.UUID)
 	if !ok {
-		http.Error(w, "user not found", http.StatusUnauthorized)
+		http.Error(w, userNotFound, http.StatusUnauthorized)
 		return
 	}
 
@@ -77,7 +79,7 @@ func (h *Handler) Done(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.template.ExecuteTemplate(w, templAddTask, *resp); err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, "error while rendering template", slog.String("template", templAddTask))
+		logger.LogAttrs(ctx, slog.LevelError, renderErr, slog.String("template", templAddTask))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -90,7 +92,7 @@ func (h *Handler) addTask(w http.ResponseWriter, r *http.Request) {
 
 	userID, ok := ctx.Value(models.CtxKeyUserID).(uuid.UUID)
 	if !ok {
-		http.Error(w, "user not found", http.StatusUnauthorized)
+		http.Error(w, userNotFound, http.StatusUnauthorized)
 		return
 	}
 
@@ -103,7 +105,7 @@ func (h *Handler) addTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.template.ExecuteTemplate(w, templAddTask, *t); err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, "error while rendering template", slog.String("template", templAddTask))
+		logger.LogAttrs(ctx, slog.LevelError, renderErr, slog.String("template", templAddTask))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -140,7 +142,7 @@ func (h *Handler) getAll(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	if err := h.template.ExecuteTemplate(w, templIndex, tasks); err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, "error while rendering template", slog.String("template", templIndex))
+		logger.LogAttrs(ctx, slog.LevelError, renderErr, slog.String("template", templIndex))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -162,7 +164,7 @@ func (h *Handler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 	if err := h.Service.DeleteTask(ctx, id, &userID); err != nil {
 		switch {
 		case models.ErrNotFound("user").Error() == err.Error():
-			http.Error(w, "user not found", http.StatusNotFound)
+			http.Error(w, userNotFound, http.StatusNotFound)
 		default:
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
@@ -193,7 +195,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case models.ErrNotFound("user").Error() == err.Error():
-			http.Error(w, "user not found", http.StatusNotFound)
+			http.Error(w, userNotFound, http.StatusNotFound)
 		default:
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
@@ -203,12 +205,12 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if resp == nil {
-		http.Error(w, "user not found", http.StatusNotFound)
+		http.Error(w, userNotFound, http.StatusNotFound)
 		return
 	}
 
 	if err := h.template.ExecuteTemplate(w, templAddTask, *resp); err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, "error while rendering template", slog.String("template", templAddTask))
+		logger.LogAttrs(ctx, slog.LevelError, renderErr, slog.String("template", templAddTask))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
