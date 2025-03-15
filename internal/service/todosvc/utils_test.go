@@ -1,6 +1,7 @@
 package todosvc
 
 import (
+	"errors"
 	"strings"
 	"testing"
 	"todoapp/internal/models"
@@ -43,7 +44,7 @@ func TestValidateTask(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := validateTask(tt.id, tt.title); err != tt.wantErr {
+			if err := validateTask(tt.id, tt.title); !errors.Is(err, tt.wantErr) {
 				t.Errorf("validateTask() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -63,7 +64,7 @@ func TestValidateID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := validateID(tt.id); err != tt.wantErr {
+			if err := validateID(tt.id); !errors.Is(err, tt.wantErr) {
 				t.Errorf("validateID() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

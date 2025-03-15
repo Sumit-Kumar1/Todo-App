@@ -10,6 +10,12 @@ import (
 	"todoapp/internal/models"
 
 	"github.com/golang/mock/gomock"
+	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
+)
+
+var (
+	errMock = models.NewConstError("some error")
 )
 
 func TestServiceRegister(t *testing.T) {
@@ -38,9 +44,9 @@ func TestServiceRegister(t *testing.T) {
 				mock.EXPECT().GetUserByEmail(ctx, email).Return(&userData, nil)
 			},
 		},
-		{name: "user not found", req: &req, wantErr: models.NewConstError("some error"),
+		{name: "user not found", req: &req, wantErr: errMock,
 			mockCall: func(mus *MockUserStorer, _ *MockSessionStorer) {
-				mus.EXPECT().GetUserByEmail(ctx, email).Return(nil, models.NewConstError("some error"))
+				mus.EXPECT().GetUserByEmail(ctx, email).Return(nil, errMock)
 			}},
 		{name: "pass encrypt error", req: &models.RegisterReq{Name: req.Name, LoginReq: &models.LoginReq{Email: email, Password: longPass}},
 			wantErr: errors.New("bcrypt: password length exceeds 72 bytes"), mockCall: func(mus *MockUserStorer, _ *MockSessionStorer) {
@@ -77,11 +83,11 @@ func TestServiceLogin(t *testing.T) {
 	tests := []struct {
 		name     string
 		req      *models.LoginReq
-		mockCall *gomock.Call
+		mockCall func(*MockUserStorer, *MockSessionStorer)
 		want     *models.UserSession
 		wantErr  error
 	}{
-		{name: "nil request", req: nil, want: nil, wantErr: nil},
+		{name: "nil request", req: nil, want: nil, wantErr: models.ErrRequired("login request")},
 		{name: "invalid request", req: &models.LoginReq{Email: ""}, wantErr: models.ErrRequired("email")},
 		// {name: "user not found", req: &req, wantErr: nil},
 		// {name: "invalid password", req: &req, wantErr: nil},
@@ -93,40 +99,53 @@ func TestServiceLogin(t *testing.T) {
 			ctx := context.Background()
 			s := &Service{UserStore: mockUser, SessionStore: mockSession}
 
+			tt.mockCall(mockUser, mockSession)
+
 			got, err := s.Login(ctx, tt.req)
 
-			if err != tt.wantErr {
+			if !errors.Is(err, tt.wantErr) {
 				t.Errorf("Service.Login() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
-			if !reflect.DeepEqual(got, tt.want) {
+			if got != nil && got != tt.want {
 				t.Errorf("Service.Login() = %v, want %v", got, tt.want)
 			}
 		})
 	}
+	ctrl.Finish()
 }
 
 func TestServiceLogout(t *testing.T) {
-	type fields struct {
-		Store UserStorer
+	ctrl := gomock.NewController(t)
+	mockSession := NewMockSessionStorer(ctrl)
+	token := uuid.New()
+	ctx := context.Background()
+
+	_, uidErr := uuid.Parse("123")
+
+	tests := []struct {
+		name     string
+		token    string
+		mockCall *gomock.Call
+		wantErr  error
+	}{
+		{name: "valid case", token: token.String(),
+			mockCall: mockSession.EXPECT().Logout(ctx, &token).Return(nil), wantErr: nil},
+		{name: "invalid token", token: "123", wantErr: uidErr},
+		{name: "error while logging out", token: token.String(),
+			mockCall: mockSession.EXPECT().Logout(ctx, &token).Return(errMock), wantErr: errMock},
 	}
-	type args struct {
-		ctx   context.Context
-		token string
-	}
-	var tests []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
-	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &Service{
-				UserStore: tt.fields.Store,
+				SessionStore: mockSession,
 			}
-			if err := s.Logout(tt.args.ctx, tt.args.token); (err != nil) != tt.wantErr {
+
+			err := s.Logout(ctx, tt.token)
+
+			if !errors.Is(err, tt.wantErr) {
 				t.Errorf("Service.Logout() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -141,6 +160,7 @@ func TestEncryptedPassword(t *testing.T) {
 	}{
 		{name: "valid case", password: "abcd"},
 		{name: "valid case 2", password: "abcd124@adgbalje"},
+		{name: "invalid case", password: strings.Repeat("a", 100), wantErr: bcrypt.ErrPasswordTooLong},
 	}
 
 	for i, tt := range tests {

@@ -125,8 +125,8 @@ func (h *Handler) getAll(w http.ResponseWriter, r *http.Request) {
 		})
 
 		return
-
 	}
+
 	tasks, err := h.Service.GetAll(r.Context(), &userID)
 	if err != nil {
 		if models.ErrNotFound("user").Error() == err.Error() {

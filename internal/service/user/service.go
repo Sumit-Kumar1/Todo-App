@@ -81,6 +81,10 @@ func (s *Service) Register(ctx context.Context, req *models.RegisterReq) (*model
 }
 
 func (s *Service) Login(ctx context.Context, req *models.LoginReq) (*models.UserSession, error) {
+	if req == nil {
+		return nil, models.ErrRequired("login request")
+	}
+
 	if err := req.Validate(); err != nil {
 		return nil, err
 	}
