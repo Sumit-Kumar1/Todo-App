@@ -14,7 +14,6 @@ jobs:
         with:
           go-version-file: "go.mod"
           cache: true
-          id: go
 
       - name: Install dependencies
         run: go mod download
@@ -32,7 +31,7 @@ jobs:
 
       - name: Build
         run: |
-          CGO_ENABLED=0 GOSO=linux go build -v ./...
+          CGO_ENABLED=0 GOOS=linux go build -v ./...
 
       - name: Test coverage report
         run: |
@@ -44,7 +43,7 @@ jobs:
         with:
           args: ./...
 
-  Code Quality:
+  code-quality:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -53,7 +52,6 @@ jobs:
         with:
           go-version-file: "go.mod"
           cache: true
-          id: go
 
       - name: Install dependencies
         run: go mod download
@@ -79,9 +77,8 @@ jobs:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
       - name: SonarQube Analysis
-        uses: sonarsource/sonarqube-quality-gates-action@master
+        uses: SonarSource/sonarqube-quality-gate-action@master
         timeout-minutes: 5
-        with:
-          organization: ${{ secrets.SONAR_ORGANIZATION }}
-          projectKey: ${{ secrets.SONAR_PROJECT_KEY }}
-          token: ${{ secrets.SONAR_TOKEN }}
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
