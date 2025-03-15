@@ -15,6 +15,7 @@ const (
 	templIndex       = "index"
 	userNotFound     = "user not found"
 	renderErr        = "error while rendering template"
+	hxRedirect       = "HX-Redirect"
 )
 
 type Handler struct {
@@ -124,12 +125,12 @@ func (h *Handler) getAll(w http.ResponseWriter, r *http.Request) {
 		})
 
 		return
-	}
 
+	}
 	tasks, err := h.Service.GetAll(r.Context(), &userID)
 	if err != nil {
 		if models.ErrNotFound("user").Error() == err.Error() {
-			w.Header().Add("HX-Redirect", "/?page=register")
+			w.Header().Add(hxRedirect, "/?page=register")
 			w.WriteHeader(http.StatusOK)
 			return
 		}

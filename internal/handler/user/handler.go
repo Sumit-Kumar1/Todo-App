@@ -11,6 +11,7 @@ const (
 	appJSON     = "application/json"
 	contentType = "Content-Type"
 	token       = "token"
+	hxRedirect  = "HX-Redirect"
 )
 
 type Handler struct {
@@ -58,7 +59,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 
 	http.SetCookie(w, &cookie)
 
-	w.Header().Add("HX-Redirect", "/task")
+	w.Header().Add(hxRedirect, "/task")
 	w.WriteHeader(http.StatusOK)
 	logger.LogAttrs(ctx, slog.LevelDebug, "user logged in successfully!", slog.String("user", user.Email))
 }
@@ -97,7 +98,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 	http.SetCookie(w, &cookie)
 
-	w.Header().Add("HX-Redirect", "/task")
+	w.Header().Add(hxRedirect, "/task")
 	w.WriteHeader(http.StatusOK)
 	logger.LogAttrs(ctx, slog.LevelDebug, "login success", slog.String("user", user.Email))
 }
@@ -129,7 +130,7 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &cookie)
 
 	w.Header().Set(contentType, appJSON)
-	w.Header().Add("HX-Redirect", "/")
+	w.Header().Add(hxRedirect, "/")
 	w.WriteHeader(http.StatusOK)
 
 	logger.LogAttrs(ctx, slog.LevelDebug, "user logout success!", slog.String("token", c.Value))

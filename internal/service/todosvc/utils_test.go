@@ -3,11 +3,12 @@ package todosvc
 import (
 	"strings"
 	"testing"
+	"todoapp/internal/models"
 
 	"github.com/google/uuid"
 )
 
-func Test_generateID(t *testing.T) {
+func TestGenerateID(t *testing.T) {
 	uid := uuid.NewString()
 	tests := []struct {
 		name string
@@ -27,41 +28,42 @@ func Test_generateID(t *testing.T) {
 	}
 }
 
-func Test_validateTask(t *testing.T) {
-	type args struct {
-		id    string
-		title string
-	}
+func TestValidateTask(t *testing.T) {
+	uid := uuid.NewString()
 	tests := []struct {
 		name    string
-		args    args
-		wantErr bool
+		id      string
+		title   string
+		wantErr error
 	}{
-		// TODO: Add test cases.
+		{name: "valid case", id: "task-" + uid, title: "test", wantErr: nil},
+		{name: "invalid ID", id: "123", title: "test", wantErr: models.ErrInvalid("task id")},
+		{name: "empty title", id: "task-" + uid, title: "", wantErr: models.ErrInvalid("task title")},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := validateTask(tt.args.id, tt.args.title); (err != nil) != tt.wantErr {
+			if err := validateTask(tt.id, tt.title); err != tt.wantErr {
 				t.Errorf("validateTask() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
 }
 
-func Test_validateID(t *testing.T) {
-	type args struct {
-		id string
-	}
+func TestValidateID(t *testing.T) {
+	uid := uuid.NewString()
 	tests := []struct {
 		name    string
-		args    args
-		wantErr bool
+		id      string
+		wantErr error
 	}{
-		// TODO: Add test cases.
+		{name: "valid ID", id: "task-" + uid, wantErr: nil},
+		{name: "invalid ID", id: "123", wantErr: models.ErrInvalid("task id")},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := validateID(tt.args.id); (err != nil) != tt.wantErr {
+			if err := validateID(tt.id); err != tt.wantErr {
 				t.Errorf("validateID() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

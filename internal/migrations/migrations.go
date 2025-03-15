@@ -15,6 +15,7 @@ import (
 
 const (
 	migTableName = "todo_migrations"
+	migInsertErr = "Migration table insert error"
 )
 
 type Migrator interface {
@@ -162,7 +163,7 @@ func performUPMigrations(ctx context.Context, s *server.Server, val Migrator, ke
 	query := fmt.Sprintf("INSERT INTO %s (version, start_time, method) VALUES ('%s', %v,'%s');",
 		migTableName, key, time.Now().UnixMilli(), method)
 	if err := s.DB.Execute(query); err != nil {
-		s.Logger.LogAttrs(ctx, slog.LevelError, "Migration table insert error",
+		s.Logger.LogAttrs(ctx, slog.LevelError, migInsertErr,
 			slog.String("migration", key), slog.String("error", err.Error()))
 
 		return handleRollback(s, err)
@@ -176,7 +177,7 @@ func performUPMigrations(ctx context.Context, s *server.Server, val Migrator, ke
 
 	query = fmt.Sprintf("UPDATE %s SET end_time=%v WHERE version='%s';", migTableName, time.Now().UnixMilli(), key)
 	if err := s.DB.Execute(query); err != nil {
-		s.Logger.LogAttrs(ctx, slog.LevelError, "Migration table insert error", slog.String("migration", key), slog.String("error", err.Error()))
+		s.Logger.LogAttrs(ctx, slog.LevelError, migInsertErr, slog.String("migration", key), slog.String("error", err.Error()))
 
 		return handleRollback(s, err)
 	}
@@ -197,7 +198,7 @@ func performDownMigrations(ctx context.Context, s *server.Server, val Migrator, 
 	}
 
 	if err := s.DB.Execute(fmt.Sprintf("DELETE FROM %s WHERE version = %v", migTableName, key)); err != nil {
-		s.Logger.LogAttrs(ctx, slog.LevelError, "Migration table insert error", slog.String("migration", key), slog.String("error", err.Error()))
+		s.Logger.LogAttrs(ctx, slog.LevelError, migInsertErr, slog.String("migration", key), slog.String("error", err.Error()))
 
 		return handleRollback(s, err)
 	}
