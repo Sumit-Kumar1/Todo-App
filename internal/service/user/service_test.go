@@ -33,7 +33,7 @@ func TestServiceRegister(t *testing.T) {
 	tests := []struct {
 		name     string
 		req      *models.RegisterReq
-		want     *models.UserSession
+		want     *models.SessionData
 		mockCall func(*MockUserStorer, *MockSessionStorer)
 		wantErr  error
 	}{
@@ -84,7 +84,7 @@ func TestServiceLogin(t *testing.T) {
 		name     string
 		req      *models.LoginReq
 		mockCall func(*MockUserStorer, *MockSessionStorer)
-		want     *models.UserSession
+		want     *models.SessionData
 		wantErr  error
 	}{
 		{name: "nil request", req: nil, want: nil, wantErr: models.ErrRequired("login request")},

@@ -29,7 +29,7 @@ type RegisterReq struct {
 	*LoginReq
 }
 
-type UserSession struct {
+type SessionData struct {
 	ID     uuid.UUID `json:"id" db:"id"`
 	UserID uuid.UUID `json:"userId" db:"user_id"`
 	Token  string    `json:"token" db:"token"`

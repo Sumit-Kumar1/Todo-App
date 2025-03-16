@@ -15,7 +15,7 @@ type UserStorer interface {
 
 type SessionStorer interface {
 	Logout(ctx context.Context, token *uuid.UUID) error
-	CreateSession(ctx context.Context, session *models.UserSession) error
-	GetSessionByID(ctx context.Context, userID *uuid.UUID) (*models.UserSession, error)
-	RefreshSession(ctx context.Context, newSession *models.UserSession) error
+	CreateSession(ctx context.Context, session *models.SessionData) error
+	GetSessionByID(ctx context.Context, userID *uuid.UUID) (*models.SessionData, error)
+	RefreshSession(ctx context.Context, newSession *models.SessionData) error
 }

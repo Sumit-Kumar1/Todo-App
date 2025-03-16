@@ -19,7 +19,7 @@ func New(st UserStorer, ss SessionStorer) *Service {
 	return &Service{UserStore: st, SessionStore: ss}
 }
 
-func (s *Service) Register(ctx context.Context, req *models.RegisterReq) (*models.UserSession, error) {
+func (s *Service) Register(ctx context.Context, req *models.RegisterReq) (*models.SessionData, error) {
 	if req == nil {
 		return nil, nil
 	}
@@ -49,7 +49,7 @@ func (s *Service) Register(ctx context.Context, req *models.RegisterReq) (*model
 	}
 
 	userID := uuid.New()
-	session := models.UserSession{
+	session := models.SessionData{
 		ID:     uuid.New(),
 		UserID: userID,
 		Token:  uuid.NewString(),
@@ -62,16 +62,14 @@ func (s *Service) Register(ctx context.Context, req *models.RegisterReq) (*model
 		Password: passwd,
 	}
 
-	err = s.UserStore.RegisterUser(ctx, &user)
-	if err != nil {
+	if err := s.UserStore.RegisterUser(ctx, &user); err != nil {
 		return nil, err
 	}
 
 	logger.LogAttrs(ctx, slog.LevelInfo, "user created successfully!!",
 		slog.String("email", req.Email), slog.String("userID", userID.String()))
 
-	err = s.SessionStore.CreateSession(ctx, &session)
-	if err != nil {
+	if err := s.SessionStore.CreateSession(ctx, &session); err != nil {
 		return nil, err
 	}
 
@@ -80,7 +78,7 @@ func (s *Service) Register(ctx context.Context, req *models.RegisterReq) (*model
 	return &session, nil
 }
 
-func (s *Service) Login(ctx context.Context, req *models.LoginReq) (*models.UserSession, error) {
+func (s *Service) Login(ctx context.Context, req *models.LoginReq) (*models.SessionData, error) {
 	if req == nil {
 		return nil, models.ErrRequired("login request")
 	}
@@ -110,7 +108,7 @@ func (s *Service) Login(ctx context.Context, req *models.LoginReq) (*models.User
 		}
 
 		t := time.Now().Add(time.Minute * 15)
-		ss := models.UserSession{
+		ss := models.SessionData{
 			ID:     uuid.New(),
 			UserID: user.ID,
 			Token:  uuid.NewString(),
@@ -128,8 +126,7 @@ func (s *Service) Login(ctx context.Context, req *models.LoginReq) (*models.User
 		session.Expiry = time.Now().Add(time.Minute * 15).UTC()
 		session.Token = uuid.NewString()
 
-		err := s.SessionStore.RefreshSession(ctx, session)
-		if err != nil {
+		if err := s.SessionStore.RefreshSession(ctx, session); err != nil {
 			return nil, err
 		}
 	}

@@ -36,10 +36,10 @@ func (m *MockUserServicer) EXPECT() *MockUserServicerMockRecorder {
 }
 
 // Login mocks base method.
-func (m *MockUserServicer) Login(ctx context.Context, req *models.LoginReq) (*models.UserSession, error) {
+func (m *MockUserServicer) Login(ctx context.Context, req *models.LoginReq) (*models.SessionData, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Login", ctx, req)
-	ret0, _ := ret[0].(*models.UserSession)
+	ret0, _ := ret[0].(*models.SessionData)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -65,10 +65,10 @@ func (mr *MockUserServicerMockRecorder) Logout(ctx, token interface{}) *gomock.C
 }
 
 // Register mocks base method.
-func (m *MockUserServicer) Register(ctx context.Context, req *models.RegisterReq) (*models.UserSession, error) {
+func (m *MockUserServicer) Register(ctx context.Context, req *models.RegisterReq) (*models.SessionData, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Register", ctx, req)
-	ret0, _ := ret[0].(*models.UserSession)
+	ret0, _ := ret[0].(*models.SessionData)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

@@ -25,12 +25,10 @@ type Store struct {
 }
 
 func New(db *sqlitecloud.SQCloud) *Store {
-	return &Store{
-		DB: db,
-	}
+	return &Store{DB: db}
 }
 
-func (s *Store) CreateSession(ctx context.Context, session *models.UserSession) error {
+func (s *Store) CreateSession(ctx context.Context, session *models.SessionData) error {
 	logger := models.GetLoggerFromCtx(ctx)
 
 	query := fmt.Sprintf(createSession, session.ID, session.UserID, session.Token, session.Expiry.UnixMilli())
@@ -42,10 +40,10 @@ func (s *Store) CreateSession(ctx context.Context, session *models.UserSession) 
 	return nil
 }
 
-func (s *Store) GetSessionByID(ctx context.Context, userID *uuid.UUID) (*models.UserSession, error) {
+func (s *Store) GetSessionByID(ctx context.Context, userID *uuid.UUID) (*models.SessionData, error) {
 	logger := models.GetLoggerFromCtx(ctx)
 
-	var session models.UserSession
+	var session models.SessionData
 
 	res, err := s.DB.Select(fmt.Sprintf(getSessionByUserID, *userID))
 	if err != nil {
@@ -54,7 +52,7 @@ func (s *Store) GetSessionByID(ctx context.Context, userID *uuid.UUID) (*models.
 	}
 
 	if res.GetNumberOfRows() == uint64(0) {
-		logger.LogAttrs(ctx, slog.LevelError, "no user session found")
+		logger.LogAttrs(ctx, slog.LevelError, "no user session found for userID", slog.String("userID", userID.String()))
 		return nil, models.ErrNotFound("user ID")
 	}
 
@@ -89,7 +87,7 @@ func (s *Store) GetSessionByID(ctx context.Context, userID *uuid.UUID) (*models.
 	return &session, nil
 }
 
-func (s *Store) RefreshSession(ctx context.Context, newSession *models.UserSession) error {
+func (s *Store) RefreshSession(ctx context.Context, newSession *models.SessionData) error {
 	logger := models.GetLoggerFromCtx(ctx)
 
 	query := fmt.Sprintf(updateSession, newSession.Token, newSession.Expiry.UnixMilli(), newSession.ID)

@@ -89,7 +89,7 @@ func (m *MockSessionStorer) EXPECT() *MockSessionStorerMockRecorder {
 }
 
 // CreateSession mocks base method.
-func (m *MockSessionStorer) CreateSession(ctx context.Context, session *models.UserSession) error {
+func (m *MockSessionStorer) CreateSession(ctx context.Context, session *models.SessionData) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateSession", ctx, session)
 	ret0, _ := ret[0].(error)
@@ -103,10 +103,10 @@ func (mr *MockSessionStorerMockRecorder) CreateSession(ctx, session interface{})
 }
 
 // GetSessionByID mocks base method.
-func (m *MockSessionStorer) GetSessionByID(ctx context.Context, userID *uuid.UUID) (*models.UserSession, error) {
+func (m *MockSessionStorer) GetSessionByID(ctx context.Context, userID *uuid.UUID) (*models.SessionData, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetSessionByID", ctx, userID)
-	ret0, _ := ret[0].(*models.UserSession)
+	ret0, _ := ret[0].(*models.SessionData)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -132,7 +132,7 @@ func (mr *MockSessionStorerMockRecorder) Logout(ctx, token interface{}) *gomock.
 }
 
 // RefreshSession mocks base method.
-func (m *MockSessionStorer) RefreshSession(ctx context.Context, newSession *models.UserSession) error {
+func (m *MockSessionStorer) RefreshSession(ctx context.Context, newSession *models.SessionData) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RefreshSession", ctx, newSession)
 	ret0, _ := ret[0].(error)
