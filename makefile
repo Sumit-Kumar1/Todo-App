@@ -49,8 +49,8 @@ audit:
 .PHONY: setup
 setup:
 	go install gotest.tools/gotestsum@latest
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-	go install github.com/golang/mock/mockgen@latest
+	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.0
+	go install go.uber.org/mock/mockgen@latest
 
 ## mocks: to generate mock interfaces
 .PHONY: mocks
