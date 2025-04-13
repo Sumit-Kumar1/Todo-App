@@ -46,6 +46,7 @@ func (s *Store) CreateSession(ctx context.Context, session *models.SessionData) 
 			"error while running session create query",
 			slog.String("error", err.Error()),
 		)
+
 		return err
 	}
 
@@ -68,6 +69,7 @@ func (s *Store) GetSessionByID(
 			"error while fetching session by userID",
 			slog.String("error", err.Error()),
 		)
+
 		return nil, err
 	}
 
@@ -78,6 +80,7 @@ func (s *Store) GetSessionByID(
 			"no user session found for userID",
 			slog.String("userID", userID.String()),
 		)
+
 		return nil, models.ErrNotFound("user ID")
 	}
 
@@ -128,6 +131,7 @@ func (s *Store) RefreshSession(ctx context.Context, newSession *models.SessionDa
 			"error in refreshing session",
 			slog.String("error", err.Error()),
 		)
+
 		return err
 	}
 
@@ -147,6 +151,7 @@ func (s *Store) Logout(ctx context.Context, token *uuid.UUID) error {
 			"error while logging out user",
 			slog.String("error", err.Error()),
 		)
+
 		return err
 	}
 

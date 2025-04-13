@@ -38,6 +38,7 @@ func Method(m string) Middleware {
 					http.StatusText(http.StatusMethodNotAllowed),
 					http.StatusMethodNotAllowed,
 				)
+
 				return
 			}
 

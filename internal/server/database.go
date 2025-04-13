@@ -38,6 +38,7 @@ func newDB(logger *slog.Logger) (*sqlitecloud.SQCloud, error) {
 			"error while connecting to Database",
 			slog.String("error", err.Error()),
 		)
+
 		return nil, err
 	}
 

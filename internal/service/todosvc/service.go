@@ -62,6 +62,7 @@ func (s *Service) AddTask(
 			slog.String("error", err.Error()),
 			slog.String("task", task.ID),
 		)
+
 		return nil, err
 	}
 

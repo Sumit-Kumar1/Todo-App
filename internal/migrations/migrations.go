@@ -43,6 +43,7 @@ func RunMigrations(ctx context.Context, s *server.Server, method string) error {
 			"not able to create the migration table",
 			slog.String("error", err.Error()),
 		)
+
 		return err
 	}
 
@@ -70,7 +71,7 @@ func RunMigrations(ctx context.Context, s *server.Server, method string) error {
 }
 
 func runUpMigrations(ctx context.Context, s *server.Server, migs map[string]Migrator) error {
-	var run []string
+	var run = make([]string, 0)
 
 	lastRun, err := getLastRunMigration(ctx, s)
 	if err != nil {
@@ -163,6 +164,7 @@ func getLastRunMigration(ctx context.Context, s *server.Server) (string, error) 
 				"unable to fetch last run of the migration",
 				slog.String("error", err.Error()),
 			)
+
 			return "", err
 		}
 	}
@@ -180,6 +182,7 @@ func performUPMigrations(ctx context.Context, s *server.Server, val Migrator, ke
 			"unable to start transaction",
 			slog.String("error", err.Error()),
 		)
+
 		return err
 	}
 
@@ -233,6 +236,7 @@ func performDownMigrations(ctx context.Context, s *server.Server, val Migrator, 
 			"unable to start transaction",
 			slog.String("error", err.Error()),
 		)
+
 		return err
 	}
 
