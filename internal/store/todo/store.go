@@ -97,12 +97,24 @@ func (s *Store) GetAll(ctx context.Context, userID *uuid.UUID) ([]models.Task, e
 func (s *Store) Create(ctx context.Context, task *models.Task) error {
 	logger := models.GetLoggerFromCtx(ctx)
 
-	query := fmt.Sprintf(insertQuery, task.ID, task.UserID, task.Title, task.IsDone, task.AddedAt.UnixMilli())
+	query := fmt.Sprintf(
+		insertQuery,
+		task.ID,
+		task.UserID,
+		task.Title,
+		task.IsDone,
+		task.AddedAt.UnixMilli(),
+	)
 	if err := s.DB.Execute(query); err != nil {
 		return err
 	}
 
-	logger.LogAttrs(ctx, slog.LevelDebug, "task inserted successfully", slog.String("task", task.ID))
+	logger.LogAttrs(
+		ctx,
+		slog.LevelDebug,
+		"task inserted successfully",
+		slog.String("task", task.ID),
+	)
 
 	return nil
 }
@@ -110,7 +122,14 @@ func (s *Store) Create(ctx context.Context, task *models.Task) error {
 func (s *Store) Update(ctx context.Context, task *models.Task) error {
 	logger := models.GetLoggerFromCtx(ctx)
 
-	query := fmt.Sprintf(updateQuery, task.Title, task.IsDone, task.ModifiedAt.UnixMilli(), task.ID, task.UserID)
+	query := fmt.Sprintf(
+		updateQuery,
+		task.Title,
+		task.IsDone,
+		task.ModifiedAt.UnixMilli(),
+		task.ID,
+		task.UserID,
+	)
 	if err := s.DB.Execute(query); err != nil {
 		return err
 	}
@@ -173,6 +192,7 @@ func (s *Store) MarkDone(ctx context.Context, id string, userID *uuid.UUID) (*mo
 		}
 
 		task.Title = c1
+
 		if task.IsDone, err = strconv.ParseBool(c2); err != nil {
 			return nil, err
 		}

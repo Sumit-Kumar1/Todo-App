@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+
 	"todoapp/internal/models"
 
 	"github.com/google/uuid"
@@ -39,7 +40,12 @@ func TestValidateTask(t *testing.T) {
 	}{
 		{name: "valid case", id: "task-" + uid, title: "test", wantErr: nil},
 		{name: "invalid ID", id: "123", title: "test", wantErr: models.ErrInvalid("task id")},
-		{name: "empty title", id: "task-" + uid, title: "", wantErr: models.ErrInvalid("task title")},
+		{
+			name:    "empty title",
+			id:      "task-" + uid,
+			title:   "",
+			wantErr: models.ErrInvalid("task title"),
+		},
 	}
 
 	for _, tt := range tests {

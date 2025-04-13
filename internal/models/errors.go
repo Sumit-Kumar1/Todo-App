@@ -2,40 +2,37 @@ package models
 
 import (
 	"fmt"
-	"strings"
 )
 
 const (
-	notFoundFormat = "Not Found: %s"
-	invalidFormat  = "Invalid attribute: %s"
-	missingFormat  = "Missing attribute: %s"
+	notFoundFormat = "%s not found"
+	invalidFormat  = "invalid attribute: %s"
+	missingFormat  = "missing attribute: %s"
 )
 
 var (
-	ErrPermissionDenied  = constError("Permission denied")
-	ErrUserAlreadyExists = constError("User already exists")
-	ErrPsswdNotMatch     = constError("Password does not match")
+	ErrPermissionDenied  = ConstError("permission denied")
+	ErrUserAlreadyExists = ConstError("user already exists")
+	ErrPsswdNotMatch     = ConstError("password does not match")
+	ErrUserNotFound      = ConstError("user not found")
 )
 
-type constError string
+type ConstError string
 
-func NewConstError(message string) constError {
-	return constError(message)
+func NewConstError(message string) ConstError {
+	return ConstError(message)
 }
 
-func (err constError) Error() string {
+func (err ConstError) Error() string {
 	return string(err)
 }
 
-func (err constError) Is(target error) bool {
-	if targetErr, ok := target.(constError); ok {
-		return string(err) == string(targetErr)
+func (err ConstError) Is(target error) bool {
+	if targetErr, ok := target.(ConstError); ok {
+		return err.Error() == targetErr.Error()
 	}
 
-	ts := target.Error()
-	es := string(err)
-
-	return ts == es || strings.HasPrefix(ts, es+": ")
+	return target.Error() == err.Error()
 }
 
 func ErrNotFound(entity string) error {

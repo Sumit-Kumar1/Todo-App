@@ -20,9 +20,19 @@ func TestLoginReqValidate(t *testing.T) {
 	}{
 		{name: "valid case", email: validEmail, passwd: validPasswd, wantErr: nil},
 		{name: "missing email", email: "", passwd: validPasswd, wantErr: ErrRequired("email")},
-		{name: "invalid email", email: "acbcd@abc", passwd: validPasswd, wantErr: ErrInvalid("email")},
+		{
+			name:    "invalid email",
+			email:   "acbcd@abc",
+			passwd:  validPasswd,
+			wantErr: ErrInvalid("email"),
+		},
 		{name: "missing password", email: validEmail, passwd: "", wantErr: ErrRequired("password")},
-		{name: "invalid password", email: validEmail, passwd: "abcd", wantErr: ErrInvalid("password is too short")},
+		{
+			name:    "invalid password",
+			email:   validEmail,
+			passwd:  "abcd",
+			wantErr: ErrInvalid("password is too short"),
+		},
 	}
 
 	for _, tt := range tests {
@@ -45,7 +55,7 @@ func TestRegisterReqValidate(t *testing.T) {
 		userName string
 		wantErr  error
 	}{
-		{name: "valid info", userName: "sumit kumar"},
+		{name: "valid info", userName: validName},
 		{name: "missing user name", userName: "", wantErr: ErrRequired("name")},
 		{name: "invalid user name", userName: "a", wantErr: ErrInvalid("name is too short")},
 	}

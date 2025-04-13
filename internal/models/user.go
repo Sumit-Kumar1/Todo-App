@@ -13,14 +13,14 @@ const (
 )
 
 type UserData struct {
-	ID       uuid.UUID `json:"id" db:"id"`
-	Name     string    `json:"name" db:"name"`
-	Email    string    `json:"email" db:"email"`
+	ID       uuid.UUID `json:"id"       db:"id"`
+	Name     string    `json:"name"     db:"name"`
+	Email    string    `json:"email"    db:"email"`
 	Password string    `json:"password" db:"password"`
 }
 
 type LoginReq struct {
-	Email    string `json:"email" db:"email"`
+	Email    string `json:"email"    db:"email"`
 	Password string `json:"password" db:"password"`
 }
 
@@ -30,9 +30,9 @@ type RegisterReq struct {
 }
 
 type SessionData struct {
-	ID     uuid.UUID `json:"id" db:"id"`
+	ID     uuid.UUID `json:"id"     db:"id"`
 	UserID uuid.UUID `json:"userId" db:"user_id"`
-	Token  string    `json:"token" db:"token"`
+	Token  string    `json:"token"  db:"token"`
 	Expiry time.Time `json:"expiry" db:"expiry"`
 }
 

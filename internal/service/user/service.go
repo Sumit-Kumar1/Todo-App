@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"time"
+
 	"todoapp/internal/models"
 
 	"github.com/google/uuid"
@@ -19,7 +20,10 @@ func New(st UserStorer, ss SessionStorer) *Service {
 	return &Service{UserStore: st, SessionStore: ss}
 }
 
-func (s *Service) Register(ctx context.Context, req *models.RegisterReq) (*models.SessionData, error) {
+func (s *Service) Register(
+	ctx context.Context,
+	req *models.RegisterReq,
+) (*models.SessionData, error) {
 	if req == nil {
 		return nil, nil
 	}
@@ -33,8 +37,13 @@ func (s *Service) Register(ctx context.Context, req *models.RegisterReq) (*model
 	// check if user already exists
 	existingUser, err := s.UserStore.GetUserByEmail(ctx, req.Email)
 	if err != nil && err.Error() != models.ErrNotFound("user").Error() {
-		logger.LogAttrs(ctx, slog.LevelError, "Service.Register - user not found", slog.String("error", err.Error()),
-			slog.String("user", req.Email))
+		logger.LogAttrs(
+			ctx,
+			slog.LevelError,
+			"Service.Register - user not found",
+			slog.String("error", err.Error()),
+			slog.String("user", req.Email),
+		)
 
 		return nil, err
 	}
@@ -73,7 +82,12 @@ func (s *Service) Register(ctx context.Context, req *models.RegisterReq) (*model
 		return nil, err
 	}
 
-	logger.LogAttrs(ctx, slog.LevelInfo, "Service:Register - session created successfully!!", slog.String("userID", user.ID.String()))
+	logger.LogAttrs(
+		ctx,
+		slog.LevelInfo,
+		"Service:Register - session created successfully!!",
+		slog.String("userID", user.ID.String()),
+	)
 
 	return &session, nil
 }
@@ -94,7 +108,7 @@ func (s *Service) Login(ctx context.Context, req *models.LoginReq) (*models.Sess
 	}
 
 	if user == nil {
-		return nil, models.ErrNotFound("user")
+		return nil, models.ErrUserNotFound
 	}
 
 	if matchErr := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); matchErr != nil {
@@ -113,7 +127,10 @@ func (s *Service) Logout(ctx context.Context, token string) error {
 	return s.SessionStore.Logout(ctx, &t)
 }
 
-func (s *Service) handleLoginSession(ctx context.Context, user *models.UserData) (*models.SessionData, error) {
+func (s *Service) handleLoginSession(
+	ctx context.Context,
+	user *models.UserData,
+) (*models.SessionData, error) {
 	session, err := s.SessionStore.GetSessionByID(ctx, &user.ID)
 	if err != nil {
 		if models.ErrNotFound("user ID").Error() != err.Error() {

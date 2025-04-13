@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"log/slog"
 	"net/http"
 	"time"
@@ -10,7 +11,7 @@ import (
 	"todoapp/internal/handler"
 	todohttp "todoapp/internal/handler/todo"
 	userhttp "todoapp/internal/handler/user"
-	todosvc "todoapp/internal/service/todosvc"
+	"todoapp/internal/service/todosvc"
 	usersvc "todoapp/internal/service/user"
 	sessionstore "todoapp/internal/store/session"
 	todostore "todoapp/internal/store/todo"
@@ -28,12 +29,18 @@ func setupTasksRoutes(ctx context.Context, app *Server) {
 	todoSvc := todosvc.New(todoStore)
 	todoHTTP := todohttp.New(todoSvc)
 
-	app.Mux.HandleFunc("/task", Chain(todoHTTP.TaskPage, Method(http.MethodGet), AuthMiddleware(ctx, app.DB)))
+	app.Mux.HandleFunc(
+		"/task",
+		Chain(todoHTTP.TaskPage, Method(http.MethodGet), AuthMiddleware(ctx, app.DB)),
+	)
 	app.Mux.HandleFunc("/tasks", Chain(todoHTTP.HandleTasks, IsHTMX(), AuthMiddleware(ctx, app.DB)))
 	app.Mux.HandleFunc("/tasks/{id}", Chain(todoHTTP.Update, IsHTMX(), Method(http.MethodPut),
 		AuthMiddleware(ctx, app.DB)))
-	app.Mux.HandleFunc("/tasks/{id}/delete", Chain(todoHTTP.DeleteTask, IsHTMX(), AuthMiddleware(ctx, app.DB),
-		Method(http.MethodDelete)))
+	app.Mux.HandleFunc(
+		"/tasks/{id}/delete",
+		Chain(todoHTTP.DeleteTask, IsHTMX(), AuthMiddleware(ctx, app.DB),
+			Method(http.MethodDelete)),
+	)
 	app.Mux.HandleFunc("/tasks/{id}/done", Chain(todoHTTP.Done, IsHTMX(), Method(http.MethodPut),
 		AuthMiddleware(context.Background(), app.DB)))
 }
@@ -87,6 +94,7 @@ func setupPublicRoutes(app *Server) {
 		if err != nil {
 			app.Logger.LogAttrs(r.Context(), slog.LevelError, err.Error())
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+
 			return
 		}
 
@@ -95,8 +103,13 @@ func setupPublicRoutes(app *Server) {
 		_, _ = w.Write(data)
 
 		endTime := time.Since(t)
-		app.Logger.LogAttrs(r.Context(), slog.LevelInfo, "GET/healthz", slog.Any("status", app.Health),
-			slog.Int64("time taken(ms)", endTime.Milliseconds()))
+		app.Logger.LogAttrs(
+			r.Context(),
+			slog.LevelInfo,
+			"GET/healthz",
+			slog.Any("status", app.Health),
+			slog.Int64("time taken(ms)", endTime.Milliseconds()),
+		)
 	}, Method(http.MethodGet)))
 }
 
@@ -104,6 +117,7 @@ func isServiceHealthy(ctx context.Context, port string) bool {
 	var url = "http://localhost:" + port
 
 	client := http.Client{Timeout: 100 * time.Millisecond}
+
 	r, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return false
@@ -114,7 +128,13 @@ func isServiceHealthy(ctx context.Context, port string) bool {
 		return false
 	}
 
-	defer resp.Body.Close()
+	defer func(body io.ReadCloser) {
+		err := body.Close()
+		if err != nil {
+			slog.LogAttrs(context.Background(), slog.LevelError, err.Error())
+			return
+		}
+	}(resp.Body)
 
-	return (resp.StatusCode == http.StatusOK)
+	return resp.StatusCode == http.StatusOK
 }

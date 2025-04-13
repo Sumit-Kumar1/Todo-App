@@ -4,6 +4,7 @@ import (
 	"html/template"
 	"log/slog"
 	"net/http"
+
 	"todoapp/internal/models"
 
 	"github.com/google/uuid"
@@ -71,6 +72,7 @@ func (h *Handler) Done(w http.ResponseWriter, r *http.Request) {
 			slog.String("error", err.Error()), slog.String("task", id))
 
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+
 		return
 	}
 
@@ -132,6 +134,7 @@ func (h *Handler) getAll(w http.ResponseWriter, r *http.Request) {
 		if models.ErrNotFound("user").Error() == err.Error() {
 			w.Header().Add(hxRedirect, "/?page=register")
 			w.WriteHeader(http.StatusOK)
+
 			return
 		}
 
@@ -142,6 +145,7 @@ func (h *Handler) getAll(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+
 	if err := h.template.ExecuteTemplate(w, templIndex, tasks); err != nil {
 		logger.LogAttrs(ctx, slog.LevelError, renderErr, slog.String("template", templIndex))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -170,7 +174,14 @@ func (h *Handler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
 
-		logger.LogAttrs(ctx, slog.LevelError, err.Error(), slog.String("user", userID.String()), slog.String("task", id))
+		logger.LogAttrs(
+			ctx,
+			slog.LevelError,
+			err.Error(),
+			slog.String("user", userID.String()),
+			slog.String("task", id),
+		)
+
 		return
 	}
 
@@ -201,7 +212,14 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
 
-		logger.LogAttrs(ctx, slog.LevelError, err.Error(), slog.String("user", userID.String()), slog.String("task", id))
+		logger.LogAttrs(
+			ctx,
+			slog.LevelError,
+			err.Error(),
+			slog.String("user", userID.String()),
+			slog.String("task", id),
+		)
+
 		return
 	}
 
@@ -213,8 +231,15 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	if err := h.template.ExecuteTemplate(w, templAddTask, *resp); err != nil {
 		logger.LogAttrs(ctx, slog.LevelError, renderErr, slog.String("template", templAddTask))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+
 		return
 	}
 
-	logger.LogAttrs(ctx, slog.LevelDebug, "task update done!", slog.String("user", userID.String()), slog.String("task", id))
+	logger.LogAttrs(
+		ctx,
+		slog.LevelDebug,
+		"task update done!",
+		slog.String("user", userID.String()),
+		slog.String("task", id),
+	)
 }

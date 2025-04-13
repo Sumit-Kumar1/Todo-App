@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"log/slog"
 	"net/http"
+
 	"todoapp/internal/models"
 
 	"github.com/google/uuid"
@@ -32,7 +33,11 @@ func Method(m string) Middleware {
 	return func(f http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			if r.Method != m {
-				http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+				http.Error(
+					w,
+					http.StatusText(http.StatusMethodNotAllowed),
+					http.StatusMethodNotAllowed,
+				)
 				return
 			}
 
@@ -71,31 +76,43 @@ func AuthMiddleware(ctx context.Context, db *sqlitecloud.SQCloud) Middleware {
 						"Message": invalidCookieMsg,
 					})
 
-					logger.LogAttrs(ctx, slog.LevelError, err.Error(), slog.String("problem", "no cokkie found, please login again!"))
+					logger.LogAttrs(
+						ctx,
+						slog.LevelError,
+						err.Error(),
+						slog.String("problem", "no cokkie found, please login again!"),
+					)
+
 					return
 				}
 
 				logger.LogAttrs(ctx, slog.LevelError, err.Error())
 				http.Error(w, err.Error(), http.StatusInternalServerError)
+
 				return
 			}
 
 			if _, err = uuid.Parse(cookie.Value); err != nil {
 				logger.LogAttrs(ctx, slog.LevelError, "invalid cokkie found, please login again")
 				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+
 				return
 			}
 
-			row, err := db.Select(fmt.Sprintf("SELECT user_id FROM sessions WHERE token='%s';", cookie.Value))
+			row, err := db.Select(
+				fmt.Sprintf("SELECT user_id FROM sessions WHERE token='%s';", cookie.Value),
+			)
 			if err != nil {
 				logger.LogAttrs(ctx, slog.LevelError, err.Error())
 				http.Error(w, err.Error(), http.StatusInternalServerError)
+
 				return
 			}
 
 			if row.GetNumberOfRows() == uint64(0) { // this means no rows
 				logger.LogAttrs(ctx, slog.LevelError, "no valid session found, login again")
 				http.Error(w, invalidCookieMsg, http.StatusUnauthorized)
+
 				return
 			}
 
@@ -104,6 +121,7 @@ func AuthMiddleware(ctx context.Context, db *sqlitecloud.SQCloud) Middleware {
 				if err != nil {
 					logger.LogAttrs(ctx, slog.LevelError, err.Error())
 					http.Error(w, err.Error(), http.StatusInternalServerError)
+
 					return
 				}
 
@@ -111,6 +129,7 @@ func AuthMiddleware(ctx context.Context, db *sqlitecloud.SQCloud) Middleware {
 				if err != nil {
 					logger.LogAttrs(ctx, slog.LevelError, err.Error())
 					http.Error(w, err.Error(), http.StatusInternalServerError)
+
 					return
 				}
 			}

@@ -9,8 +9,8 @@ import (
 	reflect "reflect"
 	models "todoapp/internal/models"
 
-	gomock "go.uber.org/mock/gomock"
 	uuid "github.com/google/uuid"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockUserStorer is a mock of UserStorer interface.

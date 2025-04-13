@@ -47,14 +47,24 @@ func run(c context.Context, _ io.Writer, _ []string) error {
 	}
 
 	go func() {
-		app.Logger.LogAttrs(ctx, slog.LevelInfo, "Server started", slog.String("Address", httpServer.Addr))
+		app.Logger.LogAttrs(
+			ctx,
+			slog.LevelInfo,
+			"Server started",
+			slog.String("Address", httpServer.Addr),
+		)
 		srvErr <- httpServer.ListenAndServe()
 	}()
 
 	select {
 	case err = <-srvErr:
 		if !errors.Is(err, http.ErrServerClosed) {
-			app.Logger.LogAttrs(ctx, slog.LevelError, "error listening and serving", slog.String("error", err.Error()))
+			app.Logger.LogAttrs(
+				ctx,
+				slog.LevelError,
+				"error listening and serving",
+				slog.String("error", err.Error()),
+			)
 		}
 
 		return nil
@@ -63,7 +73,12 @@ func run(c context.Context, _ io.Writer, _ []string) error {
 	}
 
 	if err = httpServer.Shutdown(context.Background()); err != nil {
-		slog.LogAttrs(ctx, slog.LevelError, "error while shutting down the server", slog.String("error", err.Error()))
+		slog.LogAttrs(
+			ctx,
+			slog.LevelError,
+			"error while shutting down the server",
+			slog.String("error", err.Error()),
+		)
 	}
 
 	return nil
