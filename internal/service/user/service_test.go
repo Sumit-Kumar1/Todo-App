@@ -8,9 +8,9 @@ import (
 	"time"
 	"todoapp/internal/models"
 
-	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -82,6 +82,7 @@ func TestServiceRegister(t *testing.T) {
 			got, err := s.Register(context.Background(), tt.req)
 
 			assert.Equalf(t, tt.wantErr, err, testFailFmt, i, tt.name)
+
 			if got != nil {
 				assert.NotNilf(t, got.Expiry, testFailFmt, i, tt.name)
 			}
@@ -270,6 +271,7 @@ func TestServiceHandleLoginSession(t *testing.T) {
 			got, err := s.handleLoginSession(ctx, tt.user)
 
 			assert.Equalf(t, tt.wantErr, err, "Test[%d] failed - %s", i, tt.name)
+
 			if got != nil {
 				assert.Equalf(t, tt.want.UserID, got.UserID, "Test[%d] failed", i, tt.name)
 			}

@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 	models "todoapp/internal/models"
 
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockUserServicer is a mock of UserServicer interface.
