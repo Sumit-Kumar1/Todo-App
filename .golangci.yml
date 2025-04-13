@@ -84,6 +84,7 @@ linters:
           - errcheck
           - dupl
           - gosec
+          - revive
       # Run some linter only for test files by excluding its issues for everything else.
       - path-except: _test\.go
         linters:
