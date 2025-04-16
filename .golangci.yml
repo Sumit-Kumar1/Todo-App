@@ -101,7 +101,6 @@ formatters:
   enable:
     - gofmt
     - goimports
-    - golines
 
 issues:
   max-issues-per-linter: 50
