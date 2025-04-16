@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"context"
@@ -16,7 +16,7 @@ import (
 	"todoapp/internal/server"
 )
 
-func run(c context.Context, _ io.Writer, _ []string) error {
+func Run(c context.Context, _ io.Writer, _ []string) error {
 	ctx, stop := signal.NotifyContext(c, os.Interrupt)
 	defer stop()
 
@@ -47,48 +47,49 @@ func run(c context.Context, _ io.Writer, _ []string) error {
 	}
 
 	go func() {
-		app.Logger.LogAttrs(
-			ctx,
-			slog.LevelInfo,
-			"Server started",
+		app.Logger.LogAttrs(ctx, slog.LevelInfo, "Server started",
 			slog.String("Address", httpServer.Addr),
 		)
+
 		srvErr <- httpServer.ListenAndServe()
 	}()
 
 	select {
 	case err = <-srvErr:
 		if !errors.Is(err, http.ErrServerClosed) {
-			app.Logger.LogAttrs(
-				ctx,
-				slog.LevelError,
+			app.Logger.LogAttrs(ctx, slog.LevelError,
 				"error listening and serving",
 				slog.String("error", err.Error()),
 			)
+
+			return err
 		}
 
+		if app.DB == nil {
+			return nil
+		}
+
+		if err := app.DB.Close(); err != nil {
+			app.Logger.LogAttrs(ctx, slog.LevelError, "error while closing database connection",
+				slog.String("error", err.Error()))
+
+			return err
+		}
+
+		app.Logger.LogAttrs(ctx, slog.LevelInfo, "database connection closed successfully")
+
 		return nil
+
 	case <-ctx.Done():
 		stop()
 	}
 
-	if err = httpServer.Shutdown(context.Background()); err != nil {
-		slog.LogAttrs(
-			ctx,
-			slog.LevelError,
+	if err := httpServer.Shutdown(context.Background()); err != nil {
+		slog.LogAttrs(ctx, slog.LevelError,
 			"error while shutting down the server",
 			slog.String("error", err.Error()),
 		)
 	}
 
 	return nil
-}
-
-func main() {
-	ctx := context.Background()
-	if err := run(ctx, os.Stdout, nil); err != nil {
-		slog.Error(err.Error())
-	}
-
-	slog.Info("server is stopped!!")
 }
