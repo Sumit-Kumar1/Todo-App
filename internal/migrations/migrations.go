@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"strings"
 	"time"
-
 	"todoapp/internal/models"
 	"todoapp/internal/server"
 
@@ -18,9 +17,9 @@ const (
 	migInsertErr = "Migration table insert error"
 )
 
-type Migrator interface {
-	Up(db *sqlitecloud.SQCloud) error
-	Down(db *sqlitecloud.SQCloud) error
+type migrator interface {
+	up(db *sqlitecloud.SQCloud) error
+	down(db *sqlitecloud.SQCloud) error
 }
 
 func RunMigrations(ctx context.Context, s *server.Server, method string) error {
@@ -70,8 +69,8 @@ func RunMigrations(ctx context.Context, s *server.Server, method string) error {
 	return nil
 }
 
-func runUpMigrations(ctx context.Context, s *server.Server, migs map[string]Migrator) error {
-	var run = make([]string, 0)
+func runUpMigrations(ctx context.Context, s *server.Server, migs map[string]migrator) error {
+	run := make([]string, 0)
 
 	lastRun, err := getLastRunMigration(ctx, s)
 	if err != nil {
@@ -96,7 +95,7 @@ func runUpMigrations(ctx context.Context, s *server.Server, migs map[string]Migr
 	return nil
 }
 
-func runDownMigrations(ctx context.Context, s *server.Server, migs map[string]Migrator) error {
+func runDownMigrations(ctx context.Context, s *server.Server, migs map[string]migrator) error {
 	run := []string{}
 	versions := []string{}
 
@@ -172,7 +171,7 @@ func getLastRunMigration(ctx context.Context, s *server.Server) (string, error) 
 	return lastRun, nil
 }
 
-func performUPMigrations(ctx context.Context, s *server.Server, val Migrator, key string) error {
+func performUPMigrations(ctx context.Context, s *server.Server, val migrator, key string) error {
 	const method = "UP"
 
 	if err := s.DB.BeginTransaction(); err != nil {
@@ -195,7 +194,7 @@ func performUPMigrations(ctx context.Context, s *server.Server, val Migrator, ke
 		return handleRollback(s, err)
 	}
 
-	if err := val.Up(s.DB); err != nil {
+	if err := val.up(s.DB); err != nil {
 		s.Logger.LogAttrs(
 			ctx,
 			slog.LevelError,
@@ -228,7 +227,7 @@ func performUPMigrations(ctx context.Context, s *server.Server, val Migrator, ke
 	return nil
 }
 
-func performDownMigrations(ctx context.Context, s *server.Server, val Migrator, key string) error {
+func performDownMigrations(ctx context.Context, s *server.Server, val migrator, key string) error {
 	if err := s.DB.BeginTransaction(); err != nil {
 		s.Logger.LogAttrs(
 			ctx,
@@ -240,7 +239,7 @@ func performDownMigrations(ctx context.Context, s *server.Server, val Migrator, 
 		return err
 	}
 
-	if err := val.Down(s.DB); err != nil {
+	if err := val.down(s.DB); err != nil {
 		s.Logger.LogAttrs(
 			ctx,
 			slog.LevelError,

@@ -31,8 +31,6 @@ const (
 	lightMagenta = 95
 	lightCyan    = 96
 	white        = 97
-
-	timeFormat = time.RFC1123
 )
 
 type Handler struct {
@@ -53,6 +51,7 @@ func (h *Handler) WithGroup(name string) slog.Handler {
 	return &Handler{h: h.h.WithGroup(name), b: h.b, m: h.m}
 }
 
+// nolint:gocritic // can't change it as it has this definition in slog library
 func (h *Handler) Handle(ctx context.Context, r slog.Record) error {
 	level := r.Level.String() + ":"
 
@@ -67,27 +66,30 @@ func (h *Handler) Handle(ctx context.Context, r slog.Record) error {
 		level = colorize(lightRed, level)
 	}
 
-	attrs, err := h.computeAttrs(ctx, r)
+	attrs, err := h.computeAttrs(ctx, &r)
 	if err != nil {
 		return err
 	}
 
-	bytes, err := json.MarshalIndent(attrs, "", "  ")
+	logData, err := json.MarshalIndent(attrs, "", "  ")
 	if err != nil {
 		return fmt.Errorf("error when marshaling attrs: %w", err)
 	}
 
-	fmt.Println(
+	_, err = fmt.Println(
 		colorize(lightMagenta, r.Time.Format(time.RFC3339Nano)),
 		level,
 		colorize(white, r.Message),
-		colorize(darkGray, string(bytes)),
+		colorize(darkGray, string(logData)),
 	)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
 
-func (h *Handler) computeAttrs(ctx context.Context, r slog.Record) (map[string]any, error) {
+func (h *Handler) computeAttrs(ctx context.Context, r *slog.Record) (map[string]any, error) {
 	h.m.Lock()
 
 	defer func() {
@@ -95,7 +97,7 @@ func (h *Handler) computeAttrs(ctx context.Context, r slog.Record) (map[string]a
 		h.m.Unlock()
 	}()
 
-	if err := h.h.Handle(ctx, r); err != nil {
+	if err := h.h.Handle(ctx, *r); err != nil {
 		return nil, fmt.Errorf("error when calling inner handler's Handle: %w", err)
 	}
 
@@ -108,7 +110,9 @@ func (h *Handler) computeAttrs(ctx context.Context, r slog.Record) (map[string]a
 	return attrs, nil
 }
 
-func suppressDefaults(next func([]string, slog.Attr) slog.Attr) func([]string, slog.Attr) slog.Attr {
+func suppressDefaults(
+	next func([]string, slog.Attr) slog.Attr,
+) func([]string, slog.Attr) slog.Attr {
 	return func(groups []string, a slog.Attr) slog.Attr {
 		if a.Key == slog.TimeKey ||
 			a.Key == slog.LevelKey ||

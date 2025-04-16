@@ -47,8 +47,6 @@ func (s *Store) RegisterUser(ctx context.Context, data *models.UserData) error {
 func (s *Store) GetUserByEmail(ctx context.Context, email string) (*models.UserData, error) {
 	logger := models.GetLoggerFromCtx(ctx)
 
-	var user models.UserData
-
 	res, err := s.DB.Select(fmt.Sprintf(getUser, email))
 	if err != nil {
 		logger.LogAttrs(
@@ -60,6 +58,12 @@ func (s *Store) GetUserByEmail(ctx context.Context, email string) (*models.UserD
 
 		return nil, err
 	}
+
+	return populateUserFields(res)
+}
+
+func populateUserFields(res *sqlitecloud.Result) (*models.UserData, error) {
+	var user models.UserData
 
 	if res.GetNumberOfRows() == 0 {
 		return nil, models.ErrUserNotFound

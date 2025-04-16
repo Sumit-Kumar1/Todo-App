@@ -53,19 +53,15 @@ func (s *Store) CreateSession(ctx context.Context, session *models.SessionData) 
 	return nil
 }
 
-func (s *Store) GetSessionByID(
-	ctx context.Context,
-	userID *uuid.UUID,
-) (*models.SessionData, error) {
+// nolint:gocognit // cognitive of 11 is okay, didn't want to split this method
+func (s *Store) GetSessionByID(ctx context.Context, userID *uuid.UUID) (*models.SessionData, error) {
 	logger := models.GetLoggerFromCtx(ctx)
 
 	var session models.SessionData
 
 	res, err := s.DB.Select(fmt.Sprintf(getSessionByUserID, *userID))
 	if err != nil {
-		logger.LogAttrs(
-			ctx,
-			slog.LevelError,
+		logger.LogAttrs(ctx, slog.LevelError,
 			"error while fetching session by userID",
 			slog.String("error", err.Error()),
 		)
@@ -125,9 +121,7 @@ func (s *Store) RefreshSession(ctx context.Context, newSession *models.SessionDa
 		newSession.ID,
 	)
 	if err := s.DB.Execute(query); err != nil {
-		logger.LogAttrs(
-			ctx,
-			slog.LevelError,
+		logger.LogAttrs(ctx, slog.LevelError,
 			"error in refreshing session",
 			slog.String("error", err.Error()),
 		)
@@ -145,9 +139,7 @@ func (s *Store) Logout(ctx context.Context, token *uuid.UUID) error {
 
 	res, err := s.DB.Select(fmt.Sprintf(getSessionByToken, *token))
 	if err != nil {
-		logger.LogAttrs(
-			ctx,
-			slog.LevelError,
+		logger.LogAttrs(ctx, slog.LevelError,
 			"error while logging out user",
 			slog.String("error", err.Error()),
 		)

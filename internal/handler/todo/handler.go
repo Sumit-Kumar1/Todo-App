@@ -113,6 +113,7 @@ func (h *Handler) addTask(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// nolint:revive // this is a handler get not returning
 func (h *Handler) getAll(w http.ResponseWriter, r *http.Request) {
 	var (
 		ctx    = r.Context()

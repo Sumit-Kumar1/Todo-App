@@ -5,9 +5,9 @@ import (
 )
 
 const (
-	notFoundFormat = "%s not found"
-	invalidFormat  = "invalid attribute: %s"
-	missingFormat  = "missing attribute: %s"
+	notFoundFormat  = "%s not found"
+	invalidFieldFmt = "invalid field: %s"
+	missingFieldFmt = "missing field: %s"
 )
 
 var (
@@ -15,6 +15,7 @@ var (
 	ErrUserAlreadyExists = ConstError("user already exists")
 	ErrPsswdNotMatch     = ConstError("password does not match")
 	ErrUserNotFound      = ConstError("user not found")
+	ErrInvalidCookie     = ConstError("invalid cookie")
 )
 
 type ConstError string
@@ -40,9 +41,9 @@ func ErrNotFound(entity string) error {
 }
 
 func ErrInvalid(entity string) error {
-	return NewConstError(fmt.Sprintf(invalidFormat, entity))
+	return NewConstError(fmt.Sprintf(invalidFieldFmt, entity))
 }
 
 func ErrRequired(entity string) error {
-	return NewConstError(fmt.Sprintf(missingFormat, entity))
+	return NewConstError(fmt.Sprintf(missingFieldFmt, entity))
 }

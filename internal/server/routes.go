@@ -36,10 +36,8 @@ func setupTasksRoutes(ctx context.Context, app *Server) {
 	app.Mux.HandleFunc("/tasks", Chain(todoHTTP.HandleTasks, IsHTMX(), AuthMiddleware(ctx, app.DB)))
 	app.Mux.HandleFunc("/tasks/{id}", Chain(todoHTTP.Update, IsHTMX(), Method(http.MethodPut),
 		AuthMiddleware(ctx, app.DB)))
-	app.Mux.HandleFunc(
-		"/tasks/{id}/delete",
-		Chain(todoHTTP.DeleteTask, IsHTMX(), AuthMiddleware(ctx, app.DB),
-			Method(http.MethodDelete)),
+	app.Mux.HandleFunc("/tasks/{id}/delete",
+		Chain(todoHTTP.DeleteTask, IsHTMX(), AuthMiddleware(ctx, app.DB), Method(http.MethodDelete)),
 	)
 	app.Mux.HandleFunc("/tasks/{id}/done", Chain(todoHTTP.Done, IsHTMX(), Method(http.MethodPut),
 		AuthMiddleware(context.Background(), app.DB)))
@@ -122,19 +120,19 @@ func isServiceHealthy(ctx context.Context, port string) bool {
 	if err != nil {
 		return false
 	}
-
+	// nolint:bodyclose // body is already closed in defer statement
 	resp, err := client.Do(r)
 	if err != nil {
 		return false
 	}
 
-	defer func(body io.ReadCloser) {
+	defer func(ctx context.Context, body io.ReadCloser) {
 		err := body.Close()
 		if err != nil {
-			slog.LogAttrs(context.Background(), slog.LevelError, err.Error())
+			slog.LogAttrs(ctx, slog.LevelError, err.Error())
 			return
 		}
-	}(resp.Body)
+	}(ctx, resp.Body)
 
 	return resp.StatusCode == http.StatusOK
 }

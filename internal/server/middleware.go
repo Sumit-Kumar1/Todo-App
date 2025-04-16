@@ -65,11 +65,10 @@ func AuthMiddleware(ctx context.Context, db *sqlitecloud.SQCloud) Middleware {
 		return func(w http.ResponseWriter, r *http.Request) {
 			var (
 				temp   = template.Must(template.ParseGlob("views/*"))
-				uid    uuid.UUID
 				logger = models.GetLoggerFromCtx(ctx)
 			)
 
-			cookie, err := r.Cookie(cookieName)
+			cookieVal, err := validateCookie(ctx, logger, r)
 			if err != nil {
 				if errors.Is(err, http.ErrNoCookie) {
 					_ = temp.ExecuteTemplate(w, "errorPage", map[string]any{
@@ -77,65 +76,88 @@ func AuthMiddleware(ctx context.Context, db *sqlitecloud.SQCloud) Middleware {
 						"Message": invalidCookieMsg,
 					})
 
-					logger.LogAttrs(
-						ctx,
-						slog.LevelError,
-						err.Error(),
-						slog.String("problem", "no cokkie found, please login again!"),
-					)
-
 					return
 				}
 
-				logger.LogAttrs(ctx, slog.LevelError, err.Error())
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-
-				return
-			}
-
-			if _, err = uuid.Parse(cookie.Value); err != nil {
-				logger.LogAttrs(ctx, slog.LevelError, "invalid cokkie found, please login again")
 				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 
 				return
 			}
 
-			row, err := db.Select(
-				fmt.Sprintf("SELECT user_id FROM sessions WHERE token='%s';", cookie.Value),
-			)
+			uid, err := getSessionID(ctx, db, logger, cookieVal)
 			if err != nil {
-				logger.LogAttrs(ctx, slog.LevelError, err.Error())
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				http.Error(w, err.Error(), http.StatusUnauthorized)
 
 				return
 			}
 
-			if row.GetNumberOfRows() == uint64(0) { // this means no rows
-				logger.LogAttrs(ctx, slog.LevelError, "no valid session found, login again")
-				http.Error(w, invalidCookieMsg, http.StatusUnauthorized)
-
-				return
-			}
-
-			for r := uint64(0); r < row.GetNumberOfRows(); r++ {
-				userID, err := row.GetStringValue(r, 0)
-				if err != nil {
-					logger.LogAttrs(ctx, slog.LevelError, err.Error())
-					http.Error(w, err.Error(), http.StatusInternalServerError)
-
-					return
-				}
-
-				uid, err = uuid.Parse(userID)
-				if err != nil {
-					logger.LogAttrs(ctx, slog.LevelError, err.Error())
-					http.Error(w, err.Error(), http.StatusInternalServerError)
-
-					return
-				}
-			}
-
-			f(w, r.WithContext(context.WithValue(ctx, models.CtxKeyUserID, uid)))
+			f(w, r.WithContext(context.WithValue(ctx, models.CtxKeyUserID, *uid)))
 		}
 	}
+}
+
+func validateCookie(ctx context.Context, logger *slog.Logger, r *http.Request) (*uuid.UUID, error) {
+	cookie, err := r.Cookie(cookieName)
+	if err == nil {
+		uid, err := uuid.Parse(cookie.Value)
+		if err != nil {
+			logger.LogAttrs(ctx, slog.LevelError, "invalid cokkie found, please login again")
+
+			return nil, models.ErrInvalidCookie
+		}
+
+		return &uid, nil
+	}
+
+	if errors.Is(err, http.ErrNoCookie) {
+		logger.LogAttrs(ctx, slog.LevelError, err.Error(),
+			slog.String("error", "no cookie found, please login again!"),
+		)
+
+		return nil, err
+	}
+
+	logger.LogAttrs(ctx, slog.LevelError, err.Error())
+
+	return nil, err
+}
+
+func getSessionID(ctx context.Context, db *sqlitecloud.SQCloud, logger *slog.Logger, sessionToken *uuid.UUID) (*uuid.UUID, error) {
+	var (
+		uid uuid.UUID
+		err error
+	)
+
+	row, err := db.Select(
+		fmt.Sprintf("SELECT user_id FROM sessions WHERE token='%s';", *sessionToken),
+	)
+	if err != nil {
+		logger.LogAttrs(ctx, slog.LevelError, err.Error())
+
+		return nil, err
+	}
+
+	if row.GetNumberOfRows() == uint64(0) {
+		logger.LogAttrs(ctx, slog.LevelError, "no valid session found, login again")
+
+		return nil, models.ErrInvalidCookie
+	}
+
+	for r := uint64(0); r < row.GetNumberOfRows(); r++ {
+		userID, err := row.GetStringValue(r, 0)
+		if err != nil {
+			logger.LogAttrs(ctx, slog.LevelError, err.Error())
+
+			return nil, err
+		}
+
+		uid, err = uuid.Parse(userID)
+		if err != nil {
+			logger.LogAttrs(ctx, slog.LevelError, err.Error())
+
+			return nil, err
+		}
+	}
+
+	return &uid, nil
 }

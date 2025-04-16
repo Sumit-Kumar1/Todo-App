@@ -16,7 +16,10 @@ import (
 )
 
 var (
-	errMock     = models.NewConstError("some error")
+	errMock = models.NewConstError("some error")
+)
+
+const (
 	testFailFmt = "Test[%d] failed - %s"
 )
 

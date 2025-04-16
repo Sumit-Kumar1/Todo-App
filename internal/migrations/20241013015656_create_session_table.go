@@ -13,10 +13,10 @@ const (
 
 type M20241013015656 string
 
-func (m M20241013015656) Up(db *sqlitecloud.SQCloud) error {
+func (m M20241013015656) up(db *sqlitecloud.SQCloud) error {
 	return run(db, sessionUp, m)
 }
 
-func (m M20241013015656) Down(db *sqlitecloud.SQCloud) error {
+func (m M20241013015656) down(db *sqlitecloud.SQCloud) error {
 	return run(db, sessionDown, m)
 }
