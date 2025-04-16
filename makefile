@@ -49,7 +49,7 @@ audit:
 .PHONY: setup
 setup:
 	go install gotest.tools/gotestsum@latest
-	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.0
+	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
 	go install go.uber.org/mock/mockgen@latest
 
 ## mocks: to generate mock interfaces
@@ -60,7 +60,7 @@ mocks:
 ## lint: check for lint errors
 .PHONY: lint
 lint:
-	golangci-lint run -n --build-tags=integration ./...
+	golangci-lint run ./... --timeout=5m
 
 
 #tests: run unit tests with gotestsum
