@@ -210,7 +210,7 @@ paths:
           description: Task not found
 
   /tasks/{taskId}/done:
-    patch:
+    put:
       tags:
         - Todo
       summary: marks the task as done for authenticated user
@@ -226,6 +226,10 @@ paths:
         - cookieAuth: []
       responses:
         "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TodoTask"
           description: Task is marked as done
         "404":
           description: Task not found
@@ -239,6 +243,9 @@ components:
       properties:
         title:
           type: string
+        dueDate:
+          type: string
+          format: date
 
     TodoTask:
       type: object
@@ -253,6 +260,10 @@ components:
         isDone:
           type: boolean
           default: false
+        dueDate:
+          type: string
+          format: date
+          description: due date of the task
         addedAt:
           type: string
           format: date-time
