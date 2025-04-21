@@ -9,7 +9,7 @@ const (
     user_id TEXT NOT NULL,
     task_title TEXT NOT NULL, 
     done_status BOOLEAN NOT NULL CHECK (done_status IN (0, 1)),
-    due_date DATETIME,
+    due_date DATE,
     added_at DATETIME NOT NULL, 
     modified_at DATETIME);`
 )
