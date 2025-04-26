@@ -45,9 +45,10 @@ audit:
 # DEVELOPMENT
 # ==================================================================================== #
 
-## setup : to install required go tooling
+## setup : to install required go tooling and air
 .PHONY: setup
 setup:
+	go install github.com/air-verse/air@latest
 	go install gotest.tools/gotestsum@latest
 	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
 	go install go.uber.org/mock/mockgen@latest
