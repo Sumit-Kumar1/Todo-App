@@ -14,9 +14,9 @@ const (
 type M20241013015656 string
 
 func (m M20241013015656) up(db *sqlitecloud.SQCloud) error {
-	return run(db, sessionUp, m)
+	return db.Execute(sessionUp)
 }
 
 func (m M20241013015656) down(db *sqlitecloud.SQCloud) error {
-	return run(db, sessionDown, m)
+	return db.Execute(sessionDown)
 }

@@ -36,12 +36,7 @@ func RunMigrations(ctx context.Context, s *server.Server, method string) error {
 
 	err := s.DB.Execute(query)
 	if err != nil {
-		s.Logger.LogAttrs(
-			ctx,
-			slog.LevelError,
-			"not able to create the migration table",
-			slog.String("error", err.Error()),
-		)
+		s.Logger.LogAttrs(ctx, slog.LevelError, "not able to create the migration table")
 
 		return err
 	}
@@ -52,7 +47,6 @@ func RunMigrations(ctx context.Context, s *server.Server, method string) error {
 	case "DOWN":
 		err = runDownMigrations(ctx, s, migrations)
 	default:
-		s.Logger.LogAttrs(ctx, slog.LevelError, "invalid migrations method provided!!")
 		return models.ErrInvalid("migration method")
 	}
 
@@ -60,9 +54,7 @@ func RunMigrations(ctx context.Context, s *server.Server, method string) error {
 		return err
 	}
 
-	s.Logger.LogAttrs(
-		ctx,
-		slog.LevelInfo,
+	s.Logger.LogAttrs(ctx, slog.LevelInfo,
 		fmt.Sprintf("Completed the migration in time: %v seconds", time.Since(t).Seconds()),
 	)
 
@@ -77,16 +69,16 @@ func runUpMigrations(ctx context.Context, s *server.Server, migs map[string]migr
 		return err
 	}
 
-	for key, val := range migs {
-		if key <= lastRun {
+	for version, val := range migs {
+		if version <= lastRun {
 			continue
 		}
 
-		if err := performUPMigrations(ctx, s, val, key); err != nil {
+		if err := performUpMigrations(ctx, s, val, version); err != nil {
 			return err
 		}
 
-		run = append(run, key)
+		run = append(run, version)
 	}
 
 	s.Logger.LogAttrs(ctx, slog.LevelInfo, "successfully UP migrated",
@@ -137,10 +129,7 @@ func runDownMigrations(ctx context.Context, s *server.Server, migs map[string]mi
 func getLastRunMigration(ctx context.Context, s *server.Server) (string, error) {
 	var (
 		lastRun         string
-		queryGetLastRun = fmt.Sprintf(
-			"SELECT version FROM %s ORDER BY version DESC LIMIT 1;",
-			migTableName,
-		)
+		queryGetLastRun = fmt.Sprintf("SELECT version FROM %s ORDER BY version DESC LIMIT 1;", migTableName)
 	)
 
 	res, err := s.DB.Select(queryGetLastRun)
@@ -151,15 +140,14 @@ func getLastRunMigration(ctx context.Context, s *server.Server) (string, error) 
 	numRows := res.GetNumberOfRows()
 	if numRows == 0 {
 		s.Logger.LogAttrs(ctx, slog.LevelInfo, "no last run migrations found")
+
 		return "", nil
 	}
 
 	for i := uint64(0); i < res.GetNumberOfRows(); i++ {
 		lastRun, err = res.GetStringValue(i, 0)
 		if err != nil {
-			s.Logger.LogAttrs(
-				ctx,
-				slog.LevelError,
+			s.Logger.LogAttrs(ctx, slog.LevelError,
 				"unable to fetch last run of the migration",
 				slog.String("error", err.Error()),
 			)
@@ -171,53 +159,49 @@ func getLastRunMigration(ctx context.Context, s *server.Server) (string, error) 
 	return lastRun, nil
 }
 
-func performUPMigrations(ctx context.Context, s *server.Server, val migrator, key string) error {
+func performUpMigrations(ctx context.Context, s *server.Server, val migrator, version string) error {
 	const method = "UP"
 
 	if err := s.DB.BeginTransaction(); err != nil {
-		s.Logger.LogAttrs(
-			ctx,
-			slog.LevelError,
-			"unable to start transaction",
+		s.Logger.LogAttrs(ctx, slog.LevelError, "unable to start transaction",
 			slog.String("error", err.Error()),
 		)
 
 		return err
 	}
 
+	defer s.DB.EndTransaction()
+
 	query := fmt.Sprintf("INSERT INTO %s (version, start_time, method) VALUES ('%s', %v,'%s');",
-		migTableName, key, time.Now().UnixMilli(), method)
+		migTableName, version, time.Now().UnixMilli(), method)
+
 	if err := s.DB.Execute(query); err != nil {
 		s.Logger.LogAttrs(ctx, slog.LevelError, migInsertErr,
-			slog.String("migration", key), slog.String("error", err.Error()))
-
-		return handleRollback(s, err)
-	}
-
-	if err := val.up(s.DB); err != nil {
-		s.Logger.LogAttrs(
-			ctx,
-			slog.LevelError,
-			"Migration error",
-			slog.String("migration", key),
+			slog.String("migration", version),
 			slog.String("error", err.Error()),
 		)
 
 		return handleRollback(s, err)
 	}
 
-	query = fmt.Sprintf(
-		"UPDATE %s SET end_time=%v WHERE version='%s';",
+	if err := val.up(s.DB); err != nil {
+		s.Logger.LogAttrs(ctx, slog.LevelError, "Migration error",
+			slog.String("migration", version),
+			slog.String("error", err.Error()),
+		)
+
+		return handleRollback(s, err)
+	}
+
+	query = fmt.Sprintf("UPDATE %s SET end_time=%v WHERE version='%s';",
 		migTableName,
 		time.Now().UnixMilli(),
-		key,
+		version,
 	)
+
 	if err := s.DB.Execute(query); err != nil {
-		s.Logger.LogAttrs(
-			ctx,
-			slog.LevelError,
-			migInsertErr,
-			slog.String("migration", key),
+		s.Logger.LogAttrs(ctx, slog.LevelError, migInsertErr,
+			slog.String("migration", version),
 			slog.String("error", err.Error()),
 		)
 
@@ -229,9 +213,7 @@ func performUPMigrations(ctx context.Context, s *server.Server, val migrator, ke
 
 func performDownMigrations(ctx context.Context, s *server.Server, val migrator, key string) error {
 	if err := s.DB.BeginTransaction(); err != nil {
-		s.Logger.LogAttrs(
-			ctx,
-			slog.LevelError,
+		s.Logger.LogAttrs(ctx, slog.LevelError,
 			"unable to start transaction",
 			slog.String("error", err.Error()),
 		)
@@ -239,11 +221,10 @@ func performDownMigrations(ctx context.Context, s *server.Server, val migrator, 
 		return err
 	}
 
+	defer s.DB.EndTransaction()
+
 	if err := val.down(s.DB); err != nil {
-		s.Logger.LogAttrs(
-			ctx,
-			slog.LevelError,
-			"Migration error",
+		s.Logger.LogAttrs(ctx, slog.LevelError, "Migration error",
 			slog.String("migration", key),
 			slog.String("error", err.Error()),
 		)
@@ -252,10 +233,7 @@ func performDownMigrations(ctx context.Context, s *server.Server, val migrator, 
 	}
 
 	if err := s.DB.Execute(fmt.Sprintf("DELETE FROM %s WHERE version = %v", migTableName, key)); err != nil {
-		s.Logger.LogAttrs(
-			ctx,
-			slog.LevelError,
-			migInsertErr,
+		s.Logger.LogAttrs(ctx, slog.LevelError, migInsertErr,
 			slog.String("migration", key),
 			slog.String("error", err.Error()),
 		)
@@ -267,12 +245,7 @@ func performDownMigrations(ctx context.Context, s *server.Server, val migrator, 
 }
 
 func handleRollback(s *server.Server, err error) error {
-	defer func() {
-		_ = s.DB.EndTransaction()
-	}()
-
-	rErr := s.DB.RollBackTransaction()
-	if rErr != nil {
+	if rErr := s.DB.RollBackTransaction(); rErr != nil {
 		return rErr
 	}
 

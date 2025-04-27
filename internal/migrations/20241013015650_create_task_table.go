@@ -17,9 +17,9 @@ const (
 type M20241013015650 string
 
 func (m M20241013015650) up(db *sqlitecloud.SQCloud) error {
-	return run(db, tasksUp, m)
+	return db.Execute(tasksUp)
 }
 
 func (m M20241013015650) down(db *sqlitecloud.SQCloud) error {
-	return run(db, tasksDown, m)
+	return db.Execute(tasksDown)
 }
