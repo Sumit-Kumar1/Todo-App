@@ -39,12 +39,10 @@ func (h *UIHandler) Root(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.templ.ExecuteTemplate(w, tempName, nil); err != nil {
-		logger.LogAttrs(
-			r.Context(),
-			slog.LevelError,
-			err.Error(),
+		logger.LogAttrs(ctx, slog.LevelError, err.Error(),
 			slog.String("template-render", tempName),
 		)
+
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 
 		return
@@ -56,12 +54,11 @@ func (h *UIHandler) Swagger(w http.ResponseWriter, r *http.Request) {
 	logger := models.GetLoggerFromCtx(ctx)
 
 	if err := h.templ.ExecuteTemplate(w, "swagger", nil); err != nil {
-		logger.LogAttrs(
-			ctx,
-			slog.LevelError,
+		logger.LogAttrs(ctx, slog.LevelError,
 			"error while rendering template",
 			slog.String("template", "swagger"),
 		)
+
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 
 		return

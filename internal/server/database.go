@@ -31,10 +31,7 @@ func newDB(logger *slog.Logger) (*sqlitecloud.SQCloud, error) {
 	sqcl := sqlitecloud.New(config)
 
 	if err := sqcl.Connect(); err != nil {
-		logger.LogAttrs(
-			ctx,
-			slog.LevelError,
-			"error while connecting to Database",
+		logger.LogAttrs(ctx, slog.LevelError, "error while connecting to Database",
 			slog.String("error", err.Error()),
 		)
 

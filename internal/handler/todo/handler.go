@@ -175,10 +175,7 @@ func (h *Handler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
 
-		logger.LogAttrs(
-			ctx,
-			slog.LevelError,
-			err.Error(),
+		logger.LogAttrs(ctx, slog.LevelError, err.Error(),
 			slog.String("user", userID.String()),
 			slog.String("task", id),
 		)
@@ -213,10 +210,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
 
-		logger.LogAttrs(
-			ctx,
-			slog.LevelError,
-			err.Error(),
+		logger.LogAttrs(ctx, slog.LevelError, err.Error(),
 			slog.String("user", userID.String()),
 			slog.String("task", id),
 		)
@@ -236,10 +230,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logger.LogAttrs(
-		ctx,
-		slog.LevelDebug,
-		"task update done!",
+	logger.LogAttrs(ctx, slog.LevelDebug, "task update done!",
 		slog.String("user", userID.String()),
 		slog.String("task", id),
 	)

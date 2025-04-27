@@ -147,8 +147,7 @@ func getLastRunMigration(ctx context.Context, s *server.Server) (string, error) 
 	for i := uint64(0); i < res.GetNumberOfRows(); i++ {
 		lastRun, err = res.GetStringValue(i, 0)
 		if err != nil {
-			s.Logger.LogAttrs(ctx, slog.LevelError,
-				"unable to fetch last run of the migration",
+			s.Logger.LogAttrs(ctx, slog.LevelError, "unable to fetch last run of the migration",
 				slog.String("error", err.Error()),
 			)
 
@@ -213,8 +212,7 @@ func performUpMigrations(ctx context.Context, s *server.Server, val migrator, ve
 
 func performDownMigrations(ctx context.Context, s *server.Server, val migrator, key string) error {
 	if err := s.DB.BeginTransaction(); err != nil {
-		s.Logger.LogAttrs(ctx, slog.LevelError,
-			"unable to start transaction",
+		s.Logger.LogAttrs(ctx, slog.LevelError, "unable to start transaction",
 			slog.String("error", err.Error()),
 		)
 

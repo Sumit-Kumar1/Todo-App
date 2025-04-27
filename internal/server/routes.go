@@ -29,8 +29,7 @@ func setupTasksRoutes(ctx context.Context, app *Server) {
 	todoSvc := todosvc.New(todoStore)
 	todoHTTP := todohttp.New(todoSvc)
 
-	app.Mux.HandleFunc(
-		"/task",
+	app.Mux.HandleFunc("/task",
 		Chain(todoHTTP.TaskPage, Method(http.MethodGet), AuthMiddleware(ctx, app.DB)),
 	)
 	app.Mux.HandleFunc("/tasks", Chain(todoHTTP.HandleTasks, IsHTMX(), AuthMiddleware(ctx, app.DB)))
@@ -101,10 +100,7 @@ func setupPublicRoutes(app *Server) {
 		_, _ = w.Write(data)
 
 		endTime := time.Since(t)
-		app.Logger.LogAttrs(
-			r.Context(),
-			slog.LevelInfo,
-			"GET/healthz",
+		app.Logger.LogAttrs(r.Context(), slog.LevelInfo, "GET/healthz",
 			slog.Any("status", app.Health),
 			slog.Int64("time taken(ms)", endTime.Milliseconds()),
 		)

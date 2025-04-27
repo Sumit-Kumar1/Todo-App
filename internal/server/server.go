@@ -54,6 +54,7 @@ func configureServer() (*Server, error) {
 
 	if err := godotenv.Load(".env"); err != nil {
 		log.Print("error while loading env file")
+
 		return nil, err
 	}
 

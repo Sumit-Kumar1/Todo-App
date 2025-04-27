@@ -40,10 +40,7 @@ func (s *Store) CreateSession(ctx context.Context, session *models.SessionData) 
 		session.Expiry.UnixMilli(),
 	)
 	if err := s.DB.Execute(query); err != nil {
-		logger.LogAttrs(
-			ctx,
-			slog.LevelError,
-			"error while running session create query",
+		logger.LogAttrs(ctx, slog.LevelError, "error while running session create query",
 			slog.String("error", err.Error()),
 		)
 
@@ -61,8 +58,7 @@ func (s *Store) GetSessionByID(ctx context.Context, userID *uuid.UUID) (*models.
 
 	res, err := s.DB.Select(fmt.Sprintf(getSessionByUserID, *userID))
 	if err != nil {
-		logger.LogAttrs(ctx, slog.LevelError,
-			"error while fetching session by userID",
+		logger.LogAttrs(ctx, slog.LevelError, "error while fetching session by userID",
 			slog.String("error", err.Error()),
 		)
 
@@ -70,10 +66,7 @@ func (s *Store) GetSessionByID(ctx context.Context, userID *uuid.UUID) (*models.
 	}
 
 	if res.GetNumberOfRows() == uint64(0) {
-		logger.LogAttrs(
-			ctx,
-			slog.LevelError,
-			"no user session found for userID",
+		logger.LogAttrs(ctx, slog.LevelError, "no user session found for userID",
 			slog.String("userID", userID.String()),
 		)
 
@@ -113,16 +106,14 @@ func (s *Store) GetSessionByID(ctx context.Context, userID *uuid.UUID) (*models.
 
 func (s *Store) RefreshSession(ctx context.Context, newSession *models.SessionData) error {
 	logger := models.GetLoggerFromCtx(ctx)
-
-	query := fmt.Sprintf(
-		updateSession,
+	query := fmt.Sprintf(updateSession,
 		newSession.Token,
 		newSession.Expiry.UnixMilli(),
 		newSession.ID,
 	)
+
 	if err := s.DB.Execute(query); err != nil {
-		logger.LogAttrs(ctx, slog.LevelError,
-			"error in refreshing session",
+		logger.LogAttrs(ctx, slog.LevelError, "error in refreshing session",
 			slog.String("error", err.Error()),
 		)
 
@@ -139,8 +130,7 @@ func (s *Store) Logout(ctx context.Context, token *uuid.UUID) error {
 
 	res, err := s.DB.Select(fmt.Sprintf(getSessionByToken, *token))
 	if err != nil {
-		logger.LogAttrs(ctx, slog.LevelError,
-			"error while logging out user",
+		logger.LogAttrs(ctx, slog.LevelError, "error while logging out user",
 			slog.String("error", err.Error()),
 		)
 

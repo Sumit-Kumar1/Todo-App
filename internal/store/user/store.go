@@ -31,10 +31,7 @@ func (s *Store) RegisterUser(ctx context.Context, data *models.UserData) error {
 
 	query := fmt.Sprintf(registerQuery, data.ID, data.Name, data.Email, data.Password)
 	if err := s.DB.Execute(query); err != nil {
-		logger.LogAttrs(
-			ctx,
-			slog.LevelError,
-			"error while running Register query",
+		logger.LogAttrs(ctx, slog.LevelError, "error while running Register query",
 			slog.String("error", err.Error()),
 		)
 
@@ -49,10 +46,7 @@ func (s *Store) GetUserByEmail(ctx context.Context, email string) (*models.UserD
 
 	res, err := s.DB.Select(fmt.Sprintf(getUser, email))
 	if err != nil {
-		logger.LogAttrs(
-			ctx,
-			slog.LevelError,
-			"error in fetching user by email",
+		logger.LogAttrs(ctx, slog.LevelError, "error in fetching user by email",
 			slog.String("error", err.Error()),
 		)
 

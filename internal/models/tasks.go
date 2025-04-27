@@ -11,6 +11,7 @@ type Task struct {
 	UserID     uuid.UUID  `json:"user_id"`
 	Title      string     `json:"title"`
 	IsDone     bool       `json:"isDone"`
+	DueDate    *time.Time `json:"dueDate"`
 	AddedAt    time.Time  `json:"addedAt"`
 	ModifiedAt *time.Time `json:"modifiedAt"`
 }
