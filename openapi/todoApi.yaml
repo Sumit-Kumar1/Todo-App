@@ -243,6 +243,8 @@ components:
       properties:
         title:
           type: string
+        description:
+          type: string
         dueDate:
           type: string
           format: date
@@ -256,6 +258,8 @@ components:
           type: string
           format: uuid
         title:
+          type: string
+        description:
           type: string
         isDone:
           type: boolean
