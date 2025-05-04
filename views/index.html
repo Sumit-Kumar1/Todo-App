@@ -5,14 +5,21 @@
 <head>
   <title>Todo APP HTMX</title>
   <meta charset="UTF-8">
-  <link rel="stylesheet" href="public/output.css">
-  <link  rel="stylesheet" href="public/fonts.css">
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css" rel="stylesheet" type="text/css" />
+  <!-- <link rel="stylesheet" href="public/output.css">
+  <link rel="stylesheet" href="public/fonts.css"> -->
   <script src="public/htmx.min.js"></script>
   <style>
     .font-monteserrat {
       font-family: "Montserrat", sans-serif;
     }
   </style>
+  <script>
+    let dateToday = Date.now();
+    console.log("Today's date is : ", dateToday)
+  </script>
 </head>
 
 <body class="bg-base-200 text-base-content">
@@ -21,12 +28,12 @@
   <div class="w-full flex items-center gap-5 flex-col p-3">
     <!-- Form data-->
     {{ template "todoForm" }}
-  
-    <div id="rend" class="h-[85vh] w-1/2 overflow-x-auto p-5">
+
+    <ul id="rend" class="list bg-base-100 rounded-box shadow-md">
       {{ range $val := . }}
       {{ template "add" $val }}
       {{ end }}
-    </div>
+    </ul>
   </div>
 </body>
 
@@ -34,18 +41,18 @@
 {{ end }}
 
 {{ block "todoForm" . }}
-<button class="btn btn-accent w-1/2" onclick="my_modal_5.showModal()">Create New Task</button>
-<dialog id="my_modal_5" class="modal modal-bottom sm:modal-middle">
+<button class="btn btn-accent w-1/3" onclick="add_modal.showModal()">Create New Task</button>
+<dialog id="add_modal" class="modal modal-bottom sm:modal-middle">
   <div class="modal-box">
     <form hx-post="/tasks" hx-target="#rend" hx-swap="beforeend" class="flex gap-3 flex-col">
       <label class="floating-label">
-        <input placeholder="Task name here..." name="task" type="text" id="title"
+        <input placeholder="Task name here..." name="title" type="text" id="title"
           class="input input-md w-full validator" required size="100">
         <span>Task name here...</span>
       </label>
       <label class="floating-label">
         <input placeholder="Description" name="description" type="text" id="description"
-          class="input input-md w-full validator" required size="1000">
+          class="input input-md w-full validator" size="1000">
         <span>Description</span>
       </label>
       <div>
@@ -69,9 +76,10 @@
 </dialog>
 {{ end }}
 
+<!-- TODO: fix the add functionality here -->
 {{ block "add" . }}
-<div id="{{.ID}}" class="bg-base-100 w-full shadow-xl outline rounded-xl m-3">
-  <div class="p-5 font-monteserrat">
+<li id="{{.ID}}" class="list-row">
+  <div class="p-5 ">
     {{ if .IsDone }}
     <p class="line-through italic text-wrap whitespace-nowrap">{{.Title}}</p>
     <div class="card-actions justify-end">
@@ -85,7 +93,8 @@
       </button>
     </div>
     {{ else }}
-    <p class="font-monteserrat text-xl">{{.Title}}</p>
+    <p class=" text-xl">{{.Title}}</p>
+    <p class=" text-md">{{.Description}}</p>
     <div class="card-actions justify-end">
       <button hx-put="/tasks/{{.ID}}/done" hx-target="#{{.ID}}" hx-swap="outerHTML"
         class="p-2 hover:border hover:rounded-full hover:border-green-500">
@@ -94,14 +103,7 @@
             stroke-width="2" stroke-linecap="round" />
         </svg>
       </button>
-      <button hx-prompt="Enter the task" hx-confirm="Are you sure on update?" hx-put="/tasks/{{.ID}}"
-        hx-swap="outerHTML" hx-target="#{{.ID}}" class="p-2 hover:border hover:rounded-full hover:border-[#7091E6]">
-        <svg width="30px" height="30px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path fill-rule="evenodd" clip-rule="evenodd"
-            d="M20.8477 1.87868C19.6761 0.707109 17.7766 0.707105 16.605 1.87868L2.44744 16.0363C2.02864 16.4551 1.74317 16.9885 1.62702 17.5692L1.03995 20.5046C0.760062 21.904 1.9939 23.1379 3.39334 22.858L6.32868 22.2709C6.90945 22.1548 7.44285 21.8693 7.86165 21.4505L22.0192 7.29289C23.1908 6.12132 23.1908 4.22183 22.0192 3.05025L20.8477 1.87868ZM18.0192 3.29289C18.4098 2.90237 19.0429 2.90237 19.4335 3.29289L20.605 4.46447C20.9956 4.85499 20.9956 5.48815 20.605 5.87868L17.9334 8.55027L15.3477 5.96448L18.0192 3.29289ZM13.9334 7.3787L3.86165 17.4505C3.72205 17.5901 3.6269 17.7679 3.58818 17.9615L3.00111 20.8968L5.93645 20.3097C6.13004 20.271 6.30784 20.1759 6.44744 20.0363L16.5192 9.96448L13.9334 7.3787Z"
-            fill="#7091E6" />
-        </svg>
-      </button>
+      {{ template "update-task" .}}
       <button hx-confirm="Really Delete??" hx-delete="/tasks/{{.ID}}/delete" hx-target="#{{.ID}}" hx-swap="outerHTML"
         class="p-2 hover:border hover:rounded-full hover:border-red-600">
         <svg width="35px" height="35px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -113,7 +115,7 @@
     </div>
     {{ end }}
   </div>
-</div>
+</li>
 {{ end }}
 
 {{ block "userNavbar" .}}
@@ -156,3 +158,55 @@
 </div>
 </div>
 {{ end }}
+
+{{block "update-task" .}}
+<button class="btn btn-accent w-1/3" onclick="update_{{.ID}}.showModal()">
+  <svg width="30px" height="30px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path fill-rule="evenodd" clip-rule="evenodd"
+      d="M20.8477 1.87868C19.6761 0.707109 17.7766 0.707105 16.605 1.87868L2.44744 16.0363C2.02864 16.4551 1.74317 16.9885 1.62702 17.5692L1.03995 20.5046C0.760062 21.904 1.9939 23.1379 3.39334 22.858L6.32868 22.2709C6.90945 22.1548 7.44285 21.8693 7.86165 21.4505L22.0192 7.29289C23.1908 6.12132 23.1908 4.22183 22.0192 3.05025L20.8477 1.87868ZM18.0192 3.29289C18.4098 2.90237 19.0429 2.90237 19.4335 3.29289L20.605 4.46447C20.9956 4.85499 20.9956 5.48815 20.605 5.87868L17.9334 8.55027L15.3477 5.96448L18.0192 3.29289ZM13.9334 7.3787L3.86165 17.4505C3.72205 17.5901 3.6269 17.7679 3.58818 17.9615L3.00111 20.8968L5.93645 20.3097C6.13004 20.271 6.30784 20.1759 6.44744 20.0363L16.5192 9.96448L13.9334 7.3787Z"
+      fill="#7091E6" />
+  </svg>
+</button>
+<dialog id="update_{{.ID}}" class="modal modal-bottom sm:modal-middle">
+  <div class="modal-box">
+    <form hx-put="/tasks/{{.ID}}" hx-target="#{{.ID}}" hx-swap="beforeend" class="flex gap-3 flex-col">
+      <label class="floating-label">
+        <input placeholder="Task name here..." name="title" type="text" id="title"
+          class="input input-md w-full validator" required size="100">
+        <span>Task name here...</span>
+      </label>
+      <label class="floating-label">
+        <input placeholder="Description" name="description" type="text" id="description"
+          class="input input-md w-full validator" size="1000">
+        <span>Description</span>
+      </label>
+      <div>
+        <label class="input validator">
+          <span class="label">Due Date</span>
+          <input type="date" name="dueDate" id="dueDate" required min="2025-04-02" max="2025-12-31" />
+        </label>
+      </div>
+      <div>
+        <input type="reset" class="btn btn-accent btn-outline" />
+        <button type="submit" class="btn btn-accent">Update Task</button>
+      </div>
+    </form>
+    <div class="modal-action absolute right-3 bottom-4 p-2">
+      <form method="dialog">
+        <!-- if there is a button in form, it will close the modal -->
+        <button class="btn">Cancel</button>
+      </form>
+    </div>
+  </div>
+</dialog>
+{{end}}
+
+{{ block "error" .}}
+<div role="alert" class="alert alert-error">
+  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+      d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+  <span>{{.Code}} - {{.Message}}</span>
+</div>
+{{end}}
