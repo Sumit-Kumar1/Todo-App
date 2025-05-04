@@ -5,12 +5,13 @@ import "github.com/sqlitecloud/sqlitecloud-go"
 const (
 	tasksDown = "DROP TABLE IF EXISTS tasks;"
 	tasksUp   = `CREATE TABLE IF NOT EXISTS tasks(
-    task_id TEXT PRIMARY KEY, 
+    id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
-    task_title TEXT NOT NULL, 
+    title TEXT NOT NULL,
+		description TEXT,
     done_status BOOLEAN NOT NULL CHECK (done_status IN (0, 1)),
     due_date DATE,
-    added_at DATETIME NOT NULL, 
+    added_at DATETIME NOT NULL,
     modified_at DATETIME);`
 )
 
