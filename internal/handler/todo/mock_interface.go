@@ -43,7 +43,7 @@ func (m *MockTodoServicer) EXPECT() *MockTodoServicerMockRecorder {
 }
 
 // AddTask mocks base method.
-func (m *MockTodoServicer) AddTask(ctx context.Context, task string, userID *uuid.UUID) (*models.Task, error) {
+func (m *MockTodoServicer) AddTask(ctx context.Context, task *models.TaskInput, userID *uuid.UUID) (*models.Task, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AddTask", ctx, task, userID)
 	ret0, _ := ret[0].(*models.Task)
@@ -102,16 +102,16 @@ func (mr *MockTodoServicerMockRecorder) MarkDone(ctx, id, userID any) *gomock.Ca
 }
 
 // UpdateTask mocks base method.
-func (m *MockTodoServicer) UpdateTask(ctx context.Context, id, title string, isDone bool, userID *uuid.UUID) (*models.Task, error) {
+func (m *MockTodoServicer) UpdateTask(ctx context.Context, id string, task *models.TaskInput, isDone bool, userID *uuid.UUID) (*models.Task, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateTask", ctx, id, title, isDone, userID)
+	ret := m.ctrl.Call(m, "UpdateTask", ctx, id, task, isDone, userID)
 	ret0, _ := ret[0].(*models.Task)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // UpdateTask indicates an expected call of UpdateTask.
-func (mr *MockTodoServicerMockRecorder) UpdateTask(ctx, id, title, isDone, userID any) *gomock.Call {
+func (mr *MockTodoServicerMockRecorder) UpdateTask(ctx, id, task, isDone, userID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateTask", reflect.TypeOf((*MockTodoServicer)(nil).UpdateTask), ctx, id, title, isDone, userID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateTask", reflect.TypeOf((*MockTodoServicer)(nil).UpdateTask), ctx, id, task, isDone, userID)
 }

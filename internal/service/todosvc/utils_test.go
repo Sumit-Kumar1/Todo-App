@@ -4,7 +4,6 @@ import (
 	"errors"
 	"strings"
 	"testing"
-
 	"todoapp/internal/models"
 
 	"github.com/google/uuid"
@@ -34,23 +33,17 @@ func TestValidateTask(t *testing.T) {
 	uid := uuid.NewString()
 	tests := []struct {
 		name    string
-		id      string
-		title   string
+		task    models.TaskInput
 		wantErr error
 	}{
-		{name: "valid case", id: "task-" + uid, title: "test", wantErr: nil},
-		{name: "invalid ID", id: "123", title: "test", wantErr: models.ErrInvalid("task id")},
-		{
-			name:    "empty title",
-			id:      "task-" + uid,
-			title:   "",
-			wantErr: models.ErrInvalid("task title"),
-		},
+		{name: "valid case", task: models.TaskInput{ID: "task-" + uid, Title: "test"}, wantErr: nil},
+		{name: "invalid ID", task: models.TaskInput{ID: "123", Title: "test"}, wantErr: models.ErrInvalid("task id")},
+		{name: "empty title", task: models.TaskInput{ID: "task-" + uid, Title: ""}, wantErr: models.ErrInvalid("task title")},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := validateTask(tt.id, tt.title); !errors.Is(err, tt.wantErr) {
+			if err := validateTask(tt.task.ID, &tt.task); !errors.Is(err, tt.wantErr) {
 				t.Errorf("validateTask() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

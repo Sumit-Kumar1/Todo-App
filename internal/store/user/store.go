@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-
 	"todoapp/internal/models"
 
 	"github.com/google/uuid"
@@ -12,8 +11,8 @@ import (
 )
 
 const (
-	getUser       = "SELECT user_id, name, email, password FROM users WHERE email='%s';"
-	registerQuery = "INSERT INTO users(user_id, name, email, password) VALUES ('%v','%v','%v','%v');"
+	getUser       = "SELECT id, name, email, password FROM users WHERE email='%s';"
+	registerQuery = "INSERT INTO users(id, name, email, password) VALUES ('%v','%v','%v','%v');"
 )
 
 type Store struct {

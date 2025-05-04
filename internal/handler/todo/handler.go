@@ -4,7 +4,6 @@ import (
 	"html/template"
 	"log/slog"
 	"net/http"
-
 	"todoapp/internal/models"
 
 	"github.com/google/uuid"
@@ -99,15 +98,19 @@ func (h *Handler) addTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	task := r.PostFormValue("task")
+	t := models.TaskInput{
+		Title:       r.PostFormValue("title"),
+		Description: r.PostFormValue("description"),
+		DueDate:     r.PostFormValue("dueDate"),
+	}
 
-	t, err := h.Service.AddTask(ctx, task, &userID)
+	task, err := h.Service.AddTask(ctx, &t, &userID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err := h.template.ExecuteTemplate(w, templAddTask, *t); err != nil {
+	if err := h.template.ExecuteTemplate(w, templAddTask, *task); err != nil {
 		logger.LogAttrs(ctx, slog.LevelError, renderErr, slog.String("template", templAddTask))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -198,10 +201,14 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := r.PathValue("id")
-	title := r.Header.Get("HX-Prompt")
+	t := models.TaskInput{
+		ID:          r.PathValue("id"),
+		Title:       r.PostFormValue("title"),
+		Description: r.PostFormValue("description"),
+		DueDate:     r.PostFormValue("dueDate"),
+	}
 
-	resp, err := h.Service.UpdateTask(ctx, id, title, false, &userID)
+	resp, err := h.Service.UpdateTask(ctx, t.ID, &t, false, &userID)
 	if err != nil {
 		switch {
 		case models.ErrNotFound("user").Error() == err.Error():
@@ -212,7 +219,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 
 		logger.LogAttrs(ctx, slog.LevelError, err.Error(),
 			slog.String("user", userID.String()),
-			slog.String("task", id),
+			slog.String("task", t.ID),
 		)
 
 		return
@@ -232,6 +239,6 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 
 	logger.LogAttrs(ctx, slog.LevelDebug, "task update done!",
 		slog.String("user", userID.String()),
-		slog.String("task", id),
+		slog.String("task", t.ID),
 	)
 }

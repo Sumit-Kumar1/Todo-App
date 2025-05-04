@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"time"
-
 	"todoapp/internal/models"
 
 	"github.com/google/uuid"
@@ -13,14 +12,14 @@ import (
 )
 
 const (
-	deleteTask     = "DELETE FROM tasks WHERE task_id='%v' AND user_id='%v';"
-	getAllByUserID = "SELECT task_id, user_id, task_title, done_status, due_date, added_at, modified_at from tasks WHERE user_id='%v';"
-	getTaskByID    = "SELECT task_id, user_id, task_title, done_status, due_date, added_at, modified_at FROM " +
-		"tasks WHERE task_id='%v' AND user_id='%v';"
-	insertQuery = "INSERT INTO tasks (task_id, user_id, task_title, done_status, due_date, added_at) VALUES " +
-		"('%v', '%v', '%v', %v, '%v', '%v');"
-	setDone     = "UPDATE tasks SET done_status=%v, modified_at='%v' WHERE task_id='%v' AND user_id='%v';"
-	updateQuery = "UPDATE tasks SET task_title='%v', done_status=%v, modified_at='%v' WHERE task_id='%v' AND user_id='%v';"
+	deleteTask     = "DELETE FROM tasks WHERE id='%v' AND user_id='%v';"
+	getAllByUserID = "SELECT id, user_id, title, description, done_status, due_date, added_at, modified_at FROM tasks WHERE user_id='%v';"
+	getTaskByID    = "SELECT id, user_id, title, description, done_status, due_date, added_at, modified_at FROM " +
+		"tasks WHERE id='%v' AND user_id='%v';"
+	insertQuery = "INSERT INTO tasks (id, user_id, title, description, done_status, due_date, added_at) VALUES " +
+		"('%v', '%v', '%v', '%v', %v, '%v', '%v');"
+	setDone     = "UPDATE tasks SET done_status=%v, modified_at='%v' WHERE id='%v' AND user_id='%v';"
+	updateQuery = "UPDATE tasks SET title='%v', done_status=%v, modified_at='%v' WHERE id='%v' AND user_id='%v';"
 )
 
 type Store struct {
@@ -68,6 +67,7 @@ func (s *Store) Create(ctx context.Context, task *models.Task) error {
 		task.ID,
 		task.UserID,
 		task.Title,
+		task.Description,
 		task.IsDone,
 		task.DueDate.UnixMilli(),
 		task.AddedAt.UnixMilli(),
@@ -165,33 +165,36 @@ func populateTaskFields(rows *sqlitecloud.Result, r uint64) (*models.Task, error
 		return nil, err
 	}
 
-	v3, err := rows.GetStringValue(r, 2) // taskTitle
+	task.Title, err = rows.GetStringValue(r, 2) // title
 	if err != nil {
 		return nil, err
 	}
 
-	v4, err := rows.GetInt64Value(r, 3) // isDone status
+	task.Description, err = rows.GetStringValue(r, 3) // description
 	if err != nil {
 		return nil, err
 	}
 
-	dd, err := rows.GetInt64Value(r, 4) // due date
+	v4, err := rows.GetInt64Value(r, 4) // done status
 	if err != nil {
 		return nil, err
 	}
 
-	v5, err := rows.GetInt64Value(r, 5) // added time
+	dd, err := rows.GetInt64Value(r, 5) // due date
 	if err != nil {
 		return nil, err
 	}
 
-	v6 := rows.GetInt64Value_(r, 6) // modified time
+	v5, err := rows.GetInt64Value(r, 6) // added time
+	if err != nil {
+		return nil, err
+	}
+
+	v6 := rows.GetInt64Value_(r, 7) // modified time
 
 	task.UserID = uuid.MustParse(v2)
 
-	task.Title = v3
 	task.IsDone = (v4 == 1)
-
 	task.DueDate = dateRef(dd)
 	task.AddedAt = *dateRef(v5)
 	task.ModifiedAt = dateRef(v6)

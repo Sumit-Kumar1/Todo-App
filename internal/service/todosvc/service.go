@@ -3,9 +3,7 @@ package todosvc
 import (
 	"context"
 	"log/slog"
-	"strings"
 	"time"
-
 	"todoapp/internal/models"
 
 	"github.com/google/uuid"
@@ -33,23 +31,24 @@ func (s *Service) GetAll(ctx context.Context, userID *uuid.UUID) ([]models.Task,
 	return tasks, nil
 }
 
-func (s *Service) AddTask(ctx context.Context, title string, userID *uuid.UUID) (*models.Task, error) {
+func (s *Service) AddTask(ctx context.Context, taskInp *models.TaskInput, userID *uuid.UUID) (*models.Task, error) {
 	logger := models.GetLoggerFromCtx(ctx)
-	title = strings.TrimSpace(title)
+	id := generateID()
 
-	if title == "" {
-		return nil, models.ErrInvalid("task title")
+	if err := validateTask(id, taskInp); err != nil {
+		return nil, err
 	}
 
-	dd := time.Now().AddDate(0, 0, 1)
+	dd, _ := time.Parse(time.DateOnly, taskInp.DueDate)
 
 	task := models.Task{
-		ID:      generateID(),
-		Title:   title,
-		UserID:  *userID,
-		IsDone:  false,
-		DueDate: &dd,
-		AddedAt: time.Now().UTC(),
+		ID:          id,
+		UserID:      *userID,
+		Title:       taskInp.Title,
+		Description: taskInp.Description,
+		IsDone:      false,
+		DueDate:     &dd,
+		AddedAt:     time.Now().UTC(),
 	}
 
 	if err := s.Store.Create(ctx, &task); err != nil {
@@ -103,24 +102,25 @@ func (s *Service) MarkDone(ctx context.Context, id string, userID *uuid.UUID) (*
 	return task, nil
 }
 
-func (s *Service) UpdateTask(ctx context.Context, id, title string, isDone bool, userID *uuid.UUID,
+func (s *Service) UpdateTask(ctx context.Context, id string, taskInp *models.TaskInput, isDone bool, userID *uuid.UUID,
 ) (*models.Task, error) {
 	logger := models.GetLoggerFromCtx(ctx)
 
-	title = strings.TrimSpace(title) // trimmed the space around the task title
-
-	if err := validateTask(id, title); err != nil {
+	if err := validateTask(id, taskInp); err != nil {
 		return nil, err
 	}
 
+	dd, _ := time.Parse(time.DateOnly, taskInp.DueDate)
 	mt := time.Now().UTC()
 
 	task := models.Task{
-		ID:         id,
-		Title:      title,
-		UserID:     *userID,
-		IsDone:     isDone,
-		ModifiedAt: &mt,
+		ID:          id,
+		UserID:      *userID,
+		Title:       taskInp.Title,
+		Description: taskInp.Description,
+		DueDate:     &dd,
+		IsDone:      isDone,
+		ModifiedAt:  &mt,
 	}
 
 	err := s.Store.Update(ctx, &task)
