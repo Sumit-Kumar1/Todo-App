@@ -80,7 +80,7 @@ func (h *Handler) Done(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.template.ExecuteTemplate(w, templAddTask, *resp); err != nil {
+	if err := h.template.ExecuteTemplate(w, templAddTask, resp.ToTaskResp()); err != nil {
 		logger.LogAttrs(ctx, slog.LevelError, renderErr, slog.String("template", templAddTask))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -98,7 +98,7 @@ func (h *Handler) addTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	t := models.TaskInput{
+	t := models.TaskReq{
 		Title:       r.PostFormValue("title"),
 		Description: r.PostFormValue("description"),
 		DueDate:     r.PostFormValue("dueDate"),
@@ -110,7 +110,7 @@ func (h *Handler) addTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.template.ExecuteTemplate(w, templAddTask, *task); err != nil {
+	if err := h.template.ExecuteTemplate(w, templAddTask, task.ToTaskResp()); err != nil {
 		logger.LogAttrs(ctx, slog.LevelError, renderErr, slog.String("template", templAddTask))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -150,7 +150,13 @@ func (h *Handler) getAll(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 
-	if err := h.template.ExecuteTemplate(w, templIndex, tasks); err != nil {
+	trs := []models.TaskResp{}
+
+	for i := range tasks {
+		trs = append(trs, *tasks[i].ToTaskResp())
+	}
+
+	if err := h.template.ExecuteTemplate(w, templIndex, trs); err != nil {
 		logger.LogAttrs(ctx, slog.LevelError, renderErr, slog.String("template", templIndex))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -201,7 +207,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	t := models.TaskInput{
+	t := models.TaskReq{
 		ID:          r.PathValue("id"),
 		Title:       r.PostFormValue("title"),
 		Description: r.PostFormValue("description"),
@@ -230,7 +236,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.template.ExecuteTemplate(w, templAddTask, *resp); err != nil {
+	if err := h.template.ExecuteTemplate(w, templAddTask, *resp.ToTaskResp()); err != nil {
 		logger.LogAttrs(ctx, slog.LevelError, renderErr, slog.String("template", templAddTask))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 

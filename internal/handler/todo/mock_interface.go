@@ -43,7 +43,7 @@ func (m *MockTodoServicer) EXPECT() *MockTodoServicerMockRecorder {
 }
 
 // AddTask mocks base method.
-func (m *MockTodoServicer) AddTask(ctx context.Context, task *models.TaskInput, userID *uuid.UUID) (*models.Task, error) {
+func (m *MockTodoServicer) AddTask(ctx context.Context, task *models.TaskReq, userID *uuid.UUID) (*models.Task, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AddTask", ctx, task, userID)
 	ret0, _ := ret[0].(*models.Task)
@@ -102,7 +102,7 @@ func (mr *MockTodoServicerMockRecorder) MarkDone(ctx, id, userID any) *gomock.Ca
 }
 
 // UpdateTask mocks base method.
-func (m *MockTodoServicer) UpdateTask(ctx context.Context, id string, task *models.TaskInput, isDone bool, userID *uuid.UUID) (*models.Task, error) {
+func (m *MockTodoServicer) UpdateTask(ctx context.Context, id string, task *models.TaskReq, isDone bool, userID *uuid.UUID) (*models.Task, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateTask", ctx, id, task, isDone, userID)
 	ret0, _ := ret[0].(*models.Task)

@@ -17,7 +17,7 @@ func generateID() string {
 }
 
 // TODO: fix this validation here
-func validateTask(id string, task *models.TaskInput) error {
+func validateTask(id string, task *models.TaskReq) error {
 	if err := validateID(id); err != nil {
 		return err
 	}

@@ -31,7 +31,7 @@ func (s *Service) GetAll(ctx context.Context, userID *uuid.UUID) ([]models.Task,
 	return tasks, nil
 }
 
-func (s *Service) AddTask(ctx context.Context, taskInp *models.TaskInput, userID *uuid.UUID) (*models.Task, error) {
+func (s *Service) AddTask(ctx context.Context, taskInp *models.TaskReq, userID *uuid.UUID) (*models.Task, error) {
 	logger := models.GetLoggerFromCtx(ctx)
 	id := generateID()
 
@@ -102,7 +102,7 @@ func (s *Service) MarkDone(ctx context.Context, id string, userID *uuid.UUID) (*
 	return task, nil
 }
 
-func (s *Service) UpdateTask(ctx context.Context, id string, taskInp *models.TaskInput, isDone bool, userID *uuid.UUID,
+func (s *Service) UpdateTask(ctx context.Context, id string, taskInp *models.TaskReq, isDone bool, userID *uuid.UUID,
 ) (*models.Task, error) {
 	logger := models.GetLoggerFromCtx(ctx)
 

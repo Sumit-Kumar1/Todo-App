@@ -33,12 +33,12 @@ func TestValidateTask(t *testing.T) {
 	uid := uuid.NewString()
 	tests := []struct {
 		name    string
-		task    models.TaskInput
+		task    models.TaskReq
 		wantErr error
 	}{
-		{name: "valid case", task: models.TaskInput{ID: "task-" + uid, Title: "test"}, wantErr: nil},
-		{name: "invalid ID", task: models.TaskInput{ID: "123", Title: "test"}, wantErr: models.ErrInvalid("task id")},
-		{name: "empty title", task: models.TaskInput{ID: "task-" + uid, Title: ""}, wantErr: models.ErrInvalid("task title")},
+		{name: "valid case", task: models.TaskReq{ID: "task-" + uid, Title: "test"}, wantErr: nil},
+		{name: "invalid ID", task: models.TaskReq{ID: "123", Title: "test"}, wantErr: models.ErrInvalid("task id")},
+		{name: "empty title", task: models.TaskReq{ID: "task-" + uid, Title: ""}, wantErr: models.ErrInvalid("task title")},
 	}
 
 	for _, tt := range tests {
