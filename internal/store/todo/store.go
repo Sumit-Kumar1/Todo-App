@@ -19,7 +19,7 @@ const (
 	insertQuery = "INSERT INTO tasks (id, user_id, title, description, done_status, due_date, added_at) VALUES " +
 		"('%v', '%v', '%v', '%v', %v, '%v', '%v');"
 	setDone     = "UPDATE tasks SET done_status=%v, modified_at='%v' WHERE id='%v' AND user_id='%v';"
-	updateQuery = "UPDATE tasks SET title='%v', done_status=%v, modified_at='%v' WHERE id='%v' AND user_id='%v';"
+	updateQuery = "UPDATE tasks SET title='%v', description='%v', done_status=%v, modified_at='%v' WHERE id='%v' AND user_id='%v';"
 )
 
 type Store struct {
@@ -88,6 +88,7 @@ func (s *Store) Update(ctx context.Context, task *models.Task) error {
 	logger := models.GetLoggerFromCtx(ctx)
 	query := fmt.Sprintf(updateQuery,
 		task.Title,
+		task.Description,
 		task.IsDone,
 		task.ModifiedAt.UnixMilli(),
 		task.ID,

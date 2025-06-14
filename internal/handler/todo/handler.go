@@ -11,8 +11,8 @@ import (
 
 const (
 	invalidReqMethod = "method not allowed"
-	templAddTask     = "add"
-	templIndex       = "index"
+	templateAddTask  = "add"
+	templateIndex    = "index"
 	userNotFound     = "user not found"
 	renderErr        = "error while rendering template"
 	hxRedirect       = "HX-Redirect"
@@ -80,8 +80,8 @@ func (h *Handler) Done(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.template.ExecuteTemplate(w, templAddTask, resp.ToTaskResp()); err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, renderErr, slog.String("template", templAddTask))
+	if err := h.template.ExecuteTemplate(w, templateAddTask, resp.ToTaskResp()); err != nil {
+		logger.LogAttrs(ctx, slog.LevelError, renderErr, slog.String("template", templateAddTask))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -110,8 +110,8 @@ func (h *Handler) addTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.template.ExecuteTemplate(w, templAddTask, task.ToTaskResp()); err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, renderErr, slog.String("template", templAddTask))
+	if err := h.template.ExecuteTemplate(w, templateAddTask, task.ToTaskResp()); err != nil {
+		logger.LogAttrs(ctx, slog.LevelError, renderErr, slog.String("template", templateAddTask))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -156,8 +156,8 @@ func (h *Handler) getAll(w http.ResponseWriter, r *http.Request) {
 		trs = append(trs, *tasks[i].ToTaskResp())
 	}
 
-	if err := h.template.ExecuteTemplate(w, templIndex, trs); err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, renderErr, slog.String("template", templIndex))
+	if err := h.template.ExecuteTemplate(w, templateIndex, trs); err != nil {
+		logger.LogAttrs(ctx, slog.LevelError, renderErr, slog.String("template", templateIndex))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -236,8 +236,8 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.template.ExecuteTemplate(w, templAddTask, *resp.ToTaskResp()); err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, renderErr, slog.String("template", templAddTask))
+	if err := h.template.ExecuteTemplate(w, templateAddTask, *resp.ToTaskResp()); err != nil {
+		logger.LogAttrs(ctx, slog.LevelError, renderErr, slog.String("template", templateAddTask))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 
 		return

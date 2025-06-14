@@ -101,7 +101,7 @@ func validateCookie(ctx context.Context, logger *slog.Logger, r *http.Request) (
 	if err == nil {
 		uid, err := uuid.Parse(cookie.Value)
 		if err != nil {
-			logger.LogAttrs(ctx, slog.LevelError, "invalid cokkie found, please login again")
+			logger.LogAttrs(ctx, slog.LevelError, "invalid cookie found, please login again")
 
 			return nil, models.ErrInvalidCookie
 		}
