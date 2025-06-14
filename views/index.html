@@ -84,8 +84,8 @@
 <li id="{{.ID}}" class="list-row w-full">
   {{ if .IsDone }}
   <div class="">
-    <p class="line-through italic text-wrap whitespace-nowrap">{{.Title}}</p>
-    <p class="line-through italic text-wrap whitespace-nowrap text-xs opacity-60">{{.Description}}</p>
+    <p class="line-through italic list-col-grow">{{.Title}}</p>
+    <p class="line-through italic text-xs opacity-60 list-col-wrap">{{.Description}}</p>
   </div>
   <button hx-confirm="Really Delete??" hx-delete="/tasks/{{.ID}}/delete" hx-target="#{{.ID}}" hx-swap="outerHTML"
     class="btn btn-circle btn-ghost">
@@ -98,7 +98,7 @@
   {{ else }}
   <div class="">
     <div class="text-xl list-col-grow">{{.Title}}</div>
-    <div class="text-xs uppercase font-semibold opactiy-60 list-col-wrap">{{.Description}}</div>
+    <div class="text-xs font-semibold list-col-wrap opacity-70">{{.Description}}</div>
     <div><br />Due on: <span class="text-red-300">{{.DueDate}}</span></div>
   </div>
   <div>
@@ -174,7 +174,7 @@
 </button>
 <dialog id="update_{{.ID}}" class="modal modal-bottom sm:modal-middle">
   <div class="modal-box">
-    <form hx-put="/tasks/{{.ID}}" hx-target="#{{.ID}}" hx-swap="beforeend" class="flex gap-3 flex-col">
+    <form hx-put="/tasks/{{.ID}}" hx-target="#{{.ID}}" hx-swap="outerHTML" class="flex gap-3 flex-col">
       <label class="floating-label">
         <input placeholder="Task name here..." name="title" type="text" id="title"
           class="input input-md w-full validator" required size="100">
