@@ -47,12 +47,7 @@ jobs:
         run: go mod download
 
       - name: Run linter check
-        uses: golangci/golangci-lint-action@v7
-        with:
-          version: v2
-          working-directory: .
-          args: --out-format=colored-line-number ./... --timeout=5m
-          skip-cache: false
+        uses: ./.github/workflows/golangci-lint.yaml
       
       - name: Run Gosec Security Scanner
         uses: securego/gosec@master
@@ -64,16 +59,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: SonarQube Scan
-        uses: sonarsource/sonarcloud-github-action@master
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
-          SONAR_ORGANIZATION: ${{ secrets.SONAR_ORGANIZATION }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-
-      - name: SonarQube Analysis
-        uses: SonarSource/sonarqube-quality-gate-action@master
-        timeout-minutes: 5
+        uses: SonarSource/sonarqube-scan-action@5.2.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
