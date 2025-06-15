@@ -29,18 +29,25 @@ func setupTasksRoutes(ctx context.Context, app *Server) {
 	todoSvc := todosvc.New(todoStore)
 	todoHTTP := todohttp.New(todoSvc)
 
-	app.Mux.HandleFunc(
-		"/task",
-		Chain(todoHTTP.TaskPage, Method(http.MethodGet), AuthMiddleware(ctx, app.DB)),
-	)
-	app.Mux.HandleFunc("/tasks", Chain(todoHTTP.HandleTasks, IsHTMX(), AuthMiddleware(ctx, app.DB)))
-	app.Mux.HandleFunc("/tasks/{id}", Chain(todoHTTP.Update, IsHTMX(), Method(http.MethodPut),
-		AuthMiddleware(ctx, app.DB)))
+	app.Mux.HandleFunc("/task",
+		chain(todoHTTP.TaskPage, method(http.MethodGet),
+			app.authMiddleware(ctx),
+		))
+	app.Mux.HandleFunc("/tasks",
+		chain(todoHTTP.HandleTasks, isHTMX(),
+			app.authMiddleware(ctx)))
+	app.Mux.HandleFunc("/tasks/{id}",
+		chain(todoHTTP.Update, isHTMX(), method(http.MethodPut),
+			app.authMiddleware(ctx),
+		))
 	app.Mux.HandleFunc("/tasks/{id}/delete",
-		Chain(todoHTTP.DeleteTask, IsHTMX(), AuthMiddleware(ctx, app.DB), Method(http.MethodDelete)),
-	)
-	app.Mux.HandleFunc("/tasks/{id}/done", Chain(todoHTTP.Done, IsHTMX(), Method(http.MethodPut),
-		AuthMiddleware(context.Background(), app.DB)))
+		chain(todoHTTP.DeleteTask, isHTMX(), method(http.MethodDelete),
+			app.authMiddleware(ctx),
+		))
+	app.Mux.HandleFunc("/tasks/{id}/done",
+		chain(todoHTTP.Done, isHTMX(), method(http.MethodPut),
+			app.authMiddleware(context.Background()),
+		))
 }
 
 func setupUserRoutes(app *Server) {
@@ -49,9 +56,9 @@ func setupUserRoutes(app *Server) {
 	userSvc := usersvc.New(usrSt, sessionSt)
 	usrHTTP := userhttp.New(userSvc)
 
-	app.Mux.HandleFunc("/register", Chain(usrHTTP.Register, Method(http.MethodPost)))
-	app.Mux.HandleFunc("/login", Chain(usrHTTP.Login, Method(http.MethodPost)))
-	app.Mux.HandleFunc("/logout", Chain(usrHTTP.Logout, Method(http.MethodPost)))
+	app.Mux.HandleFunc("/register", chain(usrHTTP.Register, method(http.MethodPost)))
+	app.Mux.HandleFunc("/login", chain(usrHTTP.Login, method(http.MethodPost), app.rateLimiterLogin()))
+	app.Mux.HandleFunc("/logout", chain(usrHTTP.Logout, method(http.MethodPost)))
 }
 
 func setupPublicRoutes(app *Server) {
@@ -60,11 +67,11 @@ func setupPublicRoutes(app *Server) {
 	public := http.FileServer(http.Dir("public"))
 	openapi := http.FileServer(http.Dir("openapi"))
 
-	app.Mux.HandleFunc("/", Chain(h.Root, Method(http.MethodGet)))
+	app.Mux.HandleFunc("/", chain(h.Root, method(http.MethodGet)))
 	app.Mux.Handle("/public/", http.StripPrefix("/public/", public))
 	app.Mux.Handle("/openapi/", http.StripPrefix("/openapi/", openapi))
-	app.Mux.Handle("/api", http.StripPrefix("/api", Chain(h.Swagger, Method(http.MethodGet))))
-	app.Mux.Handle("/healthz", Chain(func(w http.ResponseWriter, r *http.Request) {
+	app.Mux.Handle("/api", http.StripPrefix("/api", chain(h.Swagger, method(http.MethodGet))))
+	app.Mux.Handle("/healthz", chain(func(w http.ResponseWriter, r *http.Request) {
 		t := time.Now()
 
 		app.Health = &Health{DBStatus: false, ServiceStatus: false, Msg: "StartedHealth"}
@@ -101,14 +108,11 @@ func setupPublicRoutes(app *Server) {
 		_, _ = w.Write(data)
 
 		endTime := time.Since(t)
-		app.Logger.LogAttrs(
-			r.Context(),
-			slog.LevelInfo,
-			"GET/healthz",
+		app.Logger.LogAttrs(r.Context(), slog.LevelInfo, "GET/healthz",
 			slog.Any("status", app.Health),
 			slog.Int64("time taken(ms)", endTime.Milliseconds()),
 		)
-	}, Method(http.MethodGet)))
+	}, method(http.MethodGet)))
 }
 
 func isServiceHealthy(ctx context.Context, port string) bool {

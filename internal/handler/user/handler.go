@@ -42,17 +42,16 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case err == nil:
 	case errors.Is(err, models.ErrUserAlreadyExists):
-		logger.LogAttrs(
-			ctx,
-			slog.LevelError,
-			"user already exists, login again",
+		logger.LogAttrs(ctx, slog.LevelError, "user already exists, login again",
 			slog.String("user", user.Email),
 		)
+
 		http.Error(w, err.Error(), http.StatusBadRequest)
 
 		return
 	default:
 		logger.LogAttrs(ctx, slog.LevelError, err.Error(), slog.String("user", user.Email))
+
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 
 		return
@@ -70,10 +69,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Add(hxRedirect, "/task")
 	w.WriteHeader(http.StatusOK)
-	logger.LogAttrs(
-		ctx,
-		slog.LevelDebug,
-		"user logged in successfully!",
+	logger.LogAttrs(ctx, slog.LevelDebug, "user logged in successfully!",
 		slog.String("user", user.Email),
 	)
 }
@@ -91,12 +87,10 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	session, err := h.Service.Login(ctx, &user)
 	if err != nil {
 		if models.ErrNotFound("user").Error() == err.Error() {
-			logger.LogAttrs(
-				ctx,
-				slog.LevelError,
-				"user not found - login",
+			logger.LogAttrs(ctx, slog.LevelError, "user not found - login",
 				slog.String("user", user.Email),
 			)
+
 			http.Error(w, "user not found", http.StatusUnauthorized)
 
 			return
@@ -137,12 +131,10 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.Service.Logout(ctx, c.Value); err != nil {
-		logger.LogAttrs(
-			ctx,
-			slog.LevelError,
-			"error while logging out user",
+		logger.LogAttrs(ctx, slog.LevelError, "error while logging out user",
 			slog.String("error", err.Error()),
 		)
+
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 
 		return

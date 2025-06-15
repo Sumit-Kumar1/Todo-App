@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"sync"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/sqlitecloud/sqlitecloud-go"
@@ -29,12 +31,26 @@ type Health struct {
 	Msg           string `json:"msg"`
 }
 
+type rateLimiter struct {
+	mu          sync.Mutex
+	attempts    map[string]*limiterAttempt
+	maxAttempts int
+	timeWindow  time.Duration
+}
+
+type limiterAttempt struct {
+	count     int
+	firstTime time.Time
+}
+
 type Server struct {
-	DB          *sqlitecloud.SQCloud
-	Logger      *slog.Logger
-	ShutDownFxn func(context.Context) error
-	Mux         *http.ServeMux
-	Health      *Health
+	DB            *sqlitecloud.SQCloud
+	Logger        *slog.Logger
+	ShutDownFxn   func(context.Context) error
+	Mux           *http.ServeMux
+	Health        *Health
+	loginLimiter  *rateLimiter
+	globalLimiter *rateLimiter
 	*Configs
 }
 
@@ -54,6 +70,7 @@ func configureServer() (*Server, error) {
 
 	if err := godotenv.Load(".env"); err != nil {
 		log.Print("error while loading env file")
+
 		return nil, err
 	}
 
@@ -90,6 +107,16 @@ func defaultServer() *Server {
 			DBStatus:      false,
 			ServiceStatus: false,
 			Msg:           "INIT HEALTH",
+		},
+		globalLimiter: &rateLimiter{
+			attempts:    make(map[string]*limiterAttempt),
+			timeWindow:  time.Minute * 1,
+			maxAttempts: 20,
+		},
+		loginLimiter: &rateLimiter{
+			attempts:    make(map[string]*limiterAttempt),
+			maxAttempts: 5,
+			timeWindow:  time.Minute * 1,
 		},
 	}
 }

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"time"
-
 	"todoapp/internal/models"
 
 	"github.com/google/uuid"
@@ -13,12 +12,14 @@ import (
 )
 
 const (
-	deleteTask  = "DELETE FROM tasks WHERE task_id='%v' AND user_id='%v'"
-	getAll      = "SELECT task_id, user_id, task_title, done_status, added_at, modified_at from tasks WHERE user_id='%v'"
-	getTask     = "SELECT task_id, user_id, task_title, done_status, added_at, modified_at FROM tasks WHERE task_id='%v' AND user_id='%v'"
-	insertQuery = "INSERT INTO tasks (task_id, user_id, task_title, done_status, added_at) VALUES ('%v', '%v', '%v', %v, '%v');"
-	setDone     = "UPDATE tasks SET done_status=%v, modified_at='%v' WHERE task_id='%v' AND user_id='%v'"
-	updateQuery = "UPDATE tasks SET task_title='%v', done_status=%v, modified_at='%v' WHERE task_id='%v' AND user_id='%v';"
+	deleteTask     = "DELETE FROM tasks WHERE id='%v' AND user_id='%v';"
+	getAllByUserID = "SELECT id, user_id, title, description, done_status, due_date, added_at, modified_at FROM tasks WHERE user_id='%v';"
+	getTaskByID    = "SELECT id, user_id, title, description, done_status, due_date, added_at, modified_at FROM " +
+		"tasks WHERE id='%v' AND user_id='%v';"
+	insertQuery = "INSERT INTO tasks (id, user_id, title, description, done_status, due_date, added_at) VALUES " +
+		"('%v', '%v', '%v', '%v', %v, '%v', '%v');"
+	setDone     = "UPDATE tasks SET done_status=%v, modified_at='%v' WHERE id='%v' AND user_id='%v';"
+	updateQuery = "UPDATE tasks SET title='%v', description='%v', done_status=%v, modified_at='%v' WHERE id='%v' AND user_id='%v';"
 )
 
 type Store struct {
@@ -35,7 +36,7 @@ func (s *Store) GetAll(ctx context.Context, userID *uuid.UUID) ([]models.Task, e
 		logger = models.GetLoggerFromCtx(ctx)
 	)
 
-	rows, err := s.DB.Select(fmt.Sprintf(getAll, *userID))
+	rows, err := s.DB.Select(fmt.Sprintf(getAllByUserID, *userID))
 	if err != nil {
 		return nil, err
 	}
@@ -62,23 +63,21 @@ func (s *Store) GetAll(ctx context.Context, userID *uuid.UUID) ([]models.Task, e
 
 func (s *Store) Create(ctx context.Context, task *models.Task) error {
 	logger := models.GetLoggerFromCtx(ctx)
-
-	query := fmt.Sprintf(
-		insertQuery,
+	query := fmt.Sprintf(insertQuery,
 		task.ID,
 		task.UserID,
 		task.Title,
+		task.Description,
 		task.IsDone,
+		task.DueDate.UnixMilli(),
 		task.AddedAt.UnixMilli(),
 	)
+
 	if err := s.DB.Execute(query); err != nil {
 		return err
 	}
 
-	logger.LogAttrs(
-		ctx,
-		slog.LevelDebug,
-		"task inserted successfully",
+	logger.LogAttrs(ctx, slog.LevelDebug, "task added successfully",
 		slog.String("task", task.ID),
 	)
 
@@ -87,20 +86,21 @@ func (s *Store) Create(ctx context.Context, task *models.Task) error {
 
 func (s *Store) Update(ctx context.Context, task *models.Task) error {
 	logger := models.GetLoggerFromCtx(ctx)
-
-	query := fmt.Sprintf(
-		updateQuery,
+	query := fmt.Sprintf(updateQuery,
 		task.Title,
+		task.Description,
 		task.IsDone,
 		task.ModifiedAt.UnixMilli(),
 		task.ID,
 		task.UserID,
 	)
+
 	if err := s.DB.Execute(query); err != nil {
 		return err
 	}
 
-	logger.LogAttrs(ctx, slog.LevelDebug, "task updated successfully", slog.String("task", task.ID))
+	logger.LogAttrs(ctx, slog.LevelDebug, "task updated successfully",
+		slog.String("task", task.ID))
 
 	return nil
 }
@@ -128,7 +128,7 @@ func (s *Store) MarkDone(ctx context.Context, id string, userID *uuid.UUID) (*mo
 		return nil, err
 	}
 
-	row, err := s.DB.Select(fmt.Sprintf(getTask, id, *userID))
+	row, err := s.DB.Select(fmt.Sprintf(getTaskByID, id, *userID))
 	if err != nil {
 		return nil, err
 	}
@@ -166,32 +166,49 @@ func populateTaskFields(rows *sqlitecloud.Result, r uint64) (*models.Task, error
 		return nil, err
 	}
 
-	v3, err := rows.GetStringValue(r, 2) // taskTitle
+	task.Title, err = rows.GetStringValue(r, 2) // title
 	if err != nil {
 		return nil, err
 	}
 
-	v4, err := rows.GetInt64Value(r, 3) // isDone status
+	task.Description, err = rows.GetStringValue(r, 3) // description
 	if err != nil {
 		return nil, err
 	}
 
-	v5, err := rows.GetInt64Value(r, 4) // added time
+	v4, err := rows.GetInt64Value(r, 4) // done status
 	if err != nil {
 		return nil, err
 	}
 
-	v6 := rows.GetInt64Value_(r, 5) // modified time
+	dd, err := rows.GetInt64Value(r, 5) // due date
+	if err != nil {
+		return nil, err
+	}
+
+	v5, err := rows.GetInt64Value(r, 6) // added time
+	if err != nil {
+		return nil, err
+	}
+
+	v6 := rows.GetInt64Value_(r, 7) // modified time
 
 	task.UserID = uuid.MustParse(v2)
-	task.Title = v3
-	task.IsDone = (v4 == 1)
-	task.AddedAt = time.UnixMilli(v5)
 
-	if v6 != 0 {
-		t := time.UnixMilli(v6)
-		task.ModifiedAt = &t
-	}
+	task.IsDone = (v4 == 1)
+	task.DueDate = dateRef(dd)
+	task.AddedAt = *dateRef(v5)
+	task.ModifiedAt = dateRef(v6)
 
 	return &task, nil
+}
+
+func dateRef(data int64) *time.Time {
+	if data == 0 {
+		return nil
+	}
+
+	t := time.UnixMilli(data)
+
+	return &t
 }

@@ -13,27 +13,27 @@ const (
 )
 
 type UserData struct {
-	ID       uuid.UUID `json:"id"       db:"id"`
-	Name     string    `json:"name"     db:"name"`
-	Email    string    `json:"email"    db:"email"`
-	Password string    `json:"password" db:"password"`
+	ID       uuid.UUID `json:"id"`
+	Name     string    `json:"name"`
+	Email    string    `json:"email"`
+	Password string    `json:"password"`
 }
 
 type LoginReq struct {
-	Email    string `json:"email"    db:"email"`
-	Password string `json:"password" db:"password"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 type RegisterReq struct {
-	Name string `json:"name" db:"name"`
+	Name string `json:"name"`
 	*LoginReq
 }
 
 type SessionData struct {
-	ID     uuid.UUID `json:"id"     db:"id"`
-	UserID uuid.UUID `json:"userId" db:"user_id"`
-	Token  string    `json:"token"  db:"token"`
-	Expiry time.Time `json:"expiry" db:"expiry"`
+	ID     uuid.UUID `json:"id"`
+	UserID uuid.UUID `json:"userId"`
+	Token  string    `json:"token"`
+	Expiry time.Time `json:"expiry"`
 }
 
 func (l *LoginReq) Validate() error {

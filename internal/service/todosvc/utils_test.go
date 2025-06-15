@@ -4,7 +4,6 @@ import (
 	"errors"
 	"strings"
 	"testing"
-
 	"todoapp/internal/models"
 
 	"github.com/google/uuid"
@@ -32,25 +31,24 @@ func TestGenerateID(t *testing.T) {
 
 func TestValidateTask(t *testing.T) {
 	uid := uuid.NewString()
+	date := "2025-06-16"
 	tests := []struct {
 		name    string
-		id      string
-		title   string
+		task    models.TaskReq
 		wantErr error
 	}{
-		{name: "valid case", id: "task-" + uid, title: "test", wantErr: nil},
-		{name: "invalid ID", id: "123", title: "test", wantErr: models.ErrInvalid("task id")},
-		{
-			name:    "empty title",
-			id:      "task-" + uid,
-			title:   "",
-			wantErr: models.ErrInvalid("task title"),
-		},
+		{name: "valid case", task: models.TaskReq{ID: "task-" + uid, Title: "test", DueDate: date}, wantErr: nil},
+		{name: "invalid ID", task: models.TaskReq{ID: "123", Title: "test", DueDate: date}, wantErr: models.ErrInvalid("task id")},
+		{name: "empty title", task: models.TaskReq{ID: "task-" + uid, Title: ""}, wantErr: models.ErrRequired("task title")},
+		{name: "missing dueDate", task: models.TaskReq{ID: "task-" + uid, Title: "test", DueDate: "  "},
+			wantErr: models.ErrRequired("due date")},
+		{name: "invalid dueDate", task: models.TaskReq{ID: "task-" + uid, Title: "test", DueDate: " 1235 "},
+			wantErr: models.ErrInvalid("due date")},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := validateTask(tt.id, tt.title); !errors.Is(err, tt.wantErr) {
+			if err := validateTask(tt.task.ID, &tt.task); !errors.Is(err, tt.wantErr) {
 				t.Errorf("validateTask() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

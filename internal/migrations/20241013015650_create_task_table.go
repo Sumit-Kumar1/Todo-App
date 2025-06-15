@@ -5,20 +5,22 @@ import "github.com/sqlitecloud/sqlitecloud-go"
 const (
 	tasksDown = "DROP TABLE IF EXISTS tasks;"
 	tasksUp   = `CREATE TABLE IF NOT EXISTS tasks(
-    task_id TEXT PRIMARY KEY, 
+    id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
-    task_title TEXT NOT NULL, 
+    title TEXT NOT NULL,
+		description TEXT,
     done_status BOOLEAN NOT NULL CHECK (done_status IN (0, 1)),
-    added_at DATETIME NOT NULL, 
+    due_date DATE,
+    added_at DATETIME NOT NULL,
     modified_at DATETIME);`
 )
 
 type M20241013015650 string
 
 func (m M20241013015650) up(db *sqlitecloud.SQCloud) error {
-	return run(db, tasksUp, m)
+	return db.Execute(tasksUp)
 }
 
 func (m M20241013015650) down(db *sqlitecloud.SQCloud) error {
-	return run(db, tasksDown, m)
+	return db.Execute(tasksDown)
 }

@@ -4,7 +4,6 @@ import (
 	"html/template"
 	"log/slog"
 	"net/http"
-
 	"todoapp/internal/models"
 
 	"github.com/google/uuid"
@@ -12,8 +11,8 @@ import (
 
 const (
 	invalidReqMethod = "method not allowed"
-	templAddTask     = "add"
-	templIndex       = "index"
+	templateAddTask  = "add"
+	templateIndex    = "index"
 	userNotFound     = "user not found"
 	renderErr        = "error while rendering template"
 	hxRedirect       = "HX-Redirect"
@@ -81,8 +80,8 @@ func (h *Handler) Done(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.template.ExecuteTemplate(w, templAddTask, *resp); err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, renderErr, slog.String("template", templAddTask))
+	if err := h.template.ExecuteTemplate(w, templateAddTask, resp.ToTaskResp()); err != nil {
+		logger.LogAttrs(ctx, slog.LevelError, renderErr, slog.String("template", templateAddTask))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -99,16 +98,20 @@ func (h *Handler) addTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	task := r.PostFormValue("task")
+	t := models.TaskReq{
+		Title:       r.PostFormValue("title"),
+		Description: r.PostFormValue("description"),
+		DueDate:     r.PostFormValue("dueDate"),
+	}
 
-	t, err := h.Service.AddTask(ctx, task, &userID)
+	task, err := h.Service.AddTask(ctx, &t, &userID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err := h.template.ExecuteTemplate(w, templAddTask, *t); err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, renderErr, slog.String("template", templAddTask))
+	if err := h.template.ExecuteTemplate(w, templateAddTask, task.ToTaskResp()); err != nil {
+		logger.LogAttrs(ctx, slog.LevelError, renderErr, slog.String("template", templateAddTask))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -147,8 +150,14 @@ func (h *Handler) getAll(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 
-	if err := h.template.ExecuteTemplate(w, templIndex, tasks); err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, renderErr, slog.String("template", templIndex))
+	trs := []models.TaskResp{}
+
+	for i := range tasks {
+		trs = append(trs, *tasks[i].ToTaskResp())
+	}
+
+	if err := h.template.ExecuteTemplate(w, templateIndex, trs); err != nil {
+		logger.LogAttrs(ctx, slog.LevelError, renderErr, slog.String("template", templateIndex))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -175,10 +184,7 @@ func (h *Handler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
 
-		logger.LogAttrs(
-			ctx,
-			slog.LevelError,
-			err.Error(),
+		logger.LogAttrs(ctx, slog.LevelError, err.Error(),
 			slog.String("user", userID.String()),
 			slog.String("task", id),
 		)
@@ -201,10 +207,14 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := r.PathValue("id")
-	title := r.Header.Get("HX-Prompt")
+	t := models.TaskReq{
+		ID:          r.PathValue("id"),
+		Title:       r.PostFormValue("title"),
+		Description: r.PostFormValue("description"),
+		DueDate:     r.PostFormValue("dueDate"),
+	}
 
-	resp, err := h.Service.UpdateTask(ctx, id, title, false, &userID)
+	resp, err := h.Service.UpdateTask(ctx, t.ID, &t, false, &userID)
 	if err != nil {
 		switch {
 		case models.ErrNotFound("user").Error() == err.Error():
@@ -213,12 +223,9 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
 
-		logger.LogAttrs(
-			ctx,
-			slog.LevelError,
-			err.Error(),
+		logger.LogAttrs(ctx, slog.LevelError, err.Error(),
 			slog.String("user", userID.String()),
-			slog.String("task", id),
+			slog.String("task", t.ID),
 		)
 
 		return
@@ -229,18 +236,15 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.template.ExecuteTemplate(w, templAddTask, *resp); err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, renderErr, slog.String("template", templAddTask))
+	if err := h.template.ExecuteTemplate(w, templateAddTask, *resp.ToTaskResp()); err != nil {
+		logger.LogAttrs(ctx, slog.LevelError, renderErr, slog.String("template", templateAddTask))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 
 		return
 	}
 
-	logger.LogAttrs(
-		ctx,
-		slog.LevelDebug,
-		"task update done!",
+	logger.LogAttrs(ctx, slog.LevelDebug, "task update done!",
 		slog.String("user", userID.String()),
-		slog.String("task", id),
+		slog.String("task", t.ID),
 	)
 }

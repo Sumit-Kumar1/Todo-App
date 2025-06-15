@@ -32,7 +32,9 @@ func Run(c context.Context, _ io.Writer, _ []string) error {
 	server.SetupRoutes(ctx, app)
 
 	if err = migrations.RunMigrations(ctx, app, app.MigrationMethod); err != nil {
-		slog.Error(err.Error())
+		slog.LogAttrs(c, slog.LevelError, "error while running migrations",
+			slog.String("error", err.Error()))
+
 		return err
 	}
 
@@ -40,19 +42,33 @@ func Run(c context.Context, _ io.Writer, _ []string) error {
 
 	httpServer := &http.Server{
 		Addr:         net.JoinHostPort(app.Host, app.Port),
-		Handler:      app.Mux,
+		Handler:      app.GlobalRateLimiter(app.Mux),
 		ReadTimeout:  time.Duration(app.ReadTimeout * int(time.Second)),
 		WriteTimeout: time.Duration(app.WriteTimeout * int(time.Second)),
 		IdleTimeout:  time.Duration(app.IdleTimeout * int(time.Second)),
 	}
 
 	go func() {
-		app.Logger.LogAttrs(ctx, slog.LevelInfo, "Server started",
-			slog.String("Address", httpServer.Addr),
-		)
+		app.Logger.LogAttrs(ctx, slog.LevelInfo, "Server started", slog.String("Address", httpServer.Addr))
 
 		srvErr <- httpServer.ListenAndServe()
 	}()
+
+	if err := checkForTrigger(ctx, app, srvErr); err != nil {
+		return err
+	}
+
+	if err := httpServer.Shutdown(context.Background()); err != nil {
+		slog.LogAttrs(ctx, slog.LevelError, "error while shutting down the server",
+			slog.String("error", err.Error()),
+		)
+	}
+
+	return nil
+}
+
+func checkForTrigger(ctx context.Context, app *server.Server, srvErr chan error) error {
+	var err error
 
 	select {
 	case err = <-srvErr:
@@ -78,17 +94,7 @@ func Run(c context.Context, _ io.Writer, _ []string) error {
 
 		app.Logger.LogAttrs(ctx, slog.LevelInfo, "database connection closed successfully")
 
-		return nil
-
 	case <-ctx.Done():
-		stop()
-	}
-
-	if err := httpServer.Shutdown(context.Background()); err != nil {
-		slog.LogAttrs(ctx, slog.LevelError,
-			"error while shutting down the server",
-			slog.String("error", err.Error()),
-		)
 	}
 
 	return nil
