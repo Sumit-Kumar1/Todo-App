@@ -74,12 +74,12 @@ tests:
 ## css/watch: constantly generate css and watch for new changes
 .PHONY: css/watch
 css/watch:
-	npx tailwindcss -i ./public/input.css -o ./public/style.css --watch
+	npx tailwindcss -i ./public/app.css -o ./public/style.css --watch
 
 ## css/output: generate output css from used classes in views/*.html
 .PHONY: css/output
 css/output:
-	npx tailwindcss -i ./public/input.css -o ./public/style.css
+	npx tailwindcss -i ./public/app.css -o ./public/style.css
 
 
 ## build: build the application
