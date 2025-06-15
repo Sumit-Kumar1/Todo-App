@@ -42,7 +42,7 @@ func Run(c context.Context, _ io.Writer, _ []string) error {
 
 	httpServer := &http.Server{
 		Addr:         net.JoinHostPort(app.Host, app.Port),
-		Handler:      app.Mux,
+		Handler:      app.GlobalRateLimiter(app.Mux),
 		ReadTimeout:  time.Duration(app.ReadTimeout * int(time.Second)),
 		WriteTimeout: time.Duration(app.WriteTimeout * int(time.Second)),
 		IdleTimeout:  time.Duration(app.IdleTimeout * int(time.Second)),
