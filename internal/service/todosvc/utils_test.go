@@ -31,14 +31,19 @@ func TestGenerateID(t *testing.T) {
 
 func TestValidateTask(t *testing.T) {
 	uid := uuid.NewString()
+	date := "2025-06-16"
 	tests := []struct {
 		name    string
 		task    models.TaskReq
 		wantErr error
 	}{
-		{name: "valid case", task: models.TaskReq{ID: "task-" + uid, Title: "test"}, wantErr: nil},
-		{name: "invalid ID", task: models.TaskReq{ID: "123", Title: "test"}, wantErr: models.ErrInvalid("task id")},
-		{name: "empty title", task: models.TaskReq{ID: "task-" + uid, Title: ""}, wantErr: models.ErrInvalid("task title")},
+		{name: "valid case", task: models.TaskReq{ID: "task-" + uid, Title: "test", DueDate: date}, wantErr: nil},
+		{name: "invalid ID", task: models.TaskReq{ID: "123", Title: "test", DueDate: date}, wantErr: models.ErrInvalid("task id")},
+		{name: "empty title", task: models.TaskReq{ID: "task-" + uid, Title: ""}, wantErr: models.ErrRequired("task title")},
+		{name: "missing dueDate", task: models.TaskReq{ID: "task-" + uid, Title: "test", DueDate: "  "},
+			wantErr: models.ErrRequired("due date")},
+		{name: "invalid dueDate", task: models.TaskReq{ID: "task-" + uid, Title: "test", DueDate: " 1235 "},
+			wantErr: models.ErrInvalid("due date")},
 	}
 
 	for _, tt := range tests {

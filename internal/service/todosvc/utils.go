@@ -16,7 +16,6 @@ func generateID() string {
 	return prefixTask + uuid.New().String()
 }
 
-// TODO: fix this validation here
 func validateTask(id string, task *models.TaskReq) error {
 	if err := validateID(id); err != nil {
 		return err
@@ -26,15 +25,19 @@ func validateTask(id string, task *models.TaskReq) error {
 	task.Description = strings.TrimSpace(task.Description)
 
 	if task.Title == "" {
-		return models.ErrInvalid("task title")
+		return models.ErrRequired("task title")
 	}
 
 	if len(task.Description) > 1000 {
 		return models.ErrInvalid("task description, size > 1K characters")
 	}
 
+	if strings.TrimSpace(task.DueDate) == "" {
+		return models.ErrRequired("due date")
+	}
+
 	if _, err := time.Parse(time.DateOnly, task.DueDate); err != nil {
-		return models.ErrInvalid("dueDate")
+		return models.ErrInvalid("due date")
 	}
 
 	return nil

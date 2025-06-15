@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"todoapp/internal/models"
@@ -24,7 +25,7 @@ const (
 
 type middleware func(http.HandlerFunc) http.HandlerFunc
 
-func (s *Server) chain(f http.HandlerFunc, middlewares ...middleware) http.HandlerFunc {
+func chain(f http.HandlerFunc, middlewares ...middleware) http.HandlerFunc {
 	for _, m := range middlewares {
 		f = m(f)
 	}
@@ -32,7 +33,7 @@ func (s *Server) chain(f http.HandlerFunc, middlewares ...middleware) http.Handl
 	return f
 }
 
-func (s *Server) method(m string) middleware {
+func method(m string) middleware {
 	return func(f http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			if r.Method != m {
@@ -49,7 +50,7 @@ func (s *Server) method(m string) middleware {
 	}
 }
 
-func (s *Server) isHTMX() middleware {
+func isHTMX() middleware {
 	return func(f http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			if r.Header.Get("Hx-Request") != "true" {
@@ -90,10 +91,12 @@ func (s *Server) authMiddleware(ctx context.Context) middleware {
 			uid, err := getSessionID(ctx, s.DB, s.Logger, cookieVal)
 			if err != nil {
 				s.Logger.LogAttrs(ctx, slog.LevelError, "error while validating session", slog.String("error", err.Error()))
+
 				_ = temp.ExecuteTemplate(w, "errorPage", map[string]any{
 					"Code":    http.StatusUnauthorized,
 					"Message": invalidCookieMsg,
 				})
+
 				http.Error(w, err.Error(), http.StatusUnauthorized)
 
 				return
@@ -123,6 +126,7 @@ func (s *Server) GlobalRateLimiter(next http.Handler) http.Handler {
 			s.globalLimiter.attempts[ip] = info
 			s.globalLimiter.mu.Unlock()
 			next.ServeHTTP(w, r)
+
 			return
 		}
 
@@ -137,6 +141,7 @@ func (s *Server) GlobalRateLimiter(next http.Handler) http.Handler {
 			w.Header().Set("Retry-After", strconv.Itoa(int(s.globalLimiter.timeWindow.Seconds())))
 			http.Error(w, "Too many requests. Please try again later!!", http.StatusTooManyRequests)
 			s.globalLimiter.mu.Unlock()
+
 			return
 		}
 
@@ -151,9 +156,10 @@ func (s *Server) rateLimiterLogin() middleware {
 			s.Logger.LogAttrs(r.Context(), slog.LevelDebug, "started login rate limiter")
 
 			email := r.FormValue("email")
-			if email == "" {
+			if strings.TrimSpace(email) == "" {
 				http.Error(w, "invalid email provided", http.StatusBadRequest)
 				s.Logger.LogAttrs(r.Context(), slog.LevelDebug, "invalid email in rate limiter login")
+
 				return
 			}
 
@@ -168,6 +174,10 @@ func (s *Server) rateLimiterLogin() middleware {
 			if time.Since(attempt.firstTime) > s.loginLimiter.timeWindow {
 				attempt.count = 0
 				attempt.firstTime = time.Now()
+
+				f(w, r)
+
+				return
 			}
 
 			attempt.count++
@@ -178,14 +188,14 @@ func (s *Server) rateLimiterLogin() middleware {
 					slog.Int("count", attempt.count), slog.Int("max attempt", s.loginLimiter.maxAttempts))
 
 				http.Error(w, "Too many login attempts. Please try again later.", http.StatusTooManyRequests)
+
 				s.loginLimiter.mu.Unlock()
+
 				return
 			}
 
 			s.loginLimiter.mu.Unlock()
-
 			s.Logger.LogAttrs(r.Context(), slog.LevelDebug, "success login limiter finished")
-
 			f(w, r)
 		}
 	}
