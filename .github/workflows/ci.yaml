@@ -22,7 +22,7 @@ jobs:
         run: |
           go install gotest.tools/gotestsum@latest
           mkdir coverage
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 gotestsum --format testname -- -count=1 -p 1 -coverprofile=coverage.out.tmp ./... -coverpkg=./... -timeout 5m
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 gotestsum --format testname -- -count=1 -p 1 -coverprofile=coverage/coverage.out.tmp ./... -coverpkg=./... -timeout 5m
 
       - name: Build
         run: |
@@ -53,13 +53,3 @@ jobs:
         uses: securego/gosec@master
         with:
           args: ./...
-
-  sonar-analysis:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@v5.2.0
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
