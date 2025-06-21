@@ -15,10 +15,12 @@ const (
 
 type M20241013015640 string
 
+// nolint:revive // unused but need this as method
 func (m M20241013015640) up(db *sqlitecloud.SQCloud) error {
 	return db.Execute(userUp)
 }
 
+// nolint:revive // unused but need this as method
 func (m M20241013015640) down(db *sqlitecloud.SQCloud) error {
 	return db.Execute(userDown)
 }

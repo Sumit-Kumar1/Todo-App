@@ -169,7 +169,9 @@ func performUpMigrations(ctx context.Context, s *server.Server, val migrator, ve
 		return err
 	}
 
-	defer s.DB.EndTransaction()
+	defer func() {
+		_ = s.DB.EndTransaction()
+	}()
 
 	query := fmt.Sprintf("INSERT INTO %s (version, start_time, method) VALUES ('%s', %v,'%s');",
 		migTableName, version, time.Now().UnixMilli(), method)
@@ -219,7 +221,9 @@ func performDownMigrations(ctx context.Context, s *server.Server, val migrator, 
 		return err
 	}
 
-	defer s.DB.EndTransaction()
+	defer func() {
+		_ = s.DB.EndTransaction()
+	}()
 
 	if err := val.down(s.DB); err != nil {
 		s.Logger.LogAttrs(ctx, slog.LevelError, "Migration error",

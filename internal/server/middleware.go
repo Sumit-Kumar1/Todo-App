@@ -150,6 +150,7 @@ func (s *Server) GlobalRateLimiter(next http.Handler) http.Handler {
 	})
 }
 
+// nolint:gocognit // can't divide it furthur
 func (s *Server) rateLimiterLogin() middleware {
 	return func(f http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
