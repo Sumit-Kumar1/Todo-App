@@ -17,8 +17,8 @@ func newDB(logger *slog.Logger) (*sqlitecloud.SQCloud, error) {
 		Host:     os.Getenv("DB_HOST"),
 		Port:     getEnvAsInt("DB_PORT", 8860),
 		Database: os.Getenv("DB_NAME"),
-		ApiKey:   os.Getenv("DB_APIKEY"),
-		MaxRows:  getEnvAsInt("DB_MAXROWS", 20),
+		ApiKey:   os.Getenv("DB_API_KEY"),
+		MaxRows:  getEnvAsInt("DB_MAX_ROWS", 20),
 	}
 
 	isSecure, err := strconv.ParseBool(os.Getenv("DB_SECURE_FLAG"))
@@ -31,7 +31,10 @@ func newDB(logger *slog.Logger) (*sqlitecloud.SQCloud, error) {
 	sqcl := sqlitecloud.New(config)
 
 	if err := sqcl.Connect(); err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, "error while connecting to Database", slog.String("error", err.Error()))
+		logger.LogAttrs(ctx, slog.LevelError, "error while connecting to Database",
+			slog.String("error", err.Error()),
+		)
+
 		return nil, err
 	}
 

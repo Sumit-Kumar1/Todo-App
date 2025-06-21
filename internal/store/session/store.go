@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"time"
+
 	"todoapp/internal/models"
 
 	"github.com/google/uuid"
@@ -25,36 +26,50 @@ type Store struct {
 }
 
 func New(db *sqlitecloud.SQCloud) *Store {
-	return &Store{
-		DB: db,
-	}
+	return &Store{DB: db}
 }
 
-func (s *Store) CreateSession(ctx context.Context, session *models.UserSession) error {
+func (s *Store) CreateSession(ctx context.Context, session *models.SessionData) error {
 	logger := models.GetLoggerFromCtx(ctx)
 
-	query := fmt.Sprintf(createSession, session.ID, session.UserID, session.Token, session.Expiry.UnixMilli())
+	query := fmt.Sprintf(
+		createSession,
+		session.ID,
+		session.UserID,
+		session.Token,
+		session.Expiry.UnixMilli(),
+	)
 	if err := s.DB.Execute(query); err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, "error while running session create query", slog.String("error", err.Error()))
+		logger.LogAttrs(ctx, slog.LevelError, "error while running session create query",
+			slog.String("error", err.Error()),
+		)
+
 		return err
 	}
 
 	return nil
 }
 
-func (s *Store) GetSessionByID(ctx context.Context, userID *uuid.UUID) (*models.UserSession, error) {
+// nolint:gocognit // cognitive of 11 is okay, didn't want to split this method
+func (s *Store) GetSessionByID(ctx context.Context, userID *uuid.UUID) (*models.SessionData, error) {
 	logger := models.GetLoggerFromCtx(ctx)
 
-	var session models.UserSession
+	var session models.SessionData
 
 	res, err := s.DB.Select(fmt.Sprintf(getSessionByUserID, *userID))
 	if err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, "error while fetching session by userID", slog.String("error", err.Error()))
+		logger.LogAttrs(ctx, slog.LevelError, "error while fetching session by userID",
+			slog.String("error", err.Error()),
+		)
+
 		return nil, err
 	}
 
 	if res.GetNumberOfRows() == uint64(0) {
-		logger.LogAttrs(ctx, slog.LevelError, "no user session found")
+		logger.LogAttrs(ctx, slog.LevelError, "no user session found for userID",
+			slog.String("userID", userID.String()),
+		)
+
 		return nil, models.ErrNotFound("user ID")
 	}
 
@@ -89,12 +104,19 @@ func (s *Store) GetSessionByID(ctx context.Context, userID *uuid.UUID) (*models.
 	return &session, nil
 }
 
-func (s *Store) RefreshSession(ctx context.Context, newSession *models.UserSession) error {
+func (s *Store) RefreshSession(ctx context.Context, newSession *models.SessionData) error {
 	logger := models.GetLoggerFromCtx(ctx)
+	query := fmt.Sprintf(updateSession,
+		newSession.Token,
+		newSession.Expiry.UnixMilli(),
+		newSession.ID,
+	)
 
-	query := fmt.Sprintf(updateSession, newSession.Token, newSession.Expiry.UnixMilli(), newSession.ID)
 	if err := s.DB.Execute(query); err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, "error in refreshing session", slog.String("error", err.Error()))
+		logger.LogAttrs(ctx, slog.LevelError, "error in refreshing session",
+			slog.String("error", err.Error()),
+		)
+
 		return err
 	}
 
@@ -108,7 +130,10 @@ func (s *Store) Logout(ctx context.Context, token *uuid.UUID) error {
 
 	res, err := s.DB.Select(fmt.Sprintf(getSessionByToken, *token))
 	if err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, "error while logging out user", slog.String("error", err.Error()))
+		logger.LogAttrs(ctx, slog.LevelError, "error while logging out user",
+			slog.String("error", err.Error()),
+		)
+
 		return err
 	}
 
@@ -125,9 +150,5 @@ func (s *Store) Logout(ctx context.Context, token *uuid.UUID) error {
 		id = uuid.MustParse(r1)
 	}
 
-	if err := s.DB.Execute(fmt.Sprintf(deleteSessionByID, id)); err != nil {
-		return err
-	}
-
-	return nil
+	return s.DB.Execute(fmt.Sprintf(deleteSessionByID, id))
 }

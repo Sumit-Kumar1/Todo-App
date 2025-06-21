@@ -1,14 +1,21 @@
-apiVersion: v1
-kind: LimitRange
+apiVersion: networking.k8s.io/v1
+kind: Ingress
 metadata:
-  name: storage-limit-range
-  namespace: default
+  name: todo-app-ingress
+  labels:
+    name: todo-app-ingress
 spec:
-  limits:
-    - default:
-        ephemeral-storage: "1Gi"
-    - defaultRequest:
-        ephemeral-storage: "10Mi"
+  rules:
+  - host: localhost
+    http:
+      paths:
+      - pathType: Prefix
+        path: "/"
+        backend:
+          service:
+            name: todoapp
+            port: 
+              number: 9001
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -34,8 +41,36 @@ spec:
           ports:
             - containerPort: 9001
           env:
-            - name: DB_FILE
-              value: "todo.sqlite"
+            - name: APP_NAME
+              value: "todoapp"
+            - name: HTTP_PORT
+              value: "9001"
+            - name: LOG_LEVEL
+              value: "9001"
+            - name: ENV
+              value: "dev"
+            - name: MIGRATION_METHOD
+              value: "UP"
+            - name: READ_TIMEOUT
+              value: "5"
+            - name: WRITE_TIMEOUT
+              value: "5"
+            - name: IDLE_TIMEOUOT
+              value: "10"
+            - name: DB_HOST
+              value: ""
+            - name: DB_PORT
+              value: ""
+            - name: DB_NAME
+              value: "todo"
+            - name: DB_TIMEOUT
+              value: "5s"
+            - name: DB_API_KEY
+              value: ""
+            - name: DB_MAX_ROWS
+              value: "20"
+            - name: DB_SECURE_FLAG            
+              value: "true"
           readinessProbe:
             tcpSocket:
               port: 9001
@@ -52,17 +87,7 @@ spec:
             requests:
               memory: "64Mi"
               cpu: "250m"
-              ephemeral-storage: "10Mi"
             limits:
               memory: "128Mi"
               cpu: "500m"
-              ephemeral-storage: "1Gi"
-          volumeMounts:
-            - name: sqlite-storage
-              mountPath: /todoApp
-              subPath: tasks.db
-      volumes:
-        - name: sqlite-storage
-          persistentVolumeClaim:
-            claimName: sqlite-pvc
       automountServiceAccountToken: false

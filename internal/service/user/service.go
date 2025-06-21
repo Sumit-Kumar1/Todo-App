@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"time"
+
 	"todoapp/internal/models"
 
 	"github.com/google/uuid"
@@ -19,7 +20,7 @@ func New(st UserStorer, ss SessionStorer) *Service {
 	return &Service{UserStore: st, SessionStore: ss}
 }
 
-func (s *Service) Register(ctx context.Context, req *models.RegisterReq) (*models.UserSession, error) {
+func (s *Service) Register(ctx context.Context, req *models.RegisterReq) (*models.SessionData, error) {
 	if req == nil {
 		return nil, nil
 	}
@@ -33,8 +34,10 @@ func (s *Service) Register(ctx context.Context, req *models.RegisterReq) (*model
 	// check if user already exists
 	existingUser, err := s.UserStore.GetUserByEmail(ctx, req.Email)
 	if err != nil && err.Error() != models.ErrNotFound("user").Error() {
-		logger.LogAttrs(ctx, slog.LevelError, "user not found - Service.Register", slog.String("error", err.Error()),
-			slog.String("user", req.Email))
+		logger.LogAttrs(ctx, slog.LevelError, "Service.Register - user not found",
+			slog.String("error", err.Error()),
+			slog.String("user", req.Email),
+		)
 
 		return nil, err
 	}
@@ -48,39 +51,43 @@ func (s *Service) Register(ctx context.Context, req *models.RegisterReq) (*model
 		return nil, err
 	}
 
-	userID := uuid.New()
-	session := models.UserSession{
-		ID:     uuid.New(),
-		UserID: userID,
-		Token:  uuid.NewString(),
-		Expiry: time.Now().Add(time.Minute * 15),
-	}
 	user := models.UserData{
-		ID:       userID,
+		ID:       uuid.New(),
 		Name:     req.Name,
 		Email:    req.Email,
 		Password: passwd,
 	}
 
-	err = s.UserStore.RegisterUser(ctx, &user)
-	if err != nil {
+	if err := s.UserStore.RegisterUser(ctx, &user); err != nil {
 		return nil, err
 	}
 
 	logger.LogAttrs(ctx, slog.LevelInfo, "user created successfully!!",
-		slog.String("email", req.Email), slog.String("userID", userID.String()))
+		slog.String("email", req.Email), slog.String("userID", user.ID.String()))
 
-	err = s.SessionStore.CreateSession(ctx, &session)
-	if err != nil {
+	session := models.SessionData{
+		ID:     uuid.New(),
+		UserID: user.ID,
+		Token:  uuid.NewString(),
+		Expiry: time.Now().Add(time.Minute * 15),
+	}
+
+	if err := s.SessionStore.CreateSession(ctx, &session); err != nil {
 		return nil, err
 	}
 
-	logger.LogAttrs(ctx, slog.LevelInfo, "session created successfully!!", slog.String("userID", userID.String()))
+	logger.LogAttrs(ctx, slog.LevelInfo, "Service:Register - session created successfully!!",
+		slog.String("userID", user.ID.String()),
+	)
 
 	return &session, nil
 }
 
-func (s *Service) Login(ctx context.Context, req *models.LoginReq) (*models.UserSession, error) {
+func (s *Service) Login(ctx context.Context, req *models.LoginReq) (*models.SessionData, error) {
+	if req == nil {
+		return nil, models.ErrRequired("login request")
+	}
+
 	if err := req.Validate(); err != nil {
 		return nil, err
 	}
@@ -92,21 +99,34 @@ func (s *Service) Login(ctx context.Context, req *models.LoginReq) (*models.User
 	}
 
 	if user == nil {
-		return nil, models.ErrNotFound("user")
+		return nil, models.ErrUserNotFound
 	}
 
 	if matchErr := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); matchErr != nil {
 		return nil, models.ErrPsswdNotMatch
 	}
 
+	return s.handleLoginSession(ctx, user)
+}
+
+func (s *Service) Logout(ctx context.Context, token string) error {
+	t, err := uuid.Parse(token)
+	if err != nil {
+		return err
+	}
+
+	return s.SessionStore.Logout(ctx, &t)
+}
+
+func (s *Service) handleLoginSession(ctx context.Context, user *models.UserData) (*models.SessionData, error) {
 	session, err := s.SessionStore.GetSessionByID(ctx, &user.ID)
 	if err != nil {
 		if models.ErrNotFound("user ID").Error() != err.Error() {
 			return nil, err
 		}
 
-		t := time.Now().Add(time.Minute * 15)
-		ss := models.UserSession{
+		t := time.Now().Add(time.Minute * 15).UTC()
+		ss := models.SessionData{
 			ID:     uuid.New(),
 			UserID: user.ID,
 			Token:  uuid.NewString(),
@@ -124,22 +144,12 @@ func (s *Service) Login(ctx context.Context, req *models.LoginReq) (*models.User
 		session.Expiry = time.Now().Add(time.Minute * 15).UTC()
 		session.Token = uuid.NewString()
 
-		err := s.SessionStore.RefreshSession(ctx, session)
-		if err != nil {
+		if err := s.SessionStore.RefreshSession(ctx, session); err != nil {
 			return nil, err
 		}
 	}
 
 	return session, nil
-}
-
-func (s *Service) Logout(ctx context.Context, token string) error {
-	t, err := uuid.Parse(token)
-	if err != nil {
-		return err
-	}
-
-	return s.SessionStore.Logout(ctx, &t)
 }
 
 func encryptedPassword(password string) (string, error) {

@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"context"
@@ -16,7 +16,7 @@ import (
 	"todoapp/internal/server"
 )
 
-func run(c context.Context, _ io.Writer, _ []string) error {
+func Run(c context.Context, _ io.Writer, _ []string) error {
 	ctx, stop := signal.NotifyContext(c, os.Interrupt)
 	defer stop()
 
@@ -32,7 +32,9 @@ func run(c context.Context, _ io.Writer, _ []string) error {
 	server.SetupRoutes(ctx, app)
 
 	if err = migrations.RunMigrations(ctx, app, app.MigrationMethod); err != nil {
-		slog.Error(err.Error())
+		slog.LogAttrs(c, slog.LevelError, "error while running migrations",
+			slog.String("error", err.Error()))
+
 		return err
 	}
 
@@ -40,7 +42,7 @@ func run(c context.Context, _ io.Writer, _ []string) error {
 
 	httpServer := &http.Server{
 		Addr:         net.JoinHostPort(app.Host, app.Port),
-		Handler:      app.Mux,
+		Handler:      app.GlobalRateLimiter(app.Mux),
 		ReadTimeout:  time.Duration(app.ReadTimeout * int(time.Second)),
 		WriteTimeout: time.Duration(app.WriteTimeout * int(time.Second)),
 		IdleTimeout:  time.Duration(app.IdleTimeout * int(time.Second)),
@@ -48,32 +50,52 @@ func run(c context.Context, _ io.Writer, _ []string) error {
 
 	go func() {
 		app.Logger.LogAttrs(ctx, slog.LevelInfo, "Server started", slog.String("Address", httpServer.Addr))
+
 		srvErr <- httpServer.ListenAndServe()
 	}()
 
-	select {
-	case err = <-srvErr:
-		if !errors.Is(err, http.ErrServerClosed) {
-			app.Logger.LogAttrs(ctx, slog.LevelError, "error listening and serving", slog.String("error", err.Error()))
-		}
-
-		return nil
-	case <-ctx.Done():
-		stop()
+	if err := checkForTrigger(ctx, app, srvErr); err != nil {
+		return err
 	}
 
-	if err = httpServer.Shutdown(context.Background()); err != nil {
-		slog.LogAttrs(ctx, slog.LevelError, "error while shutting down the server", slog.String("error", err.Error()))
+	if err := httpServer.Shutdown(context.Background()); err != nil {
+		slog.LogAttrs(ctx, slog.LevelError, "error while shutting down the server",
+			slog.String("error", err.Error()),
+		)
 	}
 
 	return nil
 }
 
-func main() {
-	ctx := context.Background()
-	if err := run(ctx, os.Stdout, nil); err != nil {
-		slog.Error(err.Error())
+func checkForTrigger(ctx context.Context, app *server.Server, srvErr chan error) error {
+	var err error
+
+	select {
+	case err = <-srvErr:
+		if !errors.Is(err, http.ErrServerClosed) {
+			app.Logger.LogAttrs(ctx, slog.LevelError,
+				"error listening and serving",
+				slog.String("error", err.Error()),
+			)
+
+			return err
+		}
+
+		if app.DB == nil {
+			return nil
+		}
+
+		if err := app.DB.Close(); err != nil {
+			app.Logger.LogAttrs(ctx, slog.LevelError, "error while closing database connection",
+				slog.String("error", err.Error()))
+
+			return err
+		}
+
+		app.Logger.LogAttrs(ctx, slog.LevelInfo, "database connection closed successfully")
+
+	case <-ctx.Done():
 	}
 
-	slog.Info("server is stopped!!")
+	return nil
 }

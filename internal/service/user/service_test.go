@@ -3,130 +3,224 @@ package usersvc
 import (
 	"context"
 	"errors"
-	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"todoapp/internal/models"
 
-	"github.com/golang/mock/gomock"
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
+	"golang.org/x/crypto/bcrypt"
 )
+
+var errMock = models.NewConstError("some error")
+
+const testFailFmt = "Test[%d] failed - %s"
 
 func TestServiceRegister(t *testing.T) {
 	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	userMock := NewMockUserStorer(ctrl)
 	sessionMock := NewMockSessionStorer(ctrl)
 	s := New(userMock, sessionMock)
-
 	email := "abcd@cdef.com"
 	ctx := context.Background()
 	userData := models.UserData{}
 	longPass := strings.Repeat("abcd", 20)
-	req := models.RegisterReq{Name: "Hello world", LoginReq: &models.LoginReq{Email: email, Password: "abcd@abcd"}}
+	req := models.RegisterReq{
+		Name:     "Hello world",
+		LoginReq: &models.LoginReq{Email: email, Password: "abcd@abcd"},
+	}
 
 	tests := []struct {
 		name     string
 		req      *models.RegisterReq
-		want     *models.UserSession
 		mockCall func(*MockUserStorer, *MockSessionStorer)
+		wantRes  any
 		wantErr  error
 	}{
-		{name: "nil request", req: nil, want: nil, mockCall: func(_ *MockUserStorer, _ *MockSessionStorer) {}},
-		{name: "invalid request", req: &models.RegisterReq{Name: ""}, wantErr: models.ErrRequired("name"), mockCall: func(_ *MockUserStorer, _ *MockSessionStorer) {}},
+		{name: "nil request", req: nil, mockCall: nil, wantRes: nil},
+		{
+			name:     "invalid request",
+			req:      &models.RegisterReq{Name: ""},
+			wantErr:  models.ErrRequired("name"),
+			wantRes:  nil,
+			mockCall: nil,
+		},
 		{name: "User already exists", req: &req, wantErr: models.ErrUserAlreadyExists,
 			mockCall: func(mock *MockUserStorer, _ *MockSessionStorer) {
 				mock.EXPECT().GetUserByEmail(ctx, email).Return(&userData, nil)
-			},
+			}, wantRes: nil,
 		},
-		{name: "user not found", req: &req, wantErr: models.NewConstError("some error"),
+		{name: "user not found", req: &req, wantErr: errMock, wantRes: nil,
 			mockCall: func(mus *MockUserStorer, _ *MockSessionStorer) {
-				mus.EXPECT().GetUserByEmail(ctx, email).Return(nil, models.NewConstError("some error"))
+				mus.EXPECT().GetUserByEmail(ctx, email).Return(nil, errMock)
 			}},
-		{name: "pass encrypt error", req: &models.RegisterReq{Name: req.Name, LoginReq: &models.LoginReq{Email: email, Password: longPass}},
-			wantErr: errors.New("bcrypt: password length exceeds 72 bytes"), mockCall: func(mus *MockUserStorer, _ *MockSessionStorer) {
+		{name: "pass encrypt error", req: &models.RegisterReq{Name: req.Name,
+			LoginReq: &models.LoginReq{Email: email, Password: longPass}},
+			wantErr: bcrypt.ErrPasswordTooLong, wantRes: nil,
+			mockCall: func(mus *MockUserStorer, _ *MockSessionStorer) {
 				mus.EXPECT().GetUserByEmail(ctx, email).Return(nil, models.ErrNotFound("user"))
 			}},
-		{name: "error while creating session", req: &models.RegisterReq{Name: req.Name, LoginReq: &models.LoginReq{Email: email, Password: longPass}},
-			wantErr: errors.New("bcrypt: password length exceeds 72 bytes"), mockCall: func(mus *MockUserStorer, _ *MockSessionStorer) {
-				mus.EXPECT().GetUserByEmail(ctx, email).Return(nil, models.ErrNotFound("user"))
-			}},
+		{name: "error while registering user", req: &req, wantErr: errMock,
+			mockCall: func(mus *MockUserStorer, _ *MockSessionStorer) {
+				mus.EXPECT().GetUserByEmail(ctx, email).Return(nil, nil)
+				mus.EXPECT().RegisterUser(ctx, gomock.Any()).Return(errMock)
+			}, wantRes: nil,
+		},
+		{name: "error while creating session", req: &req, wantErr: errMock,
+			mockCall: func(mus *MockUserStorer, mss *MockSessionStorer) {
+				mus.EXPECT().GetUserByEmail(ctx, email).Return(nil, nil)
+				mus.EXPECT().RegisterUser(ctx, gomock.Any()).Return(nil)
+				mss.EXPECT().CreateSession(ctx, gomock.Any()).Return(errMock)
+			}, wantRes: nil,
+		},
+		{name: "valid user register flow", req: &req, wantErr: nil,
+			mockCall: func(mus *MockUserStorer, mss *MockSessionStorer) {
+				mus.EXPECT().GetUserByEmail(ctx, email).Return(nil, nil)
+				mus.EXPECT().RegisterUser(ctx, gomock.Any()).Return(nil)
+				mss.EXPECT().CreateSession(ctx, gomock.Any()).Return(nil)
+			}, wantRes: req,
+		},
 	}
 
 	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.mockCall(userMock, sessionMock)
-
-			got, err := s.Register(context.Background(), tt.req)
-			if err != nil && err.Error() != tt.wantErr.Error() {
-				t.Errorf("Test[%d] Failed:\nerror:\t%+v\nwantErr: %+v", i, err, tt.wantErr)
+			if tt.mockCall != nil {
+				tt.mockCall(userMock, sessionMock)
 			}
 
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Service.Register() = %v, want %v", got, tt.want)
+			got, err := s.Register(context.Background(), tt.req)
+
+			assert.Equalf(t, tt.wantErr, err, testFailFmt, i, tt.name)
+
+			if tt.wantRes != nil {
+				assert.NotNilf(t, got.Expiry, testFailFmt, i, tt.name)
 			}
 		})
 	}
 }
 
 func TestServiceLogin(t *testing.T) {
-	// req := models.LoginReq{Email: "abcd@cdef.com", Password: "abcd@abcd"}
 	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	mockSession := NewMockSessionStorer(ctrl)
 	mockUser := NewMockUserStorer(ctrl)
+	ctx := context.Background()
+	id := uuid.New()
+	pass := "abcd@abcd"
+	email := "abcd@cdef.com"
+	req := models.LoginReq{Email: email, Password: pass}
+	invalidUsr := models.UserData{ID: id, Password: pass, Name: "hello", Email: email}
+	encPass, _ := encryptedPassword(pass)
+	usr := models.UserData{ID: id, Name: "Hello world", Email: email, Password: encPass}
+	ss := models.SessionData{
+		ID:     uuid.New(),
+		UserID: usr.ID,
+		Token:  uuid.NewString(),
+		Expiry: time.Now().Add(1 * time.Minute),
+	}
 
 	tests := []struct {
 		name     string
 		req      *models.LoginReq
-		mockCall *gomock.Call
-		want     *models.UserSession
+		mockCall func(*MockUserStorer, *MockSessionStorer)
+		want     *models.SessionData
 		wantErr  error
 	}{
-		{name: "nil request", req: nil, want: nil, wantErr: nil},
-		{name: "invalid request", req: &models.LoginReq{Email: ""}, wantErr: models.ErrRequired("email")},
-		// {name: "user not found", req: &req, wantErr: nil},
-		// {name: "invalid password", req: &req, wantErr: nil},
-		// {name: "error while creating session", req: &req, wantErr: nil},
+		{name: "nil request", req: nil, want: nil, wantErr: models.ErrRequired("login request")},
+		{
+			name:    "invalid request",
+			req:     &models.LoginReq{Email: ""},
+			wantErr: models.ErrRequired("email"),
+		},
+		{
+			name: "user get error",
+			req:  &req,
+			mockCall: func(mus *MockUserStorer, _ *MockSessionStorer) {
+				mus.EXPECT().GetUserByEmail(ctx, email).Return(nil, errMock)
+			},
+			wantErr: errMock,
+		},
+		{
+			name: "nil user in get",
+			req:  &req,
+			mockCall: func(mus *MockUserStorer, _ *MockSessionStorer) {
+				mus.EXPECT().GetUserByEmail(ctx, email).Return(nil, nil)
+			},
+			wantErr: models.ErrNotFound("user"),
+		},
+		{
+			name: "passwd not matching",
+			req:  &req,
+			mockCall: func(mus *MockUserStorer, _ *MockSessionStorer) {
+				mus.EXPECT().GetUserByEmail(ctx, email).Return(&invalidUsr, nil)
+			},
+			wantErr: models.ErrPsswdNotMatch,
+		},
+		{
+			name: "valid login flow",
+			req:  &req,
+			mockCall: func(mus *MockUserStorer, mss *MockSessionStorer) {
+				mus.EXPECT().GetUserByEmail(ctx, email).Return(&usr, nil)
+				mss.EXPECT().GetSessionByID(ctx, &usr.ID).Return(&ss, nil)
+			},
+			wantErr: nil,
+			want:    &ss,
+		},
 	}
 
-	for _, tt := range tests {
+	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
 			s := &Service{UserStore: mockUser, SessionStore: mockSession}
+
+			if tt.mockCall != nil {
+				tt.mockCall(mockUser, mockSession)
+			}
 
 			got, err := s.Login(ctx, tt.req)
 
-			if err != tt.wantErr {
-				t.Errorf("Service.Login() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Service.Login() = %v, want %v", got, tt.want)
-			}
+			assert.Equalf(t, tt.wantErr, err, testFailFmt, i, tt.name)
+			assert.Equalf(t, tt.want, got, testFailFmt, i, tt.want)
 		})
 	}
 }
 
 func TestServiceLogout(t *testing.T) {
-	type fields struct {
-		Store UserStorer
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockSession := NewMockSessionStorer(ctrl)
+	token := uuid.New()
+	ctx := context.Background()
+
+	_, uidErr := uuid.Parse("123")
+
+	tests := []struct {
+		name     string
+		token    string
+		mockCall *gomock.Call
+		wantErr  error
+	}{
+		{name: "valid case", token: token.String(),
+			mockCall: mockSession.EXPECT().Logout(ctx, &token).Return(nil), wantErr: nil},
+		{name: "invalid token", token: "123", wantErr: uidErr},
+		{name: "error while logging out", token: token.String(),
+			mockCall: mockSession.EXPECT().Logout(ctx, &token).Return(errMock), wantErr: errMock},
 	}
-	type args struct {
-		ctx   context.Context
-		token string
-	}
-	var tests []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
-	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &Service{
-				UserStore: tt.fields.Store,
+				SessionStore: mockSession,
 			}
-			if err := s.Logout(tt.args.ctx, tt.args.token); (err != nil) != tt.wantErr {
+
+			err := s.Logout(ctx, tt.token)
+
+			if !errors.Is(err, tt.wantErr) {
 				t.Errorf("Service.Logout() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -141,18 +235,96 @@ func TestEncryptedPassword(t *testing.T) {
 	}{
 		{name: "valid case", password: "abcd"},
 		{name: "valid case 2", password: "abcd124@adgbalje"},
+		{
+			name:     "invalid case",
+			password: strings.Repeat("a", 100),
+			wantErr:  bcrypt.ErrPasswordTooLong,
+		},
 	}
 
 	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := encryptedPassword(tt.password)
 
-			if !errors.Is(err, tt.wantErr) {
-				t.Errorf("Test[%d] Failed - %s\nGOT:\t%v\nWANT:\t%v", i, tt.name, err, tt.wantErr)
-			}
+			assert.Equalf(t, tt.wantErr, err, testFailFmt, i, tt.name)
+			assert.NotEqualf(t, tt.password, got, testFailFmt, i, tt.name)
+		})
+	}
+}
 
-			if tt.password == got {
-				t.Errorf("Test[%d] Failed - %s\nGOT:%v\nWANT:%v", i, tt.name, got, tt.password)
+func TestServiceHandleLoginSession(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockSession := NewMockSessionStorer(ctrl)
+	s := &Service{SessionStore: mockSession}
+	ctx := context.Background()
+	uid := uuid.New()
+	tt := time.Now().Add(time.Minute * 10).UTC()
+	ss := models.SessionData{UserID: uid, ID: uuid.New(), Token: uuid.NewString(), Expiry: tt}
+
+	tests := []struct {
+		name    string
+		user    *models.UserData
+		mockFxn func(*MockSessionStorer)
+		want    *models.SessionData
+		wantErr error
+	}{
+		{name: "valid case: session exists", user: &models.UserData{ID: uid},
+			mockFxn: func(mss *MockSessionStorer) {
+				mss.EXPECT().GetSessionByID(ctx, &uid).Return(&ss, nil)
+			},
+			want: &models.SessionData{UserID: uid}, wantErr: nil,
+		},
+		{name: "valid case: expired session exists", user: &models.UserData{ID: uid},
+			mockFxn: func(mss *MockSessionStorer) {
+				mss.EXPECT().GetSessionByID(ctx, &uid).Return(&models.SessionData{UserID: uid}, nil)
+				mss.EXPECT().RefreshSession(ctx, gomock.Any()).Return(nil)
+			},
+			want: &models.SessionData{UserID: uid}, wantErr: nil,
+		},
+		{name: "refresh err case: expired session exists", user: &models.UserData{ID: uid},
+			mockFxn: func(mss *MockSessionStorer) {
+				mss.EXPECT().GetSessionByID(ctx, &uid).Return(&models.SessionData{UserID: uid}, nil)
+				mss.EXPECT().RefreshSession(ctx, gomock.Any()).Return(errMock)
+			},
+			want: nil, wantErr: errMock,
+		},
+		{name: "err while getting session", user: &models.UserData{ID: uid},
+			mockFxn: func(mss *MockSessionStorer) {
+				mss.EXPECT().GetSessionByID(ctx, &uid).Return(nil, errMock)
+			},
+			want: nil, wantErr: errMock,
+		},
+		{
+			name: "valid case: session not found creating new session",
+			user: &models.UserData{ID: uid},
+			mockFxn: func(mss *MockSessionStorer) {
+				mss.EXPECT().GetSessionByID(ctx, &uid).Return(nil, models.ErrNotFound("user ID"))
+				mss.EXPECT().CreateSession(ctx, gomock.Any()).Return(nil)
+			},
+			want:    &ss,
+			wantErr: nil,
+		},
+		{name: "err case: session not found creating new session", user: &models.UserData{ID: uid},
+			mockFxn: func(mss *MockSessionStorer) {
+				mss.EXPECT().GetSessionByID(ctx, &uid).Return(nil, models.ErrNotFound("user ID"))
+				mss.EXPECT().CreateSession(ctx, gomock.Any()).Return(errMock)
+			},
+			want: nil, wantErr: errMock,
+		},
+	}
+
+	for i, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.mockFxn(mockSession)
+
+			got, err := s.handleLoginSession(ctx, tt.user)
+
+			assert.Equalf(t, tt.wantErr, err, "Test[%d] failed - %s", i, tt.name)
+
+			if got != nil {
+				assert.Equalf(t, tt.want.UserID, got.UserID, "Test[%d] failed", i, tt.name)
 			}
 		})
 	}

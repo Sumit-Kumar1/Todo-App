@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	getUser       = "SELECT user_id, name, email, password FROM users WHERE email='%s';"
-	registerQuery = "INSERT INTO users(user_id, name, email, password) VALUES ('%v','%v','%v','%v');"
+	getUser       = "SELECT id, name, email, password FROM users WHERE email='%s';"
+	registerQuery = "INSERT INTO users(id, name, email, password) VALUES ('%v','%v','%v','%v');"
 )
 
 type Store struct {
@@ -30,7 +30,10 @@ func (s *Store) RegisterUser(ctx context.Context, data *models.UserData) error {
 
 	query := fmt.Sprintf(registerQuery, data.ID, data.Name, data.Email, data.Password)
 	if err := s.DB.Execute(query); err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, "error while running Register query", slog.String("error", err.Error()))
+		logger.LogAttrs(ctx, slog.LevelError, "error while running Register query",
+			slog.String("error", err.Error()),
+		)
+
 		return err
 	}
 
@@ -40,16 +43,23 @@ func (s *Store) RegisterUser(ctx context.Context, data *models.UserData) error {
 func (s *Store) GetUserByEmail(ctx context.Context, email string) (*models.UserData, error) {
 	logger := models.GetLoggerFromCtx(ctx)
 
-	var user models.UserData
-
 	res, err := s.DB.Select(fmt.Sprintf(getUser, email))
 	if err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, "error in fetching user by email", slog.String("error", err.Error()))
+		logger.LogAttrs(ctx, slog.LevelError, "error in fetching user by email",
+			slog.String("error", err.Error()),
+		)
+
 		return nil, err
 	}
 
+	return populateUserFields(res)
+}
+
+func populateUserFields(res *sqlitecloud.Result) (*models.UserData, error) {
+	var user models.UserData
+
 	if res.GetNumberOfRows() == 0 {
-		return nil, models.ErrNotFound("user")
+		return nil, models.ErrUserNotFound
 	}
 
 	for r := uint64(0); r < res.GetNumberOfRows(); r++ {
@@ -57,10 +67,12 @@ func (s *Store) GetUserByEmail(ctx context.Context, email string) (*models.UserD
 		if err != nil {
 			return nil, err
 		}
+
 		c2, err := res.GetStringValue(r, 1)
 		if err != nil {
 			return nil, err
 		}
+
 		c3, err := res.GetStringValue(r, 2)
 		if err != nil {
 			return nil, err

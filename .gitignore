@@ -35,11 +35,7 @@ go.work.sum
 .idea/
 
 # air specific 
-.air.toml
 tmp/
-
-# tailwind css output
-/public/style.css
 
 # IDE specific directories
 .fleet
