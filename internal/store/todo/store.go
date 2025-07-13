@@ -2,31 +2,31 @@ package todostore
 
 import (
 	"context"
-	"fmt"
+	"database/sql"
+	"errors"
 	"log/slog"
 	"time"
 	"todoapp/internal/models"
 
 	"github.com/google/uuid"
-	"github.com/sqlitecloud/sqlitecloud-go"
 )
 
 const (
-	deleteTask     = "DELETE FROM tasks WHERE id='%v' AND user_id='%v';"
-	getAllByUserID = "SELECT id, user_id, title, description, done_status, due_date, added_at, modified_at FROM tasks WHERE user_id='%v';"
+	deleteTask     = "DELETE FROM tasks WHERE id=? AND user_id=?;"
+	getAllByUserID = "SELECT id, user_id, title, description, done_status, due_date, added_at, modified_at FROM tasks WHERE user_id=?;"
 	getTaskByID    = "SELECT id, user_id, title, description, done_status, due_date, added_at, modified_at FROM " +
-		"tasks WHERE id='%v' AND user_id='%v';"
+		"tasks WHERE id=? AND user_id=?;"
 	insertQuery = "INSERT INTO tasks (id, user_id, title, description, done_status, due_date, added_at) VALUES " +
-		"('%v', '%v', '%v', '%v', %v, '%v', '%v');"
-	setDone     = "UPDATE tasks SET done_status=%v, modified_at='%v' WHERE id='%v' AND user_id='%v';"
-	updateQuery = "UPDATE tasks SET title='%v', description='%v', done_status=%v, modified_at='%v' WHERE id='%v' AND user_id='%v';"
+		"(?, ?, ?, ?, ?, ?, ?);"
+	setDone     = "UPDATE tasks SET done_status=?, modified_at=? WHERE id=? AND user_id=?;"
+	updateQuery = "UPDATE tasks SET title=?, description=?, done_status=?, modified_at=? WHERE id=? AND user_id=?;"
 )
 
 type Store struct {
-	DB *sqlitecloud.SQCloud
+	DB *sql.DB
 }
 
-func New(db *sqlitecloud.SQCloud) *Store {
+func New(db *sql.DB) *Store {
 	return &Store{DB: db}
 }
 
@@ -36,19 +36,17 @@ func (s *Store) GetAll(ctx context.Context, userID *uuid.UUID) ([]models.Task, e
 		logger = models.GetLoggerFromCtx(ctx)
 	)
 
-	rows, err := s.DB.Select(fmt.Sprintf(getAllByUserID, *userID))
+	rows, err := s.DB.QueryContext(ctx, getAllByUserID, *userID)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return res, nil
+		}
+
 		return nil, err
 	}
 
-	numRows := rows.GetNumberOfRows()
-
-	if numRows == 0 {
-		return res, nil
-	}
-
-	for row := uint64(0); row < numRows; row++ {
-		task, err := populateTaskFields(rows, row)
+	for rows.Next() {
+		task, err := populateTaskFields(rows)
 		if err != nil {
 			return nil, err
 		}
@@ -63,17 +61,10 @@ func (s *Store) GetAll(ctx context.Context, userID *uuid.UUID) ([]models.Task, e
 
 func (s *Store) Create(ctx context.Context, task *models.Task) error {
 	logger := models.GetLoggerFromCtx(ctx)
-	query := fmt.Sprintf(insertQuery,
-		task.ID,
-		task.UserID,
-		task.Title,
-		task.Description,
-		task.IsDone,
-		task.DueDate.UnixMilli(),
-		task.AddedAt.UnixMilli(),
-	)
 
-	if err := s.DB.Execute(query); err != nil {
+	if _, err := s.DB.ExecContext(ctx, insertQuery, task.ID, task.UserID,
+		task.Title, task.Description, task.IsDone, task.DueDate.UnixMilli(),
+		task.AddedAt.UnixMilli()); err != nil {
 		return err
 	}
 
@@ -86,16 +77,9 @@ func (s *Store) Create(ctx context.Context, task *models.Task) error {
 
 func (s *Store) Update(ctx context.Context, task *models.Task) error {
 	logger := models.GetLoggerFromCtx(ctx)
-	query := fmt.Sprintf(updateQuery,
-		task.Title,
-		task.Description,
-		task.IsDone,
-		task.ModifiedAt.UnixMilli(),
-		task.ID,
-		task.UserID,
-	)
 
-	if err := s.DB.Execute(query); err != nil {
+	if _, err := s.DB.ExecContext(ctx, updateQuery, task.Title, task.Description,
+		task.IsDone, task.ModifiedAt.UnixMilli(), task.ID, task.UserID); err != nil {
 		return err
 	}
 
@@ -108,7 +92,7 @@ func (s *Store) Update(ctx context.Context, task *models.Task) error {
 func (s *Store) Delete(ctx context.Context, id string, userID *uuid.UUID) error {
 	logger := models.GetLoggerFromCtx(ctx)
 
-	if err := s.DB.Execute(fmt.Sprintf(deleteTask, id, *userID)); err != nil {
+	if _, err := s.DB.ExecContext(ctx, deleteTask, id, *userID); err != nil {
 		return err
 	}
 
@@ -124,21 +108,26 @@ func (s *Store) MarkDone(ctx context.Context, id string, userID *uuid.UUID) (*mo
 		err    error
 	)
 
-	if err := s.DB.Execute(fmt.Sprintf(setDone, true, time.Now().UnixMilli(), id, *userID)); err != nil {
-		return nil, err
-	}
-
-	row, err := s.DB.Select(fmt.Sprintf(getTaskByID, id, *userID))
+	res, err := s.DB.ExecContext(ctx, setDone, 1, time.Now().UnixMilli(), id, *userID)
 	if err != nil {
 		return nil, err
 	}
 
-	if row.GetNumberOfRows() == 0 {
-		return nil, models.ErrNotFound("task")
+	if _, err := res.RowsAffected(); err != nil {
+		return nil, err
 	}
 
-	for i := uint64(0); i < row.GetNumberOfRows(); i++ {
-		task, err = populateTaskFields(row, i)
+	rows, err := s.DB.QueryContext(ctx, getTaskByID, id, *userID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, models.ErrNotFound("task")
+		}
+
+		return nil, err
+	}
+
+	for rows.Next() {
+		task, err = populateTaskFields(rows)
 		if err != nil {
 			return nil, err
 		}
@@ -150,65 +139,17 @@ func (s *Store) MarkDone(ctx context.Context, id string, userID *uuid.UUID) (*mo
 	return task, nil
 }
 
-func populateTaskFields(rows *sqlitecloud.Result, r uint64) (*models.Task, error) {
+func populateTaskFields(rows *sql.Rows) (*models.Task, error) {
 	var (
 		task models.Task
 		err  error
 	)
 
-	task.ID, err = rows.GetStringValue(r, 0) // taskID
+	err = rows.Scan(&task.ID, &task.UserID, &task.Title, &task.Description, &task.IsDone,
+		&task.DueDate, &task.AddedAt, &task.ModifiedAt)
 	if err != nil {
 		return nil, err
 	}
-
-	v2, err := rows.GetStringValue(r, 1) // userID
-	if err != nil {
-		return nil, err
-	}
-
-	task.Title, err = rows.GetStringValue(r, 2) // title
-	if err != nil {
-		return nil, err
-	}
-
-	task.Description, err = rows.GetStringValue(r, 3) // description
-	if err != nil {
-		return nil, err
-	}
-
-	v4, err := rows.GetInt64Value(r, 4) // done status
-	if err != nil {
-		return nil, err
-	}
-
-	dd, err := rows.GetInt64Value(r, 5) // due date
-	if err != nil {
-		return nil, err
-	}
-
-	v5, err := rows.GetInt64Value(r, 6) // added time
-	if err != nil {
-		return nil, err
-	}
-
-	v6 := rows.GetInt64Value_(r, 7) // modified time
-
-	task.UserID = uuid.MustParse(v2)
-
-	task.IsDone = (v4 == 1)
-	task.DueDate = dateRef(dd)
-	task.AddedAt = *dateRef(v5)
-	task.ModifiedAt = dateRef(v6)
 
 	return &task, nil
-}
-
-func dateRef(data int64) *time.Time {
-	if data == 0 {
-		return nil
-	}
-
-	t := time.UnixMilli(data)
-
-	return &t
 }

@@ -76,9 +76,15 @@ func setupPublicRoutes(app *Server) {
 
 		app.Health = &Health{DBStatus: false, ServiceStatus: false, Msg: "StartedHealth"}
 
-		if app.DB != nil && !app.DB.IsConnected() {
+		if app.DB == nil {
 			app.Health.DBStatus = false
-			app.Health.Msg = "DB is not connected"
+			app.Health.Msg = "DB is nil"
+
+			app.Logger.LogAttrs(r.Context(), slog.LevelError, "application DB is nil")
+
+			http.Error(w, "db is nil", http.StatusInternalServerError)
+
+			return
 		}
 
 		if err := app.DB.Ping(); err != nil {
