@@ -223,9 +223,9 @@ func performDownMigrations(ctx context.Context, s *server.Server, val migrator, 
 		return handleRollback(tx, err)
 	}
 
-	query := fmt.Sprintf("DELETE FROM %s WHERE version=%v", migTableName, key)
+	query := fmt.Sprintf("DELETE FROM %s WHERE version=?", migTableName)
 
-	if _, err := tx.ExecContext(ctx, query); err != nil {
+	if _, err := tx.ExecContext(ctx, query, key); err != nil {
 		s.Logger.LogAttrs(ctx, slog.LevelError, migInsertErr,
 			slog.String("migration", key),
 			slog.String("error", err.Error()),
