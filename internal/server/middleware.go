@@ -111,8 +111,6 @@ func (s *Server) GlobalRateLimiter(next http.Handler) http.Handler {
 		ip := clientIP(r)
 		now := time.Now()
 
-		s.Logger.LogAttrs(r.Context(), slog.LevelDebug, "attempted from", slog.String("ip", ip))
-
 		s.globalLimiter.mu.Lock()
 
 		info, exists := s.globalLimiter.attempts[ip]
@@ -236,30 +234,22 @@ func getSessionID(ctx context.Context, db *sql.DB, logger *slog.Logger, sessionT
 
 	query := "SELECT user_id FROM sessions WHERE token=?;"
 
-	row, err := db.QueryContext(ctx, query, *sessionToken)
-	if err != nil {
+	row := db.QueryRowContext(ctx, query, *sessionToken)
+	if err := row.Scan(&userID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			logger.LogAttrs(ctx, slog.LevelError, "no valid session found, please login again")
 
 			return nil, models.ErrInvalidCookie
 		}
 
+		logger.LogAttrs(ctx, slog.LevelError, err.Error())
+
 		return nil, err
 	}
 
-	for row.Next() {
-		if err := row.Scan(userID); err != nil {
-			logger.LogAttrs(ctx, slog.LevelError, err.Error())
-
-			return nil, err
-		}
-
-		uid, err = uuid.Parse(userID)
-		if err != nil {
-			logger.LogAttrs(ctx, slog.LevelError, err.Error())
-
-			return nil, err
-		}
+	uid, err = uuid.Parse(userID)
+	if err != nil {
+		return nil, err
 	}
 
 	return &uid, nil

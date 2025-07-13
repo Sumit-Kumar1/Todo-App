@@ -3,21 +3,24 @@ package server
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"log/slog"
 	"os"
 	"strings"
+	"todoapp/internal/models"
 
+	// Used this for sqlite3 driver
 	_ "github.com/mattn/go-sqlite3"
 )
 
 func newDB(logger *slog.Logger) (*sql.DB, error) {
 	ctx := context.Background()
 
+	var dbURLErr = models.NewConstError("DATABASE_URL environment variable not set")
+
 	database := os.Getenv("DATABASE_URL")
 	if strings.TrimSpace(database) == "" {
 		logger.LogAttrs(ctx, slog.LevelError, "DATABASE_URL environment variable not set")
-		return nil, errors.New("DATABASE_URL environment variable not set")
+		return nil, dbURLErr
 	}
 
 	db, err := sql.Open("sqlite3", database)

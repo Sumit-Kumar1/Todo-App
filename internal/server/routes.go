@@ -83,6 +83,7 @@ func setupPublicRoutes(app *Server) {
 			app.Logger.LogAttrs(r.Context(), slog.LevelError, "application DB is nil")
 
 			http.Error(w, "db is nil", http.StatusInternalServerError)
+
 			return
 		}
 
