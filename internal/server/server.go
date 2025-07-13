@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"database/sql"
 	"log"
 	"log/slog"
 	"net/http"
@@ -11,7 +12,6 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
-	"github.com/sqlitecloud/sqlitecloud-go"
 )
 
 type Configs struct {
@@ -44,7 +44,7 @@ type limiterAttempt struct {
 }
 
 type Server struct {
-	DB            *sqlitecloud.SQCloud
+	DB            *sql.DB
 	Logger        *slog.Logger
 	ShutDownFxn   func(context.Context) error
 	Mux           *http.ServeMux

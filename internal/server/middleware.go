@@ -2,8 +2,8 @@ package server
 
 import (
 	"context"
+	"database/sql"
 	"errors"
-	"fmt"
 	"html/template"
 	"log/slog"
 	"net"
@@ -15,7 +15,6 @@ import (
 	"todoapp/internal/models"
 
 	"github.com/google/uuid"
-	"github.com/sqlitecloud/sqlitecloud-go"
 )
 
 const (
@@ -228,30 +227,28 @@ func validateCookie(ctx context.Context, logger *slog.Logger, r *http.Request) (
 	return nil, err
 }
 
-func getSessionID(ctx context.Context, db *sqlitecloud.SQCloud, logger *slog.Logger, sessionToken *uuid.UUID) (*uuid.UUID, error) {
+func getSessionID(ctx context.Context, db *sql.DB, logger *slog.Logger, sessionToken *uuid.UUID) (*uuid.UUID, error) {
 	var (
-		uid uuid.UUID
-		err error
+		userID string
+		uid    uuid.UUID
+		err    error
 	)
 
-	row, err := db.Select(
-		fmt.Sprintf("SELECT user_id FROM sessions WHERE token='%s';", *sessionToken),
-	)
+	query := "SELECT user_id FROM sessions WHERE token=?;"
+
+	row, err := db.QueryContext(ctx, query, *sessionToken)
 	if err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, err.Error())
+		if errors.Is(err, sql.ErrNoRows) {
+			logger.LogAttrs(ctx, slog.LevelError, "no valid session found, please login again")
+
+			return nil, models.ErrInvalidCookie
+		}
 
 		return nil, err
 	}
 
-	if row.GetNumberOfRows() == uint64(0) {
-		logger.LogAttrs(ctx, slog.LevelError, "no valid session found, login again")
-
-		return nil, models.ErrInvalidCookie
-	}
-
-	for r := uint64(0); r < row.GetNumberOfRows(); r++ {
-		userID, err := row.GetStringValue(r, 0)
-		if err != nil {
+	for row.Next() {
+		if err := row.Scan(userID); err != nil {
 			logger.LogAttrs(ctx, slog.LevelError, err.Error())
 
 			return nil, err
