@@ -1,6 +1,8 @@
 package migrations
 
-import "github.com/sqlitecloud/sqlitecloud-go"
+import (
+	"database/sql"
+)
 
 const (
 	tasksDown = "DROP TABLE IF EXISTS tasks;"
@@ -18,11 +20,13 @@ const (
 type M20241013015650 string
 
 // nolint:revive // unused but need this as method
-func (m M20241013015650) up(db *sqlitecloud.SQCloud) error {
-	return db.Execute(tasksUp)
+func (m M20241013015650) up(db *sql.Tx) error {
+	_, err := db.Exec(tasksUp)
+	return err
 }
 
 // nolint:revive // unused but need this as method
-func (m M20241013015650) down(db *sqlitecloud.SQCloud) error {
-	return db.Execute(tasksDown)
+func (m M20241013015650) down(db *sql.Tx) error {
+	_, err := db.Exec(tasksDown)
+	return err
 }

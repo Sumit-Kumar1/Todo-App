@@ -1,6 +1,6 @@
 package migrations
 
-import "github.com/sqlitecloud/sqlitecloud-go"
+import "database/sql"
 
 const (
 	sessionDown = "DROP TABLE IF EXISTS sessions;"
@@ -14,11 +14,13 @@ const (
 type M20241013015656 string
 
 // nolint:revive // unused but need this as method
-func (m M20241013015656) up(db *sqlitecloud.SQCloud) error {
-	return db.Execute(sessionUp)
+func (m M20241013015656) up(db *sql.Tx) error {
+	_, err := db.Exec(sessionUp)
+	return err
 }
 
 // nolint:revive // unused but need this as method
-func (m M20241013015656) down(db *sqlitecloud.SQCloud) error {
-	return db.Execute(sessionDown)
+func (m M20241013015656) down(db *sql.Tx) error {
+	_, err := db.Exec(sessionDown)
+	return err
 }
