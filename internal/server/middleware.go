@@ -2,8 +2,8 @@ package server
 
 import (
 	"context"
+	"database/sql"
 	"errors"
-	"fmt"
 	"html/template"
 	"log/slog"
 	"net"
@@ -15,7 +15,6 @@ import (
 	"todoapp/internal/models"
 
 	"github.com/google/uuid"
-	"github.com/sqlitecloud/sqlitecloud-go"
 )
 
 const (
@@ -111,8 +110,6 @@ func (s *Server) GlobalRateLimiter(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ip := clientIP(r)
 		now := time.Now()
-
-		s.Logger.LogAttrs(r.Context(), slog.LevelDebug, "attempted from", slog.String("ip", ip))
 
 		s.globalLimiter.mu.Lock()
 
@@ -228,41 +225,31 @@ func validateCookie(ctx context.Context, logger *slog.Logger, r *http.Request) (
 	return nil, err
 }
 
-func getSessionID(ctx context.Context, db *sqlitecloud.SQCloud, logger *slog.Logger, sessionToken *uuid.UUID) (*uuid.UUID, error) {
+func getSessionID(ctx context.Context, db *sql.DB, logger *slog.Logger, sessionToken *uuid.UUID) (*uuid.UUID, error) {
 	var (
-		uid uuid.UUID
-		err error
+		userID string
+		uid    uuid.UUID
+		err    error
 	)
 
-	row, err := db.Select(
-		fmt.Sprintf("SELECT user_id FROM sessions WHERE token='%s';", *sessionToken),
-	)
-	if err != nil {
+	query := "SELECT user_id FROM sessions WHERE token=?;"
+
+	row := db.QueryRowContext(ctx, query, *sessionToken)
+	if err := row.Scan(&userID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			logger.LogAttrs(ctx, slog.LevelError, "no valid session found, please login again")
+
+			return nil, models.ErrInvalidCookie
+		}
+
 		logger.LogAttrs(ctx, slog.LevelError, err.Error())
 
 		return nil, err
 	}
 
-	if row.GetNumberOfRows() == uint64(0) {
-		logger.LogAttrs(ctx, slog.LevelError, "no valid session found, login again")
-
-		return nil, models.ErrInvalidCookie
-	}
-
-	for r := uint64(0); r < row.GetNumberOfRows(); r++ {
-		userID, err := row.GetStringValue(r, 0)
-		if err != nil {
-			logger.LogAttrs(ctx, slog.LevelError, err.Error())
-
-			return nil, err
-		}
-
-		uid, err = uuid.Parse(userID)
-		if err != nil {
-			logger.LogAttrs(ctx, slog.LevelError, err.Error())
-
-			return nil, err
-		}
+	uid, err = uuid.Parse(userID)
+	if err != nil {
+		return nil, err
 	}
 
 	return &uid, nil
