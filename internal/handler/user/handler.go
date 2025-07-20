@@ -2,6 +2,7 @@ package userhttp
 
 import (
 	"errors"
+	"html/template"
 	"log/slog"
 	"net/http"
 
@@ -13,14 +14,18 @@ const (
 	contentType = "Content-Type"
 	token       = "token"
 	hxRedirect  = "HX-Redirect"
+	name        = "name"
+	email       = "email"
+	password    = "password"
 )
 
 type Handler struct {
+	templ   *template.Template
 	Service UserServicer
 }
 
-func New(usrSvc UserServicer) *Handler {
-	return &Handler{Service: usrSvc}
+func New(templ *template.Template, usrSvc UserServicer) *Handler {
+	return &Handler{templ: templ, Service: usrSvc}
 }
 
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
@@ -29,10 +34,10 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 
 	var user models.RegisterReq
 
-	user.Name = r.FormValue("name")
+	user.Name = r.FormValue(name)
 	user.LoginReq = &models.LoginReq{
-		Email:    r.FormValue("email"),
-		Password: r.FormValue("password"),
+		Email:    r.FormValue(email),
+		Password: r.FormValue(password),
 	}
 
 	defer ctx.Done()
@@ -46,13 +51,15 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 			slog.String("user", user.Email),
 		)
 
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		models.HandleHTTPError(w, err, http.StatusConflict)
 
+		//http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	default:
 		logger.LogAttrs(ctx, slog.LevelError, err.Error(), slog.String("user", user.Email))
 
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		models.HandleHTTPError(w, err, http.StatusInternalServerError)
+		//http.Error(w, err.Error(), http.StatusInternalServerError)
 
 		return
 	}
@@ -82,24 +89,26 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		logger = models.GetLoggerFromCtx(ctx)
 	)
 
-	user.Email = r.FormValue("email")
-	user.Password = r.FormValue("password")
+	user.Email = r.FormValue(models.Email)
+	user.Password = r.FormValue(models.Password)
 
 	session, err := h.Service.Login(ctx, &user)
 	if err != nil {
 		if models.ErrNotFound("user").Error() == err.Error() {
-			logger.LogAttrs(ctx, slog.LevelError, "user not found - login",
+			logger.LogAttrs(ctx, slog.LevelError, "login-service: user not found",
 				slog.String("user", user.Email),
 			)
 
-			http.Error(w, "user not found", http.StatusUnauthorized)
+			models.HandleHTTPError(w, err, http.StatusNotFound)
+			//http.Error(w, "user not found", http.StatusUnauthorized)
 
 			return
 		}
 
-		w.WriteHeader(http.StatusInternalServerError)
+		models.HandleHTTPError(w, err, http.StatusInternalServerError)
+		//w.WriteHeader(http.StatusInternalServerError)
 		logger.LogAttrs(ctx, slog.LevelError, "error while logging in the user",
-			slog.String("error", err.Error()), slog.String("email", user.Email))
+			slog.String("error", err.Error()), slog.String(models.Email, user.Email))
 
 		return
 	}
@@ -117,7 +126,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Add(hxRedirect, "/task")
 	w.WriteHeader(http.StatusOK)
-	logger.LogAttrs(ctx, slog.LevelDebug, "login success", slog.String("user", user.Email))
+	logger.LogAttrs(ctx, slog.LevelDebug, "login success", slog.String(models.User, user.Email))
 }
 
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
@@ -127,17 +136,20 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	c, err := r.Cookie(token)
 	if err != nil {
 		logger.LogAttrs(ctx, slog.LevelError, err.Error(), slog.String("invalid session:", token))
-		http.Error(w, "user not logged in", http.StatusUnauthorized)
+
+		models.HandleHTTPError(w, err, http.StatusUnauthorized)
+		//http.Error(w, "user not logged in", http.StatusUnauthorized)
 
 		return
 	}
 
-	if err := h.Service.Logout(ctx, c.Value); err != nil {
+	if err2 := h.Service.Logout(ctx, c.Value); err2 != nil {
 		logger.LogAttrs(ctx, slog.LevelError, "error while logging out user",
-			slog.String("error", err.Error()),
+			slog.String("error", err2.Error()),
 		)
 
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		models.HandleHTTPError(w, err2, http.StatusInternalServerError)
+		//http.Error(w, err.Error(), http.StatusInternalServerError)
 
 		return
 	}
@@ -147,7 +159,6 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 		Path:     "/",
 		MaxAge:   -1,
-		Secure:   true,
 	}
 
 	http.SetCookie(w, &cookie)
@@ -156,5 +167,5 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add(hxRedirect, "/")
 	w.WriteHeader(http.StatusOK)
 
-	logger.LogAttrs(ctx, slog.LevelDebug, "user logout success!", slog.String("token", c.Value))
+	logger.LogAttrs(ctx, slog.LevelDebug, "user logout success!!", slog.String(token, c.Value))
 }

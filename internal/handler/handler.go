@@ -8,12 +8,21 @@ import (
 	"todoapp/internal/models"
 )
 
+const (
+	queryPage    = "page"
+	userRegister = "user-register"
+	userLogin    = "user-login"
+	swagger      = "swagger"
+	api          = "api"
+	register     = "register"
+)
+
 type UIHandler struct {
 	templ *template.Template
 }
 
-func New() *UIHandler {
-	templl := models.NewTemplate()
+func New(templ *template.Template) *UIHandler {
+	templl := templ
 
 	return &UIHandler{
 		templ: templl,
@@ -29,13 +38,13 @@ func (h *UIHandler) Root(w http.ResponseWriter, r *http.Request) {
 		vals     = r.URL.Query()
 	)
 
-	switch vals.Get("page") {
-	case "register":
-		tempName = "user-register"
-	case "api":
-		tempName = "swagger"
+	switch vals.Get(queryPage) {
+	case register:
+		tempName = userRegister
+	case api:
+		tempName = swagger
 	default:
-		tempName = "user-login"
+		tempName = userLogin
 	}
 
 	if err := h.templ.ExecuteTemplate(w, tempName, nil); err != nil {
@@ -43,7 +52,7 @@ func (h *UIHandler) Root(w http.ResponseWriter, r *http.Request) {
 			slog.String("template-render", tempName),
 		)
 
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		models.HandleHTTPError(w, err, http.StatusInternalServerError)
 
 		return
 	}
@@ -53,13 +62,12 @@ func (h *UIHandler) Swagger(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	logger := models.GetLoggerFromCtx(ctx)
 
-	if err := h.templ.ExecuteTemplate(w, "swagger", nil); err != nil {
+	if err := h.templ.ExecuteTemplate(w, swagger, nil); err != nil {
 		logger.LogAttrs(ctx, slog.LevelError,
-			"error while rendering template",
-			slog.String("template", "swagger"),
+			err.Error(), slog.String("template-render", swagger),
 		)
 
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		models.HandleHTTPError(w, err, http.StatusInternalServerError)
 
 		return
 	}

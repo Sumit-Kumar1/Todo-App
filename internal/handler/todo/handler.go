@@ -13,9 +13,9 @@ const (
 	invalidReqMethod = "method not allowed"
 	templateAddTask  = "add"
 	templateIndex    = "index"
-	userNotFound     = "user not found"
-	renderErr        = "error while rendering template"
-	hxRedirect       = "HX-Redirect"
+	//userNotFound     = "user not found"
+	renderErr  = "error while rendering template"
+	hxRedirect = "HX-Redirect"
 )
 
 type Handler struct {
@@ -23,8 +23,8 @@ type Handler struct {
 	template *template.Template
 }
 
-func New(todoSvc TodoServicer) *Handler {
-	tmpl := models.NewTemplate()
+func New(templ *template.Template, todoSvc TodoServicer) *Handler {
+	tmpl := templ
 
 	return &Handler{template: tmpl, Service: todoSvc}
 }
@@ -52,7 +52,7 @@ func (h *Handler) Done(w http.ResponseWriter, r *http.Request) {
 
 	userID, ok := ctx.Value(models.CtxKeyUserID).(uuid.UUID)
 	if !ok {
-		http.Error(w, userNotFound, http.StatusUnauthorized)
+		models.HandleHTTPError(w, models.ErrUserNotFound, http.StatusUnauthorized)
 		return
 	}
 
@@ -62,15 +62,17 @@ func (h *Handler) Done(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case err.Error() == models.ErrNotFound("task").Error():
-			http.Error(w, "task not found", http.StatusNotFound)
+			models.HandleHTTPError(w, err, http.StatusNotFound)
 		default:
-			w.WriteHeader(http.StatusBadRequest)
+			models.HandleHTTPError(w, err, http.StatusBadRequest)
+			//w.WriteHeader(http.StatusBadRequest)
 		}
 
 		logger.LogAttrs(ctx, slog.LevelError, "error while marking task done",
 			slog.String("error", err.Error()), slog.String("task", id))
 
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		models.HandleHTTPError(w, err, http.StatusInternalServerError)
+		//http.Error(w, err.Error(), http.StatusInternalServerError)
 
 		return
 	}
@@ -82,7 +84,8 @@ func (h *Handler) Done(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.template.ExecuteTemplate(w, templateAddTask, resp.ToTaskResp()); err != nil {
 		logger.LogAttrs(ctx, slog.LevelError, renderErr, slog.String("template", templateAddTask))
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		models.HandleHTTPError(w, err, http.StatusInternalServerError)
+		//http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
@@ -94,7 +97,8 @@ func (h *Handler) addTask(w http.ResponseWriter, r *http.Request) {
 
 	userID, ok := ctx.Value(models.CtxKeyUserID).(uuid.UUID)
 	if !ok {
-		http.Error(w, userNotFound, http.StatusUnauthorized)
+		models.HandleHTTPError(w, models.ErrUserNotFound, http.StatusUnauthorized)
+		//http.Error(w, userNotFound, http.StatusUnauthorized)
 		return
 	}
 
@@ -106,13 +110,15 @@ func (h *Handler) addTask(w http.ResponseWriter, r *http.Request) {
 
 	task, err := h.Service.AddTask(ctx, &t, &userID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		models.HandleHTTPError(w, err, http.StatusBadRequest)
+		//http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if err := h.template.ExecuteTemplate(w, templateAddTask, task.ToTaskResp()); err != nil {
 		logger.LogAttrs(ctx, slog.LevelError, renderErr, slog.String("template", templateAddTask))
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		models.HandleHTTPError(w, err, http.StatusInternalServerError)
+		//http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
@@ -143,7 +149,8 @@ func (h *Handler) getAll(w http.ResponseWriter, r *http.Request) {
 		}
 
 		logger.LogAttrs(ctx, slog.LevelError, err.Error(), slog.String("user", userID.String()))
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		models.HandleHTTPError(w, err, http.StatusInternalServerError)
+		//http.Error(w, err.Error(), http.StatusInternalServerError)
 
 		return
 	}
@@ -158,7 +165,8 @@ func (h *Handler) getAll(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.template.ExecuteTemplate(w, templateIndex, trs); err != nil {
 		logger.LogAttrs(ctx, slog.LevelError, renderErr, slog.String("template", templateIndex))
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		models.HandleHTTPError(w, err, http.StatusInternalServerError)
+		//http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
@@ -170,7 +178,8 @@ func (h *Handler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 
 	userID, ok := ctx.Value(models.CtxKeyUserID).(uuid.UUID)
 	if !ok {
-		http.Error(w, "invalid user", http.StatusUnauthorized)
+		models.HandleHTTPError(w, models.ErrInvalid("user"), http.StatusUnauthorized)
+		//http.Error(w, "invalid user", http.StatusUnauthorized)
 		return
 	}
 
@@ -179,9 +188,11 @@ func (h *Handler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 	if err := h.Service.DeleteTask(ctx, id, &userID); err != nil {
 		switch {
 		case models.ErrNotFound("user").Error() == err.Error():
-			http.Error(w, userNotFound, http.StatusNotFound)
+			models.HandleHTTPError(w, err, http.StatusNotFound)
+			//http.Error(w, userNotFound, http.StatusNotFound)
 		default:
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			models.HandleHTTPError(w, err, http.StatusBadRequest)
+			//http.Error(w, err.Error(), http.StatusBadRequest)
 		}
 
 		logger.LogAttrs(ctx, slog.LevelError, err.Error(),
@@ -203,7 +214,8 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 
 	userID, ok := ctx.Value(models.CtxKeyUserID).(uuid.UUID)
 	if !ok {
-		http.Error(w, "invalid user", http.StatusUnauthorized)
+		models.HandleHTTPError(w, models.ErrInvalid("user"), http.StatusUnauthorized)
+		//http.Error(w, "invalid user", http.StatusUnauthorized)
 		return
 	}
 
@@ -218,9 +230,11 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case models.ErrNotFound("user").Error() == err.Error():
-			http.Error(w, userNotFound, http.StatusNotFound)
+			models.HandleHTTPError(w, err, http.StatusNotFound)
+			//http.Error(w, userNotFound, http.StatusNotFound)
 		default:
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			models.HandleHTTPError(w, err, http.StatusBadRequest)
+			//http.Error(w, err.Error(), http.StatusBadRequest)
 		}
 
 		logger.LogAttrs(ctx, slog.LevelError, err.Error(),
@@ -232,13 +246,15 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if resp == nil {
-		http.Error(w, userNotFound, http.StatusNotFound)
+		models.HandleHTTPError(w, err, http.StatusNotFound)
+		//http.Error(w, userNotFound, http.StatusNotFound)
 		return
 	}
 
 	if err := h.template.ExecuteTemplate(w, templateAddTask, *resp.ToTaskResp()); err != nil {
 		logger.LogAttrs(ctx, slog.LevelError, renderErr, slog.String("template", templateAddTask))
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		models.HandleHTTPError(w, err, http.StatusInternalServerError)
+		//http.Error(w, err.Error(), http.StatusInternalServerError)
 
 		return
 	}
