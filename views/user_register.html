@@ -1,17 +1,25 @@
 {{ define "user-register" }}
 <!doctype html>
-<html lang="en" xml:lang="en">
+<html lang="en" xml:lang="en" data-theme="autumn">
   <head>
     <title>Todo APP-User</title>
     <meta charset="UTF-8" />
     <link href="public/style.css" rel="stylesheet" type="text/css" />
     <link href="public/fonts.css" rel="stylesheet" type="text/css" />
     <script src="public/htmx.min.js"></script>
+    <script>
+      document.addEventListener("htmx:responseError", (evt) => {
+        console.log(evt);
+        document.getElementById("errors").innerHTML = evt.detail.xhr.response;
+      });
+    </script>
   </head>
 
   <body
     class="bg-base-200 text-base-content min-h-screen flex items-center justify-center"
   >
+    <div id="errors"></div>
+
     <div
       class="card card-xl card-border border-base-300 bg-base-100 gap-2 sm:w-2/3 lg:w-1/2 overflow-w-hidden"
     >
@@ -25,6 +33,7 @@
         <form
           class="flex flex-col gap-4 justify-center items-center"
           hx-post="/register"
+          hx-target-error="#errors"
         >
           <label for="name" class="input w-full">
             <svg

@@ -1,6 +1,6 @@
 {{ define "index" }}
 <!DOCTYPE html>
-<html lang="en" xml:lang="en">
+<html lang="en" xml:lang="en" data-theme="autumn">
 
 <head>
   <title>Todo APP HTMX</title>
@@ -8,27 +8,26 @@
   <link rel="stylesheet" href="public/style.css">
   <link rel="stylesheet" href="public/fonts.css">
   <script src="public/htmx.min.js"></script>
-  <style>
-    .font-monteserrat {
-      font-family: "Montserrat", sans-serif;
-    }
-  </style>
   <script>
     function updateModal(id) {
       let updateId = "update_" + id
       let updates = document.getElementById(updateId)
       updates.showModal()
     }
+
+    document.addEventListener("htmx:responseError", evt => {
+      console.log(evt)
+      document.getElementById("errors").innerText = evt.detail.xhr.response;
+    });
   </script>
 </head>
 
 <body class="bg-base-200 text-base-content">
   {{template "userNavbar"}}
-
+  <div id="errors"></div>
   <div class="w-full flex items-center gap-5 flex-col p-3 h-screen">
     <!-- Form data-->
     {{ template "todoForm" }}
-
     <ul id="rend" class="list bg-base-100 rounded-box shadow-md">
       {{ range $val := . }}
       {{ template "add" $val }}
@@ -44,7 +43,7 @@
 <button class="btn btn-accent w-1/3" onclick="add_modal.showModal()">Create New Task</button>
 <dialog id="add_modal" class="modal modal-bottom sm:modal-middle">
   <div class="modal-box">
-    <form hx-post="/tasks" hx-target="#rend" hx-swap="beforeend" class="flex gap-3 flex-col">
+    <form hx-post="/tasks" hx-target="#rend" hx-target-error="#errors" hx-swap="beforeend" class="flex gap-3 flex-col">
       <label class="floating-label">
         <input placeholder="Task name here..." name="title" type="text" id="title"
           class="input input-md w-full validator" required size="100">
@@ -99,7 +98,8 @@
     <div><br />Due on: <span class="text-red-300">{{.DueDate}}</span></div>
   </div>
   <div>
-    <button hx-put="/tasks/{{.ID}}/done" hx-target="#{{.ID}}" hx-swap="outerHTML" class="btn btn-circle btn-ghost">
+    <button hx-put="/tasks/{{.ID}}/done" hx-target="#{{.ID}}" hx-target-error="#errors" hx-swap="outerHTML"
+      class="btn btn-circle btn-ghost">
       <svg class="size-[1.2em]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M5 14L8.23309 16.4248C8.66178 16.7463 9.26772 16.6728 9.60705 16.2581L18 6" stroke="#008000"
           stroke-width="2" stroke-linecap="round" />
@@ -130,7 +130,7 @@
         <span>SY</span>
       </div>
     </div>
-    <button hx-post="/logout" class="btn btn-outline">
+    <button hx-post="/logout" hx-target-error="#errors" class="btn btn-outline">
       <svg fill="#8c3f27" height="24" width="24" version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg"
         xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 384.971 384.971" xml:space="preserve">
         <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
@@ -170,7 +170,8 @@
 </button>
 <dialog id="update_{{.ID}}" class="modal modal-bottom sm:modal-middle">
   <div class="modal-box">
-    <form hx-put="/tasks/{{.ID}}" hx-target="#{{.ID}}" hx-swap="outerHTML" class="flex gap-3 flex-col">
+    <form hx-put="/tasks/{{.ID}}" hx-target="#{{.ID}}" hx-target-error="#errors" hx-swap="outerHTML"
+      class="flex gap-3 flex-col">
       <label class="floating-label">
         <input placeholder="Task name here..." name="title" type="text" id="title"
           class="input input-md w-full validator" required size="100">
@@ -200,14 +201,4 @@
     </div>
   </div>
 </dialog>
-{{end}}
-
-{{ block "error" .}}
-<div role="alert" class="alert alert-error">
-  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
-    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-      d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-  </svg>
-  <span>{{.Code}} - {{.Message}}</span>
-</div>
 {{end}}
