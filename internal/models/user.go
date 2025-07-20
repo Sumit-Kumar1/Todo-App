@@ -8,8 +8,8 @@ import (
 	"github.com/google/uuid"
 )
 
-const (
-	emailReg = `^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,4}$`
+var (
+	emailRegex = regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,4}$`)
 )
 
 type UserData struct {
@@ -39,18 +39,17 @@ type SessionData struct {
 func (l *LoginReq) Validate() error {
 	email := strings.ToLower(strings.TrimSpace(l.Email))
 	passwd := strings.TrimSpace(l.Password)
-	emailRegex := regexp.MustCompile(emailReg)
 
 	if email == "" {
-		return ErrRequired("email")
+		return ErrRequired(Email)
 	}
 
 	if !emailRegex.MatchString(email) {
-		return ErrInvalid("email")
+		return ErrInvalid(Email)
 	}
 
 	if passwd == "" {
-		return ErrRequired("password")
+		return ErrRequired(Password)
 	}
 
 	if len(passwd) < 8 {

@@ -1,9 +1,30 @@
 package models
 
-import "html/template"
+import (
+	"html/template"
+	"log/slog"
+	"sync"
+)
+
+const pattern = "views/*"
+
+var (
+	templ *template.Template
+	once  sync.Once
+)
 
 func NewTemplate() *template.Template {
-	const pattern = "views/*"
+	if templ == nil {
+		once.Do(
+			func() {
+				slog.Info("Loading templates...")
 
-	return template.Must(template.ParseGlob(pattern))
+				templ = template.Must(template.ParseGlob(pattern))
+			},
+		)
+	} else {
+		slog.Info("Using existing template compile")
+	}
+
+	return templ
 }

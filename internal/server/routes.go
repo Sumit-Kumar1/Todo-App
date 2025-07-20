@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
+	"todoapp/internal/models"
 
 	"todoapp/internal/handler"
 	todohttp "todoapp/internal/handler/todo"
@@ -25,13 +26,14 @@ func SetupRoutes(ctx context.Context, app *Server) {
 }
 
 func setupTasksRoutes(ctx context.Context, app *Server) {
+	templ := models.NewTemplate()
 	todoStore := todostore.New(app.DB)
 	todoSvc := todosvc.New(todoStore)
-	todoHTTP := todohttp.New(todoSvc)
+	todoHTTP := todohttp.New(templ, todoSvc)
 
 	app.Mux.HandleFunc("/task",
 		chain(todoHTTP.TaskPage, method(http.MethodGet),
-			app.authMiddleware(ctx),
+			app.authMiddleware(ctx), app.rateLimiterLogin(),
 		))
 	app.Mux.HandleFunc("/tasks",
 		chain(todoHTTP.HandleTasks, isHTMX(),
@@ -51,18 +53,20 @@ func setupTasksRoutes(ctx context.Context, app *Server) {
 }
 
 func setupUserRoutes(app *Server) {
+	templ := models.NewTemplate()
 	usrSt := userstore.New(app.DB)
 	sessionSt := sessionstore.New(app.DB)
 	userSvc := usersvc.New(usrSt, sessionSt)
-	usrHTTP := userhttp.New(userSvc)
+	usrHTTP := userhttp.New(templ, userSvc)
 
 	app.Mux.HandleFunc("/register", chain(usrHTTP.Register, method(http.MethodPost)))
-	app.Mux.HandleFunc("/login", chain(usrHTTP.Login, method(http.MethodPost), app.rateLimiterLogin()))
+	app.Mux.HandleFunc("/login", chain(usrHTTP.Login, method(http.MethodPost)))
 	app.Mux.HandleFunc("/logout", chain(usrHTTP.Logout, method(http.MethodPost)))
 }
 
 func setupPublicRoutes(app *Server) {
-	h := handler.New()
+	templ := models.NewTemplate()
+	h := handler.New(templ)
 
 	public := http.FileServer(http.Dir("public"))
 	openapi := http.FileServer(http.Dir("openapi"))
@@ -70,11 +74,11 @@ func setupPublicRoutes(app *Server) {
 	app.Mux.HandleFunc("/", chain(h.Root, method(http.MethodGet)))
 	app.Mux.Handle("/public/", http.StripPrefix("/public/", public))
 	app.Mux.Handle("/openapi/", http.StripPrefix("/openapi/", openapi))
-	app.Mux.Handle("/api", http.StripPrefix("/api", chain(h.Swagger, method(http.MethodGet))))
+	app.Mux.Handle("/api/", http.StripPrefix("/api", chain(h.Swagger, method(http.MethodGet))))
 	app.Mux.Handle("/healthz", chain(func(w http.ResponseWriter, r *http.Request) {
 		t := time.Now()
 
-		app.Health = &Health{DBStatus: false, ServiceStatus: false, Msg: "StartedHealth"}
+		app.Health = &Health{DBStatus: false, ServiceStatus: false, Msg: "started health"}
 
 		if app.DB == nil {
 			app.Health.DBStatus = false
@@ -114,7 +118,7 @@ func setupPublicRoutes(app *Server) {
 		_, _ = w.Write(data)
 
 		endTime := time.Since(t)
-		app.Logger.LogAttrs(r.Context(), slog.LevelInfo, "GET/healthz",
+		app.Logger.LogAttrs(r.Context(), slog.LevelInfo, "GET /healthz",
 			slog.Any("status", app.Health),
 			slog.Int64("time taken(ms)", endTime.Milliseconds()),
 		)

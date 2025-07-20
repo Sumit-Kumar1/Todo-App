@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"html/template"
 	"log/slog"
 	"net"
 	"net/http"
@@ -65,38 +64,19 @@ func isHTMX() middleware {
 func (s *Server) authMiddleware(ctx context.Context) middleware {
 	return func(f http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
-			var temp = template.Must(template.ParseGlob("views/*"))
-
 			cookieVal, err := validateCookie(ctx, s.Logger, r)
 			if err != nil {
-				if errors.Is(err, http.ErrNoCookie) {
-					_ = temp.ExecuteTemplate(w, "errorPage", map[string]any{
-						"Code":    http.StatusUnauthorized,
-						"Message": invalidCookieMsg,
-					})
-
-					return
-				}
-
-				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-				_ = temp.ExecuteTemplate(w, "errorPage", map[string]any{
-					"Code":    http.StatusUnauthorized,
-					"Message": invalidCookieMsg,
-				})
-
+				models.HandleHTTPError(w, err, http.StatusUnauthorized)
 				return
 			}
 
 			uid, err := getSessionID(ctx, s.DB, s.Logger, cookieVal)
 			if err != nil {
-				s.Logger.LogAttrs(ctx, slog.LevelError, "error while validating session", slog.String("error", err.Error()))
+				s.Logger.LogAttrs(ctx, slog.LevelError, "error while validating session",
+					slog.String("error", err.Error()))
 
-				_ = temp.ExecuteTemplate(w, "errorPage", map[string]any{
-					"Code":    http.StatusUnauthorized,
-					"Message": invalidCookieMsg,
-				})
-
-				http.Error(w, err.Error(), http.StatusUnauthorized)
+				models.HandleHTTPError(w, err, http.StatusUnauthorized)
+				// http.Error(w, err.Error(), http.StatusUnauthorized)
 
 				return
 			}
@@ -185,7 +165,8 @@ func (s *Server) rateLimiterLogin() middleware {
 				s.Logger.LogAttrs(r.Context(), slog.LevelDebug, "attempt count exceeded",
 					slog.Int("count", attempt.count), slog.Int("max attempt", s.loginLimiter.maxAttempts))
 
-				http.Error(w, "Too many login attempts. Please try again later.", http.StatusTooManyRequests)
+				models.HandleHTTPError(w, models.ConstError("Too many login attempts. Please try again later."), http.StatusTooManyRequests)
+				// http.Error(w, , http.StatusTooManyRequests)
 
 				s.loginLimiter.mu.Unlock()
 
