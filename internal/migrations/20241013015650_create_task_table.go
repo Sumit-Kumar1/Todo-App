@@ -7,14 +7,14 @@ import (
 const (
 	tasksDown = "DROP TABLE IF EXISTS tasks;"
 	tasksUp   = `CREATE TABLE IF NOT EXISTS tasks(
-    id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL,
+    id VARCHAR(50) PRIMARY KEY,
+    user_id VARCHAR(50) NOT NULL,
     title TEXT NOT NULL,
-		description TEXT,
-    done_status BOOLEAN NOT NULL CHECK (done_status IN (0, 1)),
-    due_date DATE,
-    added_at DATETIME NOT NULL,
-    modified_at DATETIME);`
+	description TEXT,
+    done_status BOOLEAN,
+    due_date TIMESTAMP,
+    added_at TIMESTAMP NOT NULL,
+    modified_at TIMESTAMP);`
 )
 
 type M20241013015650 string

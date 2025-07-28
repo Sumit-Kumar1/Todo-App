@@ -7,10 +7,10 @@ import (
 const (
 	userDown = "DROP TABLE IF EXISTS users;"
 	userUp   = `CREATE TABLE IF NOT EXISTS users(
-    id TEXT NOT NULL PRIMARY KEY, 
+    id VARCHAR(50) NOT NULL PRIMARY KEY, 
     name TEXT NOT NULL,
-    email TEXT NOT NULL UNIQUE CHECK (email LIKE '%'),
-    password TEXT NOT NULL);`
+    email TEXT NOT NULL UNIQUE,
+    password BYTEA NOT NULL);`
 )
 
 type M20241013015640 string

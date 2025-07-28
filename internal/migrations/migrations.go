@@ -17,9 +17,9 @@ const (
 	methodDown     = "DOWN"
 	migTableName   = "todo_migrations"
 	migInsertErr   = "Migration table insert error"
-	createMigTable = "CREATE TABLE IF NOT EXISTS %s(version TEXT, start_time DATETIME, end_time DATETIME, method TEXT);"
-	versionQuery   = "SELECT version from ? ORDER BY version DESC"
-	insertVersion  = "INSERT INTO %s(version, start_time, method) VALUES (?, ?,?);"
+	createMigTable = "CREATE TABLE IF NOT EXISTS %s(version TEXT, start_time TIMESTAMP, end_time TIMESTAMP, method TEXT);"
+	versionQuery   = "SELECT version from %s ORDER BY version DESC"
+	insertVersion  = "INSERT INTO %s(version, start_time, method) VALUES ($1, $2, $3);"
 )
 
 type migrator interface {
@@ -38,7 +38,8 @@ func RunMigrations(ctx context.Context, s *server.Server, method string) error {
 
 	_, err := s.DB.ExecContext(ctx, query)
 	if err != nil {
-		s.Logger.LogAttrs(ctx, slog.LevelError, "not able to create the migration table")
+		s.Logger.LogAttrs(ctx, slog.LevelError, "not able to create the migration table",
+			slog.String("error", err.Error()))
 
 		return err
 	}
@@ -94,7 +95,9 @@ func runDownMigrations(ctx context.Context, s *server.Server, migs map[string]mi
 	versions := []string{}
 	version := ""
 
-	rows, err := s.DB.QueryContext(ctx, versionQuery, migTableName)
+	query := fmt.Sprintf(versionQuery, migTableName)
+
+	rows, err := s.DB.QueryContext(ctx, query)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			slog.LogAttrs(ctx, slog.LevelWarn, "no versions found to revert")
@@ -171,7 +174,7 @@ func performUpMigrations(ctx context.Context, s *server.Server, val migrator, ve
 
 	query := fmt.Sprintf(insertVersion, migTableName)
 
-	_, err = tx.ExecContext(ctx, query, version, time.Now().UnixMilli(), methodUp)
+	_, err = tx.ExecContext(ctx, query, version, time.Now(), methodUp)
 	if err != nil {
 		s.Logger.LogAttrs(ctx, slog.LevelError, migInsertErr,
 			slog.String("migration", version),
@@ -190,9 +193,9 @@ func performUpMigrations(ctx context.Context, s *server.Server, val migrator, ve
 		return handleRollback(tx, err)
 	}
 
-	query = fmt.Sprintf("UPDATE %s SET end_time=? WHERE version=?;", migTableName)
+	query = fmt.Sprintf("UPDATE %s SET end_time=$1 WHERE version=$2;", migTableName)
 
-	if _, err := tx.ExecContext(ctx, query, time.Now().UnixMilli(), version); err != nil {
+	if _, err := tx.ExecContext(ctx, query, time.Now(), version); err != nil {
 		s.Logger.LogAttrs(ctx, slog.LevelError, migInsertErr,
 			slog.String("migration", version),
 			slog.String("error", err.Error()),
@@ -223,7 +226,7 @@ func performDownMigrations(ctx context.Context, s *server.Server, val migrator, 
 		return handleRollback(tx, err)
 	}
 
-	query := fmt.Sprintf("DELETE FROM %s WHERE version=?", migTableName)
+	query := fmt.Sprintf("DELETE FROM %s WHERE version=$1", migTableName)
 
 	if _, err := tx.ExecContext(ctx, query, key); err != nil {
 		s.Logger.LogAttrs(ctx, slog.LevelError, migInsertErr,

@@ -5,10 +5,10 @@ import "database/sql"
 const (
 	sessionDown = "DROP TABLE IF EXISTS sessions;"
 	sessionUp   = `CREATE TABLE IF NOT EXISTS sessions(
-    id TEXT PRIMARY KEY, 
-    user_id TEXT NOT NULL UNIQUE,
+    id VARCHAR(50) PRIMARY KEY, 
+    user_id VARCHAR(50) NOT NULL UNIQUE,
     token TEXT NOT NULL UNIQUE, 
-    expiry DATETIME NOT NULL);`
+    expiry TIMESTAMP NOT NULL);`
 )
 
 type M20241013015656 string
