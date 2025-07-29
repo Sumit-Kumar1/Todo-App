@@ -110,13 +110,13 @@ func defaultServer() *Server {
 		},
 		globalLimiter: &rateLimiter{
 			attempts:    make(map[string]*limiterAttempt),
-			timeWindow:  time.Minute * 1,
-			maxAttempts: 30,
+			maxAttempts: getEnvAsInt("GLOBAL_ATTEMPTS", 300),
+			timeWindow:  time.Second * time.Duration(getEnvAsInt("GLOBAL_TIME_WINDOW", 60)),
 		},
 		loginLimiter: &rateLimiter{
 			attempts:    make(map[string]*limiterAttempt),
-			maxAttempts: 10,
-			timeWindow:  time.Minute * 1,
+			maxAttempts: getEnvAsInt("LOGIN_ATTEMPTS", 10),
+			timeWindow:  time.Second * time.Duration(getEnvAsInt("LOGIN_TIME_WINDOW", 60)),
 		},
 	}
 }
