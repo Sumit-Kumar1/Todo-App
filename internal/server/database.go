@@ -24,7 +24,7 @@ func newDB(logger *slog.Logger) (*sql.DB, error) {
 		return nil, models.ConstError("empty db password")
 	}
 
-	psqlConn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+	psqlConn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		host, port, user, password, dbName)
 
 	db, err := sql.Open("postgres", psqlConn)

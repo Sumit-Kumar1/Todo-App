@@ -12,14 +12,14 @@ import (
 )
 
 const (
-	deleteTask     = "DELETE FROM tasks WHERE id=? AND user_id=?;"
-	getAllByUserID = "SELECT id, user_id, title, description, done_status, due_date, added_at, modified_at FROM tasks WHERE user_id=?;"
+	deleteTask     = "DELETE FROM tasks WHERE id=$1 AND user_id=$2;"
+	getAllByUserID = "SELECT id, user_id, title, description, done_status, due_date, added_at, modified_at FROM tasks WHERE user_id=$1;"
 	getTaskByID    = "SELECT id, user_id, title, description, done_status, due_date, added_at, modified_at FROM " +
-		"tasks WHERE id=? AND user_id=?;"
+		"tasks WHERE id=$1 AND user_id=$2;"
 	insertQuery = "INSERT INTO tasks (id, user_id, title, description, done_status, due_date, added_at) VALUES " +
-		"(?, ?, ?, ?, ?, ?, ?);"
-	setDone     = "UPDATE tasks SET done_status=?, modified_at=? WHERE id=? AND user_id=?;"
-	updateQuery = "UPDATE tasks SET title=?, description=?, done_status=?, modified_at=? WHERE id=? AND user_id=?;"
+		"($1, $2, $3, $4, $5, $6, $7);"
+	setDone     = "UPDATE tasks SET done_status=$1, modified_at=$2 WHERE id=$3 AND user_id=$4;"
+	updateQuery = "UPDATE tasks SET title=$1, description=$2, done_status=$3, modified_at=$4 WHERE id=$5 AND user_id=$6;"
 )
 
 type Store struct {
@@ -63,8 +63,7 @@ func (s *Store) Create(ctx context.Context, task *models.Task) error {
 	logger := models.GetLoggerFromCtx(ctx)
 
 	if _, err := s.DB.ExecContext(ctx, insertQuery, task.ID, task.UserID,
-		task.Title, task.Description, task.IsDone, task.DueDate.UnixMilli(),
-		task.AddedAt.UnixMilli()); err != nil {
+		task.Title, task.Description, task.IsDone, task.DueDate, task.AddedAt); err != nil {
 		return err
 	}
 
@@ -79,7 +78,7 @@ func (s *Store) Update(ctx context.Context, task *models.Task) error {
 	logger := models.GetLoggerFromCtx(ctx)
 
 	if _, err := s.DB.ExecContext(ctx, updateQuery, task.Title, task.Description,
-		task.IsDone, task.ModifiedAt.UnixMilli(), task.ID, task.UserID); err != nil {
+		task.IsDone, task.ModifiedAt, task.ID, task.UserID); err != nil {
 		return err
 	}
 
@@ -103,12 +102,11 @@ func (s *Store) Delete(ctx context.Context, id string, userID *uuid.UUID) error 
 
 func (s *Store) MarkDone(ctx context.Context, id string, userID *uuid.UUID) (*models.Task, error) {
 	var (
-		task   = &models.Task{ID: id}
-		logger = models.GetLoggerFromCtx(ctx)
-		err    error
+		task = &models.Task{ID: id}
+		err  error
 	)
 
-	res, err := s.DB.ExecContext(ctx, setDone, 1, time.Now().UnixMilli(), id, *userID)
+	res, err := s.DB.ExecContext(ctx, setDone, 1, time.Now(), id, *userID)
 	if err != nil {
 		return nil, err
 	}
@@ -132,9 +130,6 @@ func (s *Store) MarkDone(ctx context.Context, id string, userID *uuid.UUID) (*mo
 			return nil, err
 		}
 	}
-
-	logger.LogAttrs(ctx, slog.LevelDebug, "task marked done",
-		slog.String("task", id), slog.String("user", userID.String()))
 
 	return task, nil
 }

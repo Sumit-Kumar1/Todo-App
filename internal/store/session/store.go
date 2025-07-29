@@ -12,12 +12,12 @@ import (
 )
 
 const (
-	createSession      = "INSERT INTO sessions (id, user_id, token, expiry) VALUES (?, ?, ?,?);"
-	deleteSessionByID  = "DELETE FROM sessions WHERE id=?;"
-	getSessionByUserID = "SELECT id, user_id, token, expiry FROM sessions WHERE user_id=?;"
+	createSession      = "INSERT INTO sessions (id, user_id, token, expiry) VALUES ($1, $2, $3,$4);"
+	deleteSessionByID  = "DELETE FROM sessions WHERE id=$1;"
+	getSessionByUserID = "SELECT id, user_id, token, expiry FROM sessions WHERE user_id=$1;"
 	//nolint:gosec //not any hardcoded credential
-	getSessionByToken = "SELECT id FROM sessions where token=?;"
-	updateSession     = "UPDATE sessions SET token=?, expiry=? WHERE id=?;"
+	getSessionByToken = "SELECT id FROM sessions where token=$1;"
+	updateSession     = "UPDATE sessions SET token=$1, expiry=$2 WHERE id=$3;"
 )
 
 type Store struct {
@@ -29,15 +29,8 @@ func New(db *sql.DB) *Store {
 }
 
 func (s *Store) CreateSession(ctx context.Context, session *models.SessionData) error {
-	logger := models.GetLoggerFromCtx(ctx)
-
-	res, err := s.DB.ExecContext(ctx, createSession, session.ID,
-		session.UserID, session.Token, session.Expiry.UnixMilli())
+	res, err := s.DB.ExecContext(ctx, createSession, session.ID, session.UserID, session.Token, session.Expiry)
 	if err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, "error while running session create query",
-			slog.String("error", err.Error()),
-		)
-
 		return err
 	}
 
@@ -53,37 +46,26 @@ func (s *Store) GetSessionByID(ctx context.Context, userID *uuid.UUID) (*models.
 
 	var session models.SessionData
 
-	res, err := s.DB.QueryContext(ctx, getSessionByUserID, *userID)
-	if err == nil {
-		for res.Next() {
-			if err2 := res.Scan(&session.ID, &session.UserID, &session.Token, &session.Expiry); err2 != nil {
-				return nil, err2
-			}
+	row := s.DB.QueryRowContext(ctx, getSessionByUserID, *userID)
+	if err := row.Scan(&session.ID, &session.UserID, &session.Token, &session.Expiry); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			logger.LogAttrs(ctx, slog.LevelError, "store : no user session found for userID",
+				slog.String("userID", userID.String()),
+			)
+
+			return nil, models.ErrNotFound("user ID")
 		}
 
-		return &session, nil
+		return nil, err
 	}
 
-	if errors.Is(err, sql.ErrNoRows) {
-		logger.LogAttrs(ctx, slog.LevelError, "store : no user session found for userID",
-			slog.String("userID", userID.String()),
-		)
-
-		return nil, models.ErrNotFound("user ID")
-	}
-
-	logger.LogAttrs(ctx, slog.LevelError, "store : error while fetching session by userID",
-		slog.String("error", err.Error()),
-	)
-
-	return nil, err
+	return &session, nil
 }
 
 func (s *Store) RefreshSession(ctx context.Context, newSession *models.SessionData) error {
 	logger := models.GetLoggerFromCtx(ctx)
 
-	_, err := s.DB.ExecContext(ctx, updateSession, newSession.Token,
-		newSession.Expiry.UnixMilli(), newSession.ID)
+	_, err := s.DB.ExecContext(ctx, updateSession, newSession.Token, newSession.Expiry, newSession.ID)
 	if err == nil {
 		return nil
 	}

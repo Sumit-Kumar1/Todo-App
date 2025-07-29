@@ -7,11 +7,11 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
-	"todoapp/internal/models"
 
 	"todoapp/internal/handler"
 	todohttp "todoapp/internal/handler/todo"
 	userhttp "todoapp/internal/handler/user"
+	"todoapp/internal/models"
 	"todoapp/internal/service/todosvc"
 	usersvc "todoapp/internal/service/user"
 	sessionstore "todoapp/internal/store/session"
@@ -32,24 +32,15 @@ func setupTasksRoutes(ctx context.Context, app *Server) {
 	todoHTTP := todohttp.New(templ, todoSvc)
 
 	app.Mux.HandleFunc("/task",
-		chain(todoHTTP.TaskPage, method(http.MethodGet),
-			app.authMiddleware(ctx), app.rateLimiterLogin(),
-		))
+		chain(todoHTTP.TaskPage, method(http.MethodGet), app.authMiddleware(ctx)))
 	app.Mux.HandleFunc("/tasks",
-		chain(todoHTTP.HandleTasks, isHTMX(),
-			app.authMiddleware(ctx)))
+		chain(todoHTTP.HandleTasks, isHTMX(), app.authMiddleware(ctx)))
 	app.Mux.HandleFunc("/tasks/{id}",
-		chain(todoHTTP.Update, isHTMX(), method(http.MethodPut),
-			app.authMiddleware(ctx),
-		))
+		chain(todoHTTP.Update, method(http.MethodPut), isHTMX(), app.authMiddleware(ctx)))
 	app.Mux.HandleFunc("/tasks/{id}/delete",
-		chain(todoHTTP.DeleteTask, isHTMX(), method(http.MethodDelete),
-			app.authMiddleware(ctx),
-		))
+		chain(todoHTTP.DeleteTask, method(http.MethodDelete), isHTMX(), app.authMiddleware(ctx)))
 	app.Mux.HandleFunc("/tasks/{id}/done",
-		chain(todoHTTP.Done, isHTMX(), method(http.MethodPut),
-			app.authMiddleware(context.Background()),
-		))
+		chain(todoHTTP.Done, method(http.MethodPut), isHTMX(), app.authMiddleware(ctx)))
 }
 
 func setupUserRoutes(app *Server) {
@@ -60,7 +51,7 @@ func setupUserRoutes(app *Server) {
 	usrHTTP := userhttp.New(templ, userSvc)
 
 	app.Mux.HandleFunc("/register", chain(usrHTTP.Register, method(http.MethodPost)))
-	app.Mux.HandleFunc("/login", chain(usrHTTP.Login, method(http.MethodPost)))
+	app.Mux.HandleFunc("/login", chain(usrHTTP.Login, app.rateLimiterLogin(), method(http.MethodPost)))
 	app.Mux.HandleFunc("/logout", chain(usrHTTP.Logout, method(http.MethodPost)))
 }
 
@@ -78,10 +69,10 @@ func setupPublicRoutes(app *Server) {
 	app.Mux.Handle("/healthz", chain(func(w http.ResponseWriter, r *http.Request) {
 		t := time.Now()
 
-		app.Health = &Health{DBStatus: false, ServiceStatus: false, Msg: "started health"}
+		app.Health = &Health{DB: false, Service: false, Msg: "started health"}
 
 		if app.DB == nil {
-			app.Health.DBStatus = false
+			app.Health.DB = false
 			app.Health.Msg = "DB is nil"
 
 			app.Logger.LogAttrs(r.Context(), slog.LevelError, "application DB is nil")
@@ -92,17 +83,17 @@ func setupPublicRoutes(app *Server) {
 		}
 
 		if err := app.DB.Ping(); err != nil {
-			app.Health.DBStatus = false
+			app.Health.DB = false
 			app.Health.Msg = err.Error()
 		}
 
 		if isServiceHealthy(r.Context(), app.Port) {
-			app.Health.ServiceStatus = false
+			app.Health.Service = false
 			app.Health.Msg = "Service Down"
 		}
 
-		app.Health.ServiceStatus = true
-		app.Health.DBStatus = true
+		app.Health.Service = true
+		app.Health.DB = true
 		app.Health.Msg = "OK"
 
 		data, err := json.Marshal(app.Health)

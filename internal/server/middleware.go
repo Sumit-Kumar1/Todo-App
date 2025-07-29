@@ -75,8 +75,7 @@ func (s *Server) authMiddleware(ctx context.Context) middleware {
 				s.Logger.LogAttrs(ctx, slog.LevelError, "error while validating session",
 					slog.String("error", err.Error()))
 
-				models.HandleHTTPError(w, err, http.StatusUnauthorized)
-				// http.Error(w, err.Error(), http.StatusUnauthorized)
+				http.Error(w, err.Error(), http.StatusUnauthorized)
 
 				return
 			}
@@ -90,6 +89,7 @@ func (s *Server) GlobalRateLimiter(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ip := clientIP(r)
 		now := time.Now()
+		s.Logger.LogAttrs(r.Context(), slog.LevelDebug, "global rate limiter", slog.String("ip", ip))
 
 		s.globalLimiter.mu.Lock()
 
@@ -133,7 +133,7 @@ func (s *Server) rateLimiterLogin() middleware {
 		return func(w http.ResponseWriter, r *http.Request) {
 			s.Logger.LogAttrs(r.Context(), slog.LevelDebug, "started login rate limiter")
 
-			email := r.FormValue("email")
+			email := r.PostFormValue("email")
 			if strings.TrimSpace(email) == "" {
 				http.Error(w, "invalid email provided", http.StatusBadRequest)
 				s.Logger.LogAttrs(r.Context(), slog.LevelDebug, "invalid email in rate limiter login")
@@ -165,8 +165,7 @@ func (s *Server) rateLimiterLogin() middleware {
 				s.Logger.LogAttrs(r.Context(), slog.LevelDebug, "attempt count exceeded",
 					slog.Int("count", attempt.count), slog.Int("max attempt", s.loginLimiter.maxAttempts))
 
-				models.HandleHTTPError(w, models.ConstError("Too many login attempts. Please try again later."), http.StatusTooManyRequests)
-				// http.Error(w, , http.StatusTooManyRequests)
+				http.Error(w, "Too many login attempts. Please try again later.", http.StatusTooManyRequests)
 
 				s.loginLimiter.mu.Unlock()
 
@@ -213,7 +212,7 @@ func getSessionID(ctx context.Context, db *sql.DB, logger *slog.Logger, sessionT
 		err    error
 	)
 
-	query := "SELECT user_id FROM sessions WHERE token=?;"
+	query := "SELECT user_id FROM sessions WHERE token=$1;"
 
 	row := db.QueryRowContext(ctx, query, *sessionToken)
 	if err := row.Scan(&userID); err != nil {

@@ -26,9 +26,9 @@ type Configs struct {
 }
 
 type Health struct {
-	DBStatus      bool   `json:"dbStatus"`
-	ServiceStatus bool   `json:"serviceStatus"`
-	Msg           string `json:"msg"`
+	DB      bool   `json:"DB"`
+	Service bool   `json:"Service"`
+	Msg     string `json:"Message"`
 }
 
 type rateLimiter struct {
@@ -104,9 +104,9 @@ func defaultServer() *Server {
 		},
 		Mux: http.NewServeMux(),
 		Health: &Health{
-			DBStatus:      false,
-			ServiceStatus: false,
-			Msg:           "INIT HEALTH",
+			DB:      false,
+			Service: false,
+			Msg:     "INIT HEALTH",
 		},
 		globalLimiter: &rateLimiter{
 			attempts:    make(map[string]*limiterAttempt),
