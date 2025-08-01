@@ -89,7 +89,6 @@ func (s *Server) GlobalRateLimiter(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ip := clientIP(r)
 		now := time.Now()
-		s.Logger.LogAttrs(r.Context(), slog.LevelDebug, "global rate limiter", slog.String("ip", ip))
 
 		s.globalLimiter.mu.Lock()
 
@@ -131,8 +130,6 @@ func (s *Server) GlobalRateLimiter(next http.Handler) http.Handler {
 func (s *Server) rateLimiterLogin() middleware {
 	return func(f http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
-			s.Logger.LogAttrs(r.Context(), slog.LevelDebug, "started login rate limiter")
-
 			email := r.PostFormValue("email")
 			if strings.TrimSpace(email) == "" {
 				http.Error(w, "invalid email provided", http.StatusBadRequest)
