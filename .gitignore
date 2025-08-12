@@ -18,6 +18,7 @@
 *.env
 **/*.env
 *.sqlite
+*.log
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
@@ -28,16 +29,12 @@ go.work.sum
 [Bb]uild/
 
 # npm dependencies
-[Nn]ode_modules
+[Nn]ode_modules/
 
 #IDE specific directories
 .vscode/
 .idea/
+.fleet/
 
 # air specific 
 tmp/
-
-# IDE specific directories
-.fleet
-.vscode
-.idea
