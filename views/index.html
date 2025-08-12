@@ -77,7 +77,7 @@
   </div>
   <button hx-confirm="Really Delete??" hx-delete="/tasks/{{.ID}}/delete" hx-target="#{{.ID}}" hx-swap="outerHTML"
     class="btn btn-circle btn-ghost">
-    <i class="fa-thin fa-trash"></i>
+    <i class="fa-solid fa-trash"></i>
   </button>
   {{ else }}
   <div class="">
@@ -93,7 +93,7 @@
     {{ template "update-task" .}}
     <button hx-confirm="Really Delete??" hx-delete="/tasks/{{.ID}}/delete" hx-target="#{{.ID}}" hx-swap="outerHTML"
       class="btn btn-circle btn-ghost">
-      <i class="fa-thin fa-trash"></i>
+      <i class="fa-solid fa-trash"></i>
     </button>
   </div>
   {{ end }}

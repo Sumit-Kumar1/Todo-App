@@ -22,3 +22,12 @@ function togglePasswordVisibility() {
         eyeIcon.classList.add("fa-eye");
     }
 }
+
+function removeToast() {
+    const toast = document.getElementById("notifi");
+    if (toast == null) {
+        return
+    }
+
+    toast.classList.add("hidden");
+}
