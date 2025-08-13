@@ -3,7 +3,7 @@ package server
 import (
 	"context"
 	"database/sql"
-	"errors"
+	liberrors "errors"
 	"log/slog"
 	"net"
 	"net/http"
@@ -11,19 +11,21 @@ import (
 	"strings"
 	"time"
 
+	"todoapp/internal/errors"
 	"todoapp/internal/models"
 
 	"github.com/google/uuid"
 )
 
 const (
-	invalidCookieMsg = "user not logged in, please login again!!"
-	cookieName       = "token"
+	cookieName = "token"
 )
 
 type middleware func(http.HandlerFunc) http.HandlerFunc
 
 func chain(f http.HandlerFunc, middlewares ...middleware) http.HandlerFunc {
+	enableCORS(f)
+
 	for _, m := range middlewares {
 		f = m(f)
 	}
@@ -35,11 +37,7 @@ func method(m string) middleware {
 	return func(f http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			if r.Method != m {
-				http.Error(w,
-					http.StatusText(http.StatusMethodNotAllowed),
-					http.StatusMethodNotAllowed,
-				)
-
+				errors.HandleHTTPError(w, liberrors.New(http.StatusText(http.StatusMethodNotAllowed)), http.StatusMethodNotAllowed)
 				return
 			}
 
@@ -61,12 +59,23 @@ func isHTMX() middleware {
 	}
 }
 
+func enableCORS(f http.HandlerFunc) middleware {
+	return func(f http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "POST, GET, PUT, DELETE")
+			w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding")
+			f(w, r)
+		}
+	}
+}
+
 func (s *Server) authMiddleware(ctx context.Context) middleware {
 	return func(f http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			cookieVal, err := validateCookie(ctx, s.Logger, r)
 			if err != nil {
-				models.HandleHTTPError(w, err, http.StatusUnauthorized)
+				errors.HandleHTTPError(w, err, http.StatusUnauthorized)
 				return
 			}
 
@@ -156,10 +165,10 @@ func (s *Server) rateLimiterLogin() middleware {
 			}
 
 			attempt.count++
-			s.Logger.LogAttrs(r.Context(), slog.LevelDebug, "attempt count increased", slog.Int("count", attempt.count))
+			s.Logger.LogAttrs(r.Context(), slog.LevelDebug, "login attempt count increased", slog.Int("count", attempt.count))
 
 			if attempt.count > s.loginLimiter.maxAttempts {
-				s.Logger.LogAttrs(r.Context(), slog.LevelDebug, "attempt count exceeded",
+				s.Logger.LogAttrs(r.Context(), slog.LevelDebug, "login attempt count exceeded",
 					slog.Int("count", attempt.count), slog.Int("max attempt", s.loginLimiter.maxAttempts))
 
 				http.Error(w, "Too many login attempts. Please try again later.", http.StatusTooManyRequests)
@@ -183,13 +192,13 @@ func validateCookie(ctx context.Context, logger *slog.Logger, r *http.Request) (
 		if err != nil {
 			logger.LogAttrs(ctx, slog.LevelError, "invalid cookie found, please login again")
 
-			return nil, models.ErrInvalidCookie
+			return nil, errors.ErrInvalidCookie
 		}
 
 		return &uid, nil
 	}
 
-	if errors.Is(err, http.ErrNoCookie) {
+	if liberrors.Is(err, http.ErrNoCookie) {
 		logger.LogAttrs(ctx, slog.LevelError, err.Error(),
 			slog.String("error", "no cookie found, please login again!"),
 		)
@@ -213,10 +222,10 @@ func getSessionID(ctx context.Context, db *sql.DB, logger *slog.Logger, sessionT
 
 	row := db.QueryRowContext(ctx, query, *sessionToken)
 	if err := row.Scan(&userID); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if liberrors.Is(err, sql.ErrNoRows) {
 			logger.LogAttrs(ctx, slog.LevelError, "no valid session found, please login again")
 
-			return nil, models.ErrInvalidCookie
+			return nil, errors.ErrInvalidCookie
 		}
 
 		logger.LogAttrs(ctx, slog.LevelError, err.Error())
