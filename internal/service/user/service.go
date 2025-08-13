@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"time"
 
+	"todoapp/internal/errors"
 	"todoapp/internal/models"
 
 	"github.com/google/uuid"
@@ -33,7 +34,7 @@ func (s *Service) Register(ctx context.Context, req *models.RegisterReq) (*model
 
 	// check if user already exists
 	existingUser, err := s.UserStore.GetUserByEmail(ctx, req.Email)
-	if err != nil && err.Error() != models.ErrNotFound("user").Error() {
+	if err != nil && err.Error() != errors.ErrNotFound("user").Error() {
 		logger.LogAttrs(ctx, slog.LevelError, "Service.Register - user not found",
 			slog.String("error", err.Error()),
 			slog.String("user", req.Email),
@@ -43,7 +44,7 @@ func (s *Service) Register(ctx context.Context, req *models.RegisterReq) (*model
 	}
 
 	if existingUser != nil {
-		return nil, models.ErrUserAlreadyExists
+		return nil, errors.ErrUserAlreadyExists
 	}
 
 	passwd, err := encryptedPassword(req.Password)
@@ -85,7 +86,7 @@ func (s *Service) Register(ctx context.Context, req *models.RegisterReq) (*model
 
 func (s *Service) Login(ctx context.Context, req *models.LoginReq) (*models.SessionData, error) {
 	if req == nil {
-		return nil, models.ErrRequired("login request")
+		return nil, errors.ErrRequired("login request")
 	}
 
 	if err := req.Validate(); err != nil {
@@ -99,11 +100,11 @@ func (s *Service) Login(ctx context.Context, req *models.LoginReq) (*models.Sess
 	}
 
 	if user == nil {
-		return nil, models.ErrUserNotFound
+		return nil, errors.ErrUserNotFound
 	}
 
 	if matchErr := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); matchErr != nil {
-		return nil, models.ErrPsswdNotMatch
+		return nil, errors.ErrPsswdNotMatch
 	}
 
 	return s.handleLoginSession(ctx, user)
@@ -121,7 +122,7 @@ func (s *Service) Logout(ctx context.Context, token string) error {
 func (s *Service) handleLoginSession(ctx context.Context, user *models.UserData) (*models.SessionData, error) {
 	session, err := s.SessionStore.GetSessionByID(ctx, &user.ID)
 	if err != nil {
-		if models.ErrNotFound("user ID").Error() != err.Error() {
+		if errors.ErrNotFound("user ID").Error() != err.Error() {
 			return nil, err
 		}
 

@@ -3,7 +3,9 @@ package userstore
 import (
 	"context"
 	"database/sql"
-	"errors"
+	liberrors "errors"
+
+	"todoapp/internal/errors"
 	"todoapp/internal/models"
 )
 
@@ -41,8 +43,8 @@ func (s *Store) GetUserByEmail(ctx context.Context, email string) (*models.UserD
 	res := s.DB.QueryRowContext(ctx, getUser, email)
 
 	if err := res.Scan(&user.ID, &user.Name, &user.Email, &user.Password); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, models.ErrUserNotFound
+		if liberrors.Is(err, sql.ErrNoRows) {
+			return nil, errors.ErrUserNotFound
 		}
 
 		return nil, err

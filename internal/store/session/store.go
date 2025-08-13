@@ -3,9 +3,10 @@ package sessionstore
 import (
 	"context"
 	"database/sql"
-	"errors"
+	liberrors "errors"
 	"log/slog"
 
+	"todoapp/internal/errors"
 	"todoapp/internal/models"
 
 	"github.com/google/uuid"
@@ -48,12 +49,12 @@ func (s *Store) GetSessionByID(ctx context.Context, userID *uuid.UUID) (*models.
 
 	row := s.DB.QueryRowContext(ctx, getSessionByUserID, *userID)
 	if err := row.Scan(&session.ID, &session.UserID, &session.Token, &session.Expiry); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if liberrors.Is(err, sql.ErrNoRows) {
 			logger.LogAttrs(ctx, slog.LevelError, "store : no user session found for userID",
 				slog.String("userID", userID.String()),
 			)
 
-			return nil, models.ErrNotFound("user ID")
+			return nil, errors.ErrNotFound("user ID")
 		}
 
 		return nil, err
@@ -87,8 +88,8 @@ func (s *Store) Logout(ctx context.Context, token *uuid.UUID) error {
 
 	res := s.DB.QueryRowContext(ctx, getSessionByToken, *token)
 	if err := res.Scan(&r1); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return models.ErrNotFound("session with current user")
+		if liberrors.Is(err, sql.ErrNoRows) {
+			return errors.ErrNotFound("session with current user")
 		}
 
 		logger.LogAttrs(ctx, slog.LevelError, "error while logging out user",

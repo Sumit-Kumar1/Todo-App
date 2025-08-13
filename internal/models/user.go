@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 
+	"todoapp/internal/errors"
+
 	"github.com/google/uuid"
 )
 
@@ -41,19 +43,19 @@ func (l *LoginReq) Validate() error {
 	passwd := strings.TrimSpace(l.Password)
 
 	if email == "" {
-		return ErrRequired(Email)
+		return errors.ErrRequired(Email)
 	}
 
 	if !emailRegex.MatchString(email) {
-		return ErrInvalid(Email)
+		return errors.ErrInvalid(Email)
 	}
 
 	if passwd == "" {
-		return ErrRequired(Password)
+		return errors.ErrRequired(Password)
 	}
 
 	if len(passwd) < 8 {
-		return ErrInvalid("password is too short")
+		return errors.ErrInvalid("password is too short")
 	}
 
 	return nil
@@ -62,11 +64,11 @@ func (l *LoginReq) Validate() error {
 func (r *RegisterReq) Validate() error {
 	name := strings.TrimSpace(r.Name)
 	if name == "" {
-		return ErrRequired("name")
+		return errors.ErrRequired("name")
 	}
 
 	if len(name) < 3 {
-		return ErrInvalid("name is too short")
+		return errors.ErrInvalid("name is too short")
 	}
 
 	return r.LoginReq.Validate()

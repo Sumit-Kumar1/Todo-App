@@ -1,11 +1,11 @@
 package userhttp
 
 import (
-	"errors"
 	"html/template"
 	"log/slog"
 	"net/http"
 
+	"todoapp/internal/errors"
 	"todoapp/internal/models"
 )
 
@@ -31,6 +31,7 @@ func New(templ *template.Template, usrSvc UserServicer) *Handler {
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	logger := models.GetLoggerFromCtx(r.Context())
+	defer ctx.Done()
 
 	var user models.RegisterReq
 
@@ -40,46 +41,35 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		Password: r.FormValue(password),
 	}
 
-	defer ctx.Done()
-
 	resp, err := h.Service.Register(ctx, &user)
 
 	switch {
 	case err == nil:
-	case errors.Is(err, models.ErrUserAlreadyExists):
-		logger.LogAttrs(ctx, slog.LevelError, "user already exists, login again",
-			slog.String("user", user.Email),
-		)
+		cookie := http.Cookie{
+			Name:     token,
+			Value:    resp.Token,
+			HttpOnly: true,
+			Expires:  resp.Expiry,
+			Path:     "/",
+		}
 
-		models.HandleHTTPError(w, err, http.StatusConflict)
+		http.SetCookie(w, &cookie)
+		w.Header().Add(hxRedirect, "/task")
+		w.WriteHeader(http.StatusOK)
+		logger.LogAttrs(ctx, slog.LevelDebug, "user logged in successfully!", slog.String("user", user.Email))
 
-		//http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	case errors.ErrUserAlreadyExists.Is(err):
+		logger.LogAttrs(ctx, slog.LevelError, "user already exists, login again", slog.String("user", user.Email))
+		errors.HandleHTTPError(w, err, http.StatusConflict)
+
 		return
 	default:
 		logger.LogAttrs(ctx, slog.LevelError, err.Error(), slog.String("user", user.Email))
-
-		models.HandleHTTPError(w, err, http.StatusInternalServerError)
-		//http.Error(w, err.Error(), http.StatusInternalServerError)
+		errors.HandleHTTPError(w, err, http.StatusInternalServerError)
 
 		return
 	}
-
-	cookie := http.Cookie{
-		Name:     token,
-		Value:    resp.Token,
-		HttpOnly: true,
-		Expires:  resp.Expiry,
-		Path:     "/",
-		// Secure:   true,
-	}
-
-	http.SetCookie(w, &cookie)
-
-	w.Header().Add(hxRedirect, "/task")
-	w.WriteHeader(http.StatusOK)
-	logger.LogAttrs(ctx, slog.LevelDebug, "user logged in successfully!",
-		slog.String("user", user.Email),
-	)
 }
 
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
@@ -89,56 +79,56 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		logger = models.GetLoggerFromCtx(ctx)
 	)
 
+	defer ctx.Done()
+
 	user.Email = r.FormValue(models.Email)
 	user.Password = r.FormValue(models.Password)
 
 	session, err := h.Service.Login(ctx, &user)
-	if err != nil {
-		if models.ErrNotFound("user").Error() == err.Error() {
-			logger.LogAttrs(ctx, slog.LevelError, "login-service: user not found",
-				slog.String("user", user.Email),
-			)
 
-			models.HandleHTTPError(w, err, http.StatusNotFound)
-			//http.Error(w, "user not found", http.StatusUnauthorized)
-
-			return
+	switch {
+	case err == nil:
+		cookie := http.Cookie{
+			Name:     token,
+			Value:    session.Token,
+			HttpOnly: true,
+			Expires:  session.Expiry,
+			Path:     "/",
 		}
 
-		models.HandleHTTPError(w, err, http.StatusInternalServerError)
-		//w.WriteHeader(http.StatusInternalServerError)
-		logger.LogAttrs(ctx, slog.LevelError, "error while logging in the user",
-			slog.String("error", err.Error()), slog.String(models.Email, user.Email))
+		http.SetCookie(w, &cookie)
+		w.Header().Add(hxRedirect, "/task")
+		w.WriteHeader(http.StatusOK)
+		logger.LogAttrs(ctx, slog.LevelDebug, "login success", slog.String(models.User, user.Email))
 
 		return
+	case errors.ErrUserNotFound.Is(err):
+		logger.LogAttrs(ctx, slog.LevelError, "user does not exist", slog.String(models.User, user.Email))
+		errors.HandleHTTPError(w, err, http.StatusNotFound)
+
+		return
+	case errors.ErrPsswdNotMatch.Is(err):
+		logger.LogAttrs(ctx, slog.LevelError, "login-service: password does not match")
+		errors.HandleHTTPError(w, err, http.StatusUnauthorized)
+
+		return
+	default:
+		logger.LogAttrs(ctx, slog.LevelError, "error while logging in the user",
+			slog.String("error", err.Error()), slog.String(models.Email, user.Email))
+		errors.HandleHTTPError(w, err, http.StatusInternalServerError)
 	}
-
-	cookie := http.Cookie{
-		Name:     token,
-		Value:    session.Token,
-		HttpOnly: true,
-		Expires:  session.Expiry,
-		Path:     "/",
-		// Secure:   true,
-	}
-
-	http.SetCookie(w, &cookie)
-
-	w.Header().Add(hxRedirect, "/task")
-	w.WriteHeader(http.StatusOK)
-	logger.LogAttrs(ctx, slog.LevelDebug, "login success", slog.String(models.User, user.Email))
 }
 
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	logger := models.GetLoggerFromCtx(ctx)
+	defer ctx.Done()
 
 	c, err := r.Cookie(token)
 	if err != nil {
 		logger.LogAttrs(ctx, slog.LevelError, err.Error(), slog.String("invalid session:", token))
 
-		models.HandleHTTPError(w, err, http.StatusUnauthorized)
-		//http.Error(w, "user not logged in", http.StatusUnauthorized)
+		errors.HandleHTTPError(w, err, http.StatusUnauthorized)
 
 		return
 	}
@@ -148,8 +138,7 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 			slog.String("error", err2.Error()),
 		)
 
-		models.HandleHTTPError(w, err2, http.StatusInternalServerError)
-		//http.Error(w, err.Error(), http.StatusInternalServerError)
+		errors.HandleHTTPError(w, err2, http.StatusInternalServerError)
 
 		return
 	}
@@ -162,7 +151,6 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.SetCookie(w, &cookie)
-
 	w.Header().Set(contentType, appJSON)
 	w.Header().Add(hxRedirect, "/")
 	w.WriteHeader(http.StatusOK)

@@ -3,12 +3,13 @@ package migrations
 import (
 	"context"
 	"database/sql"
-	"errors"
+	liberrors "errors"
 	"fmt"
 	"log/slog"
 	"strings"
 	"time"
-	"todoapp/internal/models"
+
+	"todoapp/internal/errors"
 	"todoapp/internal/server"
 )
 
@@ -29,7 +30,7 @@ type migrator interface {
 
 func RunMigrations(ctx context.Context, s *server.Server, method string) error {
 	if s.DB == nil {
-		return models.NewConstError("db is nil")
+		return errors.NewConstError("db is nil")
 	}
 
 	t := time.Now()
@@ -50,7 +51,7 @@ func RunMigrations(ctx context.Context, s *server.Server, method string) error {
 	case methodDown:
 		err = runDownMigrations(ctx, s, migrations)
 	default:
-		return models.ErrInvalid("migration method")
+		return errors.ErrInvalid("migration method")
 	}
 
 	if err != nil {
@@ -99,7 +100,7 @@ func runDownMigrations(ctx context.Context, s *server.Server, migs map[string]mi
 
 	rows, err := s.DB.QueryContext(ctx, query)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if liberrors.Is(err, sql.ErrNoRows) {
 			slog.LogAttrs(ctx, slog.LevelWarn, "no versions found to revert")
 
 			return nil
@@ -140,7 +141,7 @@ func getLastRunMigration(ctx context.Context, s *server.Server) (string, error) 
 
 	res, err := s.DB.QueryContext(ctx, queryGetLastRun)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if liberrors.Is(err, sql.ErrNoRows) {
 			s.Logger.LogAttrs(ctx, slog.LevelWarn, "no last run migrations found")
 
 			return "", nil

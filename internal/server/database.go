@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
-	"todoapp/internal/models"
 
+	"todoapp/internal/errors"
+
+	// postgres import for driver
 	_ "github.com/lib/pq"
 )
 
@@ -21,7 +23,7 @@ func newDB(logger *slog.Logger) (*sql.DB, error) {
 
 	if strings.TrimSpace(password) == "" {
 		logger.LogAttrs(ctx, slog.LevelError, "DATABASE_URL environment variable not set")
-		return nil, models.ConstError("empty db password")
+		return nil, errors.ConstError("empty db password")
 	}
 
 	psqlConn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",

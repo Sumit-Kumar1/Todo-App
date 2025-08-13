@@ -3,9 +3,11 @@ package todostore
 import (
 	"context"
 	"database/sql"
-	"errors"
+	liberrors "errors"
 	"log/slog"
 	"time"
+
+	"todoapp/internal/errors"
 	"todoapp/internal/models"
 
 	"github.com/google/uuid"
@@ -38,7 +40,7 @@ func (s *Store) GetAll(ctx context.Context, userID *uuid.UUID) ([]models.Task, e
 
 	rows, err := s.DB.QueryContext(ctx, getAllByUserID, *userID)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if liberrors.Is(err, sql.ErrNoRows) {
 			return res, nil
 		}
 
@@ -117,8 +119,8 @@ func (s *Store) MarkDone(ctx context.Context, id string, userID *uuid.UUID) (*mo
 
 	rows, err := s.DB.QueryContext(ctx, getTaskByID, id, *userID)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, models.ErrNotFound("task")
+		if liberrors.Is(err, sql.ErrNoRows) {
+			return nil, errors.ErrNotFound("task")
 		}
 
 		return nil, err

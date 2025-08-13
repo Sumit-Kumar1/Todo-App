@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"todoapp/internal/errors"
 	"todoapp/internal/models"
 )
 
@@ -52,7 +53,7 @@ func (h *UIHandler) Root(w http.ResponseWriter, r *http.Request) {
 			slog.String("template-render", tempName),
 		)
 
-		models.HandleHTTPError(w, err, http.StatusInternalServerError)
+		errors.HandleHTTPError(w, err, http.StatusInternalServerError)
 
 		return
 	}
@@ -67,7 +68,7 @@ func (h *UIHandler) Swagger(w http.ResponseWriter, r *http.Request) {
 			err.Error(), slog.String("template-render", swagger),
 		)
 
-		models.HandleHTTPError(w, err, http.StatusInternalServerError)
+		errors.HandleHTTPError(w, err, http.StatusInternalServerError)
 
 		return
 	}

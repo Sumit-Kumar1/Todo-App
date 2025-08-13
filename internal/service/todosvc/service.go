@@ -4,6 +4,8 @@ import (
 	"context"
 	"log/slog"
 	"time"
+
+	"todoapp/internal/errors"
 	"todoapp/internal/models"
 
 	"github.com/google/uuid"
@@ -67,7 +69,7 @@ func (s *Service) DeleteTask(ctx context.Context, id string, userID *uuid.UUID) 
 	logger := models.GetLoggerFromCtx(ctx)
 
 	if err := validateID(id); err != nil {
-		return models.ErrInvalid("task id")
+		return errors.ErrInvalid("task id")
 	}
 
 	if err := s.Store.Delete(ctx, id, userID); err != nil {
