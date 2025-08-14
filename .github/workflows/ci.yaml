@@ -55,7 +55,7 @@ jobs:
       - name: Run linter check
         uses: golangci/golangci-lint-action@v8
         with:
-          version: v2.1
+          version: v2.4
           working-directory: .
           args: ./... --timeout=5m
           skip-cache: false
