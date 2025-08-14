@@ -21,11 +21,11 @@ const (
 	cookieName = "token"
 )
 
+var errMethodNotAllowed = liberrors.New(http.StatusText(http.StatusMethodNotAllowed))
+
 type middleware func(http.HandlerFunc) http.HandlerFunc
 
 func chain(f http.HandlerFunc, middlewares ...middleware) http.HandlerFunc {
-	enableCORS(f)
-
 	for _, m := range middlewares {
 		f = m(f)
 	}
@@ -33,13 +33,17 @@ func chain(f http.HandlerFunc, middlewares ...middleware) http.HandlerFunc {
 	return f
 }
 
-func method(m string) middleware {
+func methodWithCORS(m string) middleware {
 	return func(f http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			if r.Method != m {
-				errors.HandleHTTPError(w, liberrors.New(http.StatusText(http.StatusMethodNotAllowed)), http.StatusMethodNotAllowed)
+				errors.HandleHTTPError(w, errMethodNotAllowed, http.StatusMethodNotAllowed)
 				return
 			}
+
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "POST, GET, PUT, DELETE")
+			w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding")
 
 			f(w, r)
 		}
@@ -54,17 +58,6 @@ func isHTMX() middleware {
 				return
 			}
 
-			f(w, r)
-		}
-	}
-}
-
-func enableCORS(f http.HandlerFunc) middleware {
-	return func(f http.HandlerFunc) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.Header().Set("Access-Control-Allow-Methods", "POST, GET, PUT, DELETE")
-			w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding")
 			f(w, r)
 		}
 	}
