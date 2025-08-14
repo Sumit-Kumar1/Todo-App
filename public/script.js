@@ -1,7 +1,13 @@
 document.addEventListener("htmx:responseError", (evt) => {
-    console.log(evt);
-    document.getElementById("errors").innerHTML = evt.detail.xhr.response;
+    const divErr = document.getElementById("errors")
+
+    divErr.innerHTML = evt.detail.xhr.response; // show the error we got from backend
+
+    setTimeout(function () { // remove everything inside divErr after 3 sec
+        divErr.removeChild(divErr.childNodes[0]);
+    }, 3000)
 });
+
 
 function updateModal(id) {
     let updateId = "update_" + id
