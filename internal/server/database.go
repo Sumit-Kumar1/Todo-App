@@ -3,27 +3,33 @@ package server
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log/slog"
-	"os"
 	"strings"
-	"todoapp/internal/models"
 
-	// Used this for sqlite3 driver
-	_ "github.com/mattn/go-sqlite3"
+	"todoapp/internal/errors"
+
+	// postgres import for driver
+	_ "github.com/lib/pq"
 )
 
 func newDB(logger *slog.Logger) (*sql.DB, error) {
 	ctx := context.Background()
+	host := getEnvOrDefault("DB_HOST", "localhost")
+	port := getEnvOrDefault("DB_PORT", "5432")
+	user := getEnvOrDefault("DB_USER", "postgres")
+	password := getEnvOrDefault("DB_PASSWORD", "")
+	dbName := getEnvOrDefault("DB_NAME", "todo")
 
-	var dbURLErr = models.NewConstError("DATABASE_URL environment variable not set")
-
-	database := os.Getenv("DATABASE_URL")
-	if strings.TrimSpace(database) == "" {
+	if strings.TrimSpace(password) == "" {
 		logger.LogAttrs(ctx, slog.LevelError, "DATABASE_URL environment variable not set")
-		return nil, dbURLErr
+		return nil, errors.ConstError("empty db password")
 	}
 
-	db, err := sql.Open("sqlite3", database)
+	psqlConn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		host, port, user, password, dbName)
+
+	db, err := sql.Open("postgres", psqlConn)
 	if err != nil {
 		logger.LogAttrs(ctx, slog.LevelError, "database error opening connection",
 			slog.String("error", err.Error()))

@@ -5,11 +5,13 @@ import (
 	"strings"
 	"time"
 
+	"todoapp/internal/errors"
+
 	"github.com/google/uuid"
 )
 
-const (
-	emailReg = `^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,4}$`
+var (
+	emailRegex = regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,4}$`)
 )
 
 type UserData struct {
@@ -39,22 +41,21 @@ type SessionData struct {
 func (l *LoginReq) Validate() error {
 	email := strings.ToLower(strings.TrimSpace(l.Email))
 	passwd := strings.TrimSpace(l.Password)
-	emailRegex := regexp.MustCompile(emailReg)
 
 	if email == "" {
-		return ErrRequired("email")
+		return errors.ErrRequired(Email)
 	}
 
 	if !emailRegex.MatchString(email) {
-		return ErrInvalid("email")
+		return errors.ErrInvalid(Email)
 	}
 
 	if passwd == "" {
-		return ErrRequired("password")
+		return errors.ErrRequired(Password)
 	}
 
 	if len(passwd) < 8 {
-		return ErrInvalid("password is too short")
+		return errors.ErrInvalid("password is too short")
 	}
 
 	return nil
@@ -63,11 +64,11 @@ func (l *LoginReq) Validate() error {
 func (r *RegisterReq) Validate() error {
 	name := strings.TrimSpace(r.Name)
 	if name == "" {
-		return ErrRequired("name")
+		return errors.ErrRequired("name")
 	}
 
 	if len(name) < 3 {
-		return ErrInvalid("name is too short")
+		return errors.ErrInvalid("name is too short")
 	}
 
 	return r.LoginReq.Validate()

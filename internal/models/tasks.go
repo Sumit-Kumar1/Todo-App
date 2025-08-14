@@ -37,12 +37,6 @@ type TaskReq struct {
 	IsDone      bool   `json:"isDone"`
 }
 
-type Error struct {
-	Type    string `json:"type"`
-	IsError bool   `json:"isError"`
-	Msg     string `json:"msg"`
-}
-
 func (t *Task) ToTaskResp() *TaskResp {
 	tr := TaskResp{
 		ID:          t.ID,

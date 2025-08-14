@@ -1,34 +1,25 @@
 {{ define "index" }}
 <!DOCTYPE html>
-<html lang="en" xml:lang="en">
+<html lang="en" xml:lang="en" data-theme="autumn">
 
 <head>
   <title>Todo APP HTMX</title>
   <meta charset="UTF-8">
   <link rel="stylesheet" href="public/style.css">
   <link rel="stylesheet" href="public/fonts.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A=="
+    crossorigin="anonymous" referrerpolicy="no-referrer" />
   <script src="public/htmx.min.js"></script>
-  <style>
-    .font-monteserrat {
-      font-family: "Montserrat", sans-serif;
-    }
-  </style>
-  <script>
-    function updateModal(id) {
-      let updateId = "update_" + id
-      let updates = document.getElementById(updateId)
-      updates.showModal()
-    }
-  </script>
+  <script src="public/script.js"></script>
 </head>
 
 <body class="bg-base-200 text-base-content">
   {{template "userNavbar"}}
-
+  <div id="errors"></div>
   <div class="w-full flex items-center gap-5 flex-col p-3 h-screen">
     <!-- Form data-->
     {{ template "todoForm" }}
-
     <ul id="rend" class="list bg-base-100 rounded-box shadow-md">
       {{ range $val := . }}
       {{ template "add" $val }}
@@ -44,7 +35,7 @@
 <button class="btn btn-accent w-1/3" onclick="add_modal.showModal()">Create New Task</button>
 <dialog id="add_modal" class="modal modal-bottom sm:modal-middle">
   <div class="modal-box">
-    <form hx-post="/tasks" hx-target="#rend" hx-swap="beforeend" class="flex gap-3 flex-col">
+    <form hx-post="/tasks" hx-target="#rend" hx-target-error="#errors" hx-swap="beforeend" class="flex gap-3 flex-col">
       <label class="floating-label">
         <input placeholder="Task name here..." name="title" type="text" id="title"
           class="input input-md w-full validator" required size="100">
@@ -86,11 +77,7 @@
   </div>
   <button hx-confirm="Really Delete??" hx-delete="/tasks/{{.ID}}/delete" hx-target="#{{.ID}}" hx-swap="outerHTML"
     class="btn btn-circle btn-ghost">
-    <svg class="size-[1.2em]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path
-        d="M6.99486 7.00636C6.60433 7.39689 6.60433 8.03005 6.99486 8.42058L10.58 12.0057L6.99486 15.5909C6.60433 15.9814 6.60433 16.6146 6.99486 17.0051C7.38538 17.3956 8.01855 17.3956 8.40907 17.0051L11.9942 13.4199L15.5794 17.0051C15.9699 17.3956 16.6031 17.3956 16.9936 17.0051C17.3841 16.6146 17.3841 15.9814 16.9936 15.5909L13.4084 12.0057L16.9936 8.42059C17.3841 8.03007 17.3841 7.3969 16.9936 7.00638C16.603 6.61585 15.9699 6.61585 15.5794 7.00638L11.9942 10.5915L8.40907 7.00636C8.01855 6.61584 7.38538 6.61584 6.99486 7.00636Z"
-        fill="#EF4444" />
-    </svg>
+    <i class="fa-solid fa-trash"></i>
   </button>
   {{ else }}
   <div class="">
@@ -99,20 +86,14 @@
     <div><br />Due on: <span class="text-red-300">{{.DueDate}}</span></div>
   </div>
   <div>
-    <button hx-put="/tasks/{{.ID}}/done" hx-target="#{{.ID}}" hx-swap="outerHTML" class="btn btn-circle btn-ghost">
-      <svg class="size-[1.2em]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M5 14L8.23309 16.4248C8.66178 16.7463 9.26772 16.6728 9.60705 16.2581L18 6" stroke="#008000"
-          stroke-width="2" stroke-linecap="round" />
-      </svg>
+    <button hx-put="/tasks/{{.ID}}/done" hx-target="#{{.ID}}" hx-target-error="#errors" hx-swap="outerHTML"
+      class="btn btn-circle btn-ghost">
+      <i class="fa-solid fa-check"></i>
     </button>
     {{ template "update-task" .}}
     <button hx-confirm="Really Delete??" hx-delete="/tasks/{{.ID}}/delete" hx-target="#{{.ID}}" hx-swap="outerHTML"
       class="btn btn-circle btn-ghost">
-      <svg class="size-[1.2em]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path
-          d="M6.99486 7.00636C6.60433 7.39689 6.60433 8.03005 6.99486 8.42058L10.58 12.0057L6.99486 15.5909C6.60433 15.9814 6.60433 16.6146 6.99486 17.0051C7.38538 17.3956 8.01855 17.3956 8.40907 17.0051L11.9942 13.4199L15.5794 17.0051C15.9699 17.3956 16.6031 17.3956 16.9936 17.0051C17.3841 16.6146 17.3841 15.9814 16.9936 15.5909L13.4084 12.0057L16.9936 8.42059C17.3841 8.03007 17.3841 7.3969 16.9936 7.00638C16.603 6.61585 15.9699 6.61585 15.5794 7.00638L11.9942 10.5915L8.40907 7.00636C8.01855 6.61584 7.38538 6.61584 6.99486 7.00636Z"
-          fill="#EF4444" />
-      </svg>
+      <i class="fa-solid fa-trash"></i>
     </button>
   </div>
   {{ end }}
@@ -123,37 +104,11 @@
 <div class="navbar border-b-2 border-accent p-2">
   <div class="flex-1">
     <a class="btn btn-ghost text-2xl">Todo App</a>
+    <a href="/?page=api" class="btn btn-ghost">API Specification</a>
   </div>
   <div class="flex-none gap-2">
-    <div class="avatar avatar-placeholder">
-      <div class="bg-neutral text-neutral-content w-12 rounded-full">
-        <span>SY</span>
-      </div>
-    </div>
-    <button hx-post="/logout" class="btn btn-outline">
-      <svg fill="#8c3f27" height="24" width="24" version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg"
-        xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 384.971 384.971" xml:space="preserve">
-        <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
-        <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
-        <g id="SVGRepo_iconCarrier">
-          <g>
-            <g id="Sign_Out">
-              <path
-                d="M180.455,360.91H24.061V24.061h156.394c6.641,0,12.03-5.39,12.03-12.03s-5.39-12.03-12.03-12.03H12.03 C5.39,0.001,0,5.39,0,12.031V372.94c0,6.641,5.39,12.03,12.03,12.03h168.424c6.641,0,12.03-5.39,12.03-12.03 C192.485,366.299,187.095,360.91,180.455,360.91z">
-              </path>
-              <path
-                d="M381.481,184.088l-83.009-84.2c-4.704-4.752-12.319-4.74-17.011,0c-4.704,4.74-4.704,12.439,0,17.179l62.558,63.46H96.279 c-6.641,0-12.03,5.438-12.03,12.151c0,6.713,5.39,12.151,12.03,12.151h247.74l-62.558,63.46c-4.704,4.752-4.704,12.439,0,17.179 c4.704,4.752,12.319,4.752,17.011,0l82.997-84.2C386.113,196.588,386.161,188.756,381.481,184.088z">
-              </path>
-            </g>
-            <g> </g>
-            <g> </g>
-            <g> </g>
-            <g> </g>
-            <g> </g>
-            <g> </g>
-          </g>
-        </g>
-      </svg>
+    <button hx-post="/logout" hx-target-error="#errors" class="btn btn-outline">
+      <i class="fa-solid fa-arrow-right-from-bracket"></i>
     </button>
   </div>
 </div>
@@ -162,15 +117,12 @@
 
 {{block "update-task" .}}
 <button id="up_btn_{{.ID}}" class="btn btn-circle btn-ghost" onclick=updateModal({{.ID}})>
-  <svg class="size-[1.2em]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path fill-rule="evenodd" clip-rule="evenodd"
-      d="M20.8477 1.87868C19.6761 0.707109 17.7766 0.707105 16.605 1.87868L2.44744 16.0363C2.02864 16.4551 1.74317 16.9885 1.62702 17.5692L1.03995 20.5046C0.760062 21.904 1.9939 23.1379 3.39334 22.858L6.32868 22.2709C6.90945 22.1548 7.44285 21.8693 7.86165 21.4505L22.0192 7.29289C23.1908 6.12132 23.1908 4.22183 22.0192 3.05025L20.8477 1.87868ZM18.0192 3.29289C18.4098 2.90237 19.0429 2.90237 19.4335 3.29289L20.605 4.46447C20.9956 4.85499 20.9956 5.48815 20.605 5.87868L17.9334 8.55027L15.3477 5.96448L18.0192 3.29289ZM13.9334 7.3787L3.86165 17.4505C3.72205 17.5901 3.6269 17.7679 3.58818 17.9615L3.00111 20.8968L5.93645 20.3097C6.13004 20.271 6.30784 20.1759 6.44744 20.0363L16.5192 9.96448L13.9334 7.3787Z"
-      fill="#7091E6" />
-  </svg>
+  <i class="fa-solid fa-pen"></i>
 </button>
 <dialog id="update_{{.ID}}" class="modal modal-bottom sm:modal-middle">
   <div class="modal-box">
-    <form hx-put="/tasks/{{.ID}}" hx-target="#{{.ID}}" hx-swap="outerHTML" class="flex gap-3 flex-col">
+    <form hx-put="/tasks/{{.ID}}" hx-target="#{{.ID}}" hx-target-error="#errors" hx-swap="outerHTML"
+      class="flex gap-3 flex-col">
       <label class="floating-label">
         <input placeholder="Task name here..." name="title" type="text" id="title"
           class="input input-md w-full validator" required size="100">
@@ -200,14 +152,4 @@
     </div>
   </div>
 </dialog>
-{{end}}
-
-{{ block "error" .}}
-<div role="alert" class="alert alert-error">
-  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
-    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-      d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-  </svg>
-  <span>{{.Code}} - {{.Message}}</span>
-</div>
 {{end}}

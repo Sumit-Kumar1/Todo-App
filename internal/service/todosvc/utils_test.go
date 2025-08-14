@@ -1,12 +1,15 @@
 package todosvc
 
 import (
-	"errors"
 	"strings"
 	"testing"
+	"time"
+
+	"todoapp/internal/errors"
 	"todoapp/internal/models"
 
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGenerateID(t *testing.T) {
@@ -31,26 +34,28 @@ func TestGenerateID(t *testing.T) {
 
 func TestValidateTask(t *testing.T) {
 	uid := uuid.NewString()
-	date := "2025-06-16"
+	date := time.Now().AddDate(0, 0, 1).Format(time.DateOnly)
 	tests := []struct {
 		name    string
 		task    models.TaskReq
 		wantErr error
 	}{
 		{name: "valid case", task: models.TaskReq{ID: "task-" + uid, Title: "test", DueDate: date}, wantErr: nil},
-		{name: "invalid ID", task: models.TaskReq{ID: "123", Title: "test", DueDate: date}, wantErr: models.ErrInvalid("task id")},
-		{name: "empty title", task: models.TaskReq{ID: "task-" + uid, Title: ""}, wantErr: models.ErrRequired("task title")},
+		{name: "invalid ID", task: models.TaskReq{ID: "123", Title: "test", DueDate: date}, wantErr: errors.ErrInvalid("task id")},
+		{name: "empty title", task: models.TaskReq{ID: "task-" + uid, Title: ""}, wantErr: errors.ErrRequired("task title")},
+		{name: "description is too large", task: models.TaskReq{
+			ID: "task-" + uid, Title: "Hello world", Description: strings.Repeat("hello", 201), DueDate: date,
+		}, wantErr: errors.ErrInvalid("task description, size > 1K characters")},
 		{name: "missing dueDate", task: models.TaskReq{ID: "task-" + uid, Title: "test", DueDate: "  "},
-			wantErr: models.ErrRequired("due date")},
+			wantErr: errors.ErrRequired("due date")},
 		{name: "invalid dueDate", task: models.TaskReq{ID: "task-" + uid, Title: "test", DueDate: " 1235 "},
-			wantErr: models.ErrInvalid("due date")},
+			wantErr: errors.ErrInvalid("due date")},
 	}
 
-	for _, tt := range tests {
+	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := validateTask(tt.task.ID, &tt.task); !errors.Is(err, tt.wantErr) {
-				t.Errorf("validateTask() error = %v, wantErr %v", err, tt.wantErr)
-			}
+			err := validateTask(tt.task.ID, &tt.task)
+			assert.Equalf(t, tt.wantErr, err, "Test[%d] failed - %s", i, tt.name)
 		})
 	}
 }
@@ -63,14 +68,42 @@ func TestValidateID(t *testing.T) {
 		wantErr error
 	}{
 		{name: "valid ID", id: "task-" + uid, wantErr: nil},
-		{name: "invalid ID", id: "123", wantErr: models.ErrInvalid("task id")},
+		{name: "invalid ID", id: "123", wantErr: errors.ErrInvalid("task id")},
 	}
 
-	for _, tt := range tests {
+	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := validateID(tt.id); !errors.Is(err, tt.wantErr) {
-				t.Errorf("validateID() error = %v, wantErr %v", err, tt.wantErr)
-			}
+			err := validateID(tt.id)
+
+			assert.Equalf(t, tt.wantErr, err, "Test[%d] failed - %s", i, tt.name)
+		})
+	}
+}
+
+func Test_validateDueDate(t *testing.T) {
+	today := time.Now().AddDate(0, 0, 0).Format(time.DateOnly)
+	dd := time.Now().AddDate(0, 0, 1).Format(time.DateOnly)
+	prevDay := time.Now().AddDate(0, 0, -1).Format(time.DateOnly)
+
+	tests := []struct {
+		name    string
+		val     string
+		wantErr error
+	}{
+		{name: "tomorrow case", val: dd, wantErr: nil},
+		{name: "today case", val: today, wantErr: nil},
+		{name: "2 months ahead case", val: time.Now().AddDate(0, 2, 0).Format(time.DateOnly), wantErr: nil},
+		{name: "yesterday case", val: prevDay, wantErr: errors.NewConstError("older due date from today")},
+		{name: "2 months back case", val: time.Now().AddDate(0, -2, 0).Format(time.DateOnly),
+			wantErr: errors.NewConstError("older due date from today")},
+		{name: "empty due date", val: "", wantErr: errors.ErrRequired("due date")},
+		{name: "invalid due date", val: "123", wantErr: errors.ErrInvalid("due date")},
+	}
+
+	for i, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateDueDate(tt.val)
+			assert.Equalf(t, tt.wantErr, err, "Test[%d] failed - %s", i, tt.name)
 		})
 	}
 }

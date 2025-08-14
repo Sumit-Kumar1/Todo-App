@@ -26,7 +26,6 @@ func Run(c context.Context, _ io.Writer, _ []string) error {
 		return err
 	}
 
-	// add logger into context
 	ctx = context.WithValue(ctx, models.Logger, app.Logger)
 
 	server.SetupRoutes(ctx, app)
