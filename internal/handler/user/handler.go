@@ -4,7 +4,6 @@ import (
 	"html/template"
 	"log/slog"
 	"net/http"
-
 	"todoapp/internal/errors"
 	"todoapp/internal/models"
 )
