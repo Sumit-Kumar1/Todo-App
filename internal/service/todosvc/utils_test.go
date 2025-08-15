@@ -12,6 +12,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const (
+	testFail = "Test[%d] failed - %s"
+)
+
 func TestGenerateID(t *testing.T) {
 	uid := uuid.NewString()
 	tests := []struct {
@@ -25,9 +29,8 @@ func TestGenerateID(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := generateID()
 
-			if !strings.Contains(got, prefixTask) || len(got) != len(uid)+5 {
-				t.Errorf("Test[%d] Failed - %s\nGot:\t%+v\nWant:\t%+v", i, tt.name, got, tt.want)
-			}
+			assert.Contains(t, got, prefixTask, testFail, i, tt.name)
+			assert.Equalf(t, len(tt.want), len(got), testFail, i, tt.name)
 		})
 	}
 }
@@ -55,7 +58,7 @@ func TestValidateTask(t *testing.T) {
 	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validateTask(tt.task.ID, &tt.task)
-			assert.Equalf(t, tt.wantErr, err, "Test[%d] failed - %s", i, tt.name)
+			assert.Equalf(t, tt.wantErr, err, testFail, i, tt.name)
 		})
 	}
 }
@@ -75,12 +78,12 @@ func TestValidateID(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validateID(tt.id)
 
-			assert.Equalf(t, tt.wantErr, err, "Test[%d] failed - %s", i, tt.name)
+			assert.Equalf(t, tt.wantErr, err, testFail, i, tt.name)
 		})
 	}
 }
 
-func Test_validateDueDate(t *testing.T) {
+func TestValidateDueDate(t *testing.T) {
 	today := time.Now().AddDate(0, 0, 0).Format(time.DateOnly)
 	dd := time.Now().AddDate(0, 0, 1).Format(time.DateOnly)
 	prevDay := time.Now().AddDate(0, 0, -1).Format(time.DateOnly)
@@ -103,7 +106,7 @@ func Test_validateDueDate(t *testing.T) {
 	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validateDueDate(tt.val)
-			assert.Equalf(t, tt.wantErr, err, "Test[%d] failed - %s", i, tt.name)
+			assert.Equalf(t, tt.wantErr, err, testFail, i, tt.name)
 		})
 	}
 }

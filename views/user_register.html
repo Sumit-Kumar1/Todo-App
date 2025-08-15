@@ -35,11 +35,11 @@
           <input id="email" name="email" type="email" autocomplete="email" required class="grow" placeholder="email" />
         </label>
         <div class="w-full">
-          <label for="password" class="input w-full">
+          <label id="labelPass" for="password" class="input w-full">
             <i class="fa-solid fa-key"></i>
             <input id="password" name="password" type="password" required class="grow w-full" placeholder="password"
               minlength="8" />
-            <i id="toggleEye" class="fa-solid fa-eye" onclick="togglePasswordVisibility()"></i>
+            <a href="#password"  onclick="togglePasswordVisibility()"><i id="toggleEye" class="fa-solid fa-eye"></i></a>
           </label>
         </div>
         <button type="submit" class="btn btn-primary btn-outline lg:w-1/3">

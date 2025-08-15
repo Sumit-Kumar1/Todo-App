@@ -25,16 +25,16 @@
     </div>
     <div class="card-body gap-2">
       <form class="flex flex-col gap-4 justify-center items-center" hx-post="/login" hx-target-error="#errors">
-        <label for="email" class="input w-full">
+        <label class="input w-full">
           <i class="fa-solid fa-envelope"></i>
           <input id="email" name="email" type="email" autocomplete="email" required class="grow" placeholder="e-mail" />
         </label>
         <div class="w-full">
-          <label for="password" class="input w-full">
+          <label class="input w-full">
             <i class="fa-solid fa-key"></i>
             <input id="password" name="password" type="password" required class="grow w-full" placeholder="password"
               minlength="8" />
-            <i id="toggleEye" class="fa-solid fa-eye" onclick="togglePasswordVisibility()"></i>
+            <a href="#password" onclick="togglePasswordVisibility()"><i id="toggleEye" class="fa-solid fa-eye"></i></a>
           </label>
         </div>
         <button type="submit" class="btn btn-primary btn-outline lg:w-1/3">

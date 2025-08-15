@@ -2,7 +2,6 @@
 @plugin "daisyui";
 
 @plugin "daisyui/theme" {
-  name: "freshloop";
   default: true;
   prefersdark: true;
   color-scheme: "light";
