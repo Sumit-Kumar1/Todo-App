@@ -51,6 +51,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 			HttpOnly: true,
 			Expires:  resp.Expiry,
 			Path:     "/",
+			Secure:   true,
 		}
 
 		http.SetCookie(w, &cookie)
@@ -94,6 +95,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 			HttpOnly: true,
 			Expires:  session.Expiry,
 			Path:     "/",
+			Secure:   true,
 		}
 
 		http.SetCookie(w, &cookie)
@@ -148,6 +150,7 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 		Path:     "/",
 		MaxAge:   -1,
+		Secure:   true,
 	}
 
 	http.SetCookie(w, &cookie)
