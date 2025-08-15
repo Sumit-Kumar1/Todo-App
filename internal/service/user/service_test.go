@@ -2,7 +2,6 @@ package usersvc
 
 import (
 	"context"
-	liberrors "errors"
 	"strings"
 	"testing"
 	"time"
@@ -213,7 +212,7 @@ func TestServiceLogout(t *testing.T) {
 			mockCall: mockSession.EXPECT().Logout(ctx, &token).Return(errMock), wantErr: errMock},
 	}
 
-	for _, tt := range tests {
+	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &Service{
 				SessionStore: mockSession,
@@ -221,9 +220,7 @@ func TestServiceLogout(t *testing.T) {
 
 			err := s.Logout(ctx, tt.token)
 
-			if !liberrors.Is(err, tt.wantErr) {
-				t.Errorf("Service.Logout() error = %v, wantErr %v", err, tt.wantErr)
-			}
+			assert.Equalf(t, tt.wantErr, err, testFailFmt, i, tt.name)
 		})
 	}
 }
@@ -322,10 +319,10 @@ func TestServiceHandleLoginSession(t *testing.T) {
 
 			got, err := s.handleLoginSession(ctx, tt.user)
 
-			assert.Equalf(t, tt.wantErr, err, "Test[%d] failed - %s", i, tt.name)
+			assert.Equalf(t, tt.wantErr, err, testFailFmt, i, tt.name)
 
 			if got != nil {
-				assert.Equalf(t, tt.want.UserID, got.UserID, "Test[%d] failed", i, tt.name)
+				assert.Equalf(t, tt.want.UserID, got.UserID, testFailFmt, i, tt.name)
 			}
 		})
 	}
