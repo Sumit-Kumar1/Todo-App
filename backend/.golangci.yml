@@ -75,7 +75,7 @@ linters:
           disabled: true
 
   exclusions:
-    warn-unused: false
+    warn-unused: true
     rules:
       # Exclude some linters from running on tests files.
       - path: _test\.go
