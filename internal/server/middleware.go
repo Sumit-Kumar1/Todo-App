@@ -41,7 +41,7 @@ func methodWithCORS(m string) middleware {
 				return
 			}
 
-			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Origin", "todo.zone.id")
 			w.Header().Set("Access-Control-Allow-Methods", "POST, GET, PUT, DELETE")
 			w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding")
 
@@ -55,6 +55,9 @@ func isHTMX() middleware {
 		return func(w http.ResponseWriter, r *http.Request) {
 			if r.Header.Get("Hx-Request") != "true" {
 				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+				slog.Error("request is not an HTMX request", slog.String("header", r.Header.Get("Hx-Request")))
+
+				w.Header().Set("HX-Redirect", "/")
 				return
 			}
 
@@ -69,6 +72,11 @@ func (s *Server) authMiddleware(ctx context.Context) middleware {
 			cookieVal, err := validateCookie(ctx, s.Logger, r)
 			if err != nil {
 				errors.HandleHTTPError(w, err, http.StatusUnauthorized)
+
+				s.Logger.LogAttrs(ctx, slog.LevelError, "error while validating cookie",
+					slog.String("error", err.Error()))
+
+				w.Header().Set("HX-Redirect", "/")
 				return
 			}
 
@@ -79,6 +87,7 @@ func (s *Server) authMiddleware(ctx context.Context) middleware {
 
 				http.Error(w, err.Error(), http.StatusUnauthorized)
 
+				w.Header().Set("HX-Redirect", "/")
 				return
 			}
 
@@ -134,7 +143,7 @@ func (s *Server) rateLimiterLogin() middleware {
 		return func(w http.ResponseWriter, r *http.Request) {
 			email := r.PostFormValue("email")
 			if strings.TrimSpace(email) == "" {
-				http.Error(w, "invalid email provided", http.StatusBadRequest)
+				errors.HandleHTTPError(w, errors.ErrInvalid("email"), http.StatusBadRequest)
 				s.Logger.LogAttrs(r.Context(), slog.LevelDebug, "invalid email in rate limiter login")
 
 				return

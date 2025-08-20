@@ -51,7 +51,7 @@ func setupUserRoutes(app *Server) {
 	usrHTTP := userhttp.New(templ, userSvc)
 
 	app.Mux.HandleFunc("/register", chain(usrHTTP.Register, methodWithCORS(http.MethodPost)))
-	app.Mux.HandleFunc("/login", chain(usrHTTP.Login, app.rateLimiterLogin(), methodWithCORS(http.MethodPost)))
+	app.Mux.HandleFunc("/login", chain(usrHTTP.Login, methodWithCORS(http.MethodPost), app.rateLimiterLogin()))
 	app.Mux.HandleFunc("/logout", chain(usrHTTP.Logout, methodWithCORS(http.MethodPost)))
 }
 
