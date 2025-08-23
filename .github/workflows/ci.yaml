@@ -53,7 +53,7 @@ jobs:
         run: go mod download
 
       - name: Run linter check
-        uses: golangci/golangci-lint-action@030ca6c9
+        uses: golangci/golangci-lint-action@030ca6c9fbdb3112d99584f1992f5216eb38ad86
         with:
           version: v2.4
           working-directory: .
