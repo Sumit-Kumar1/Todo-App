@@ -65,11 +65,6 @@ func (s *Store) GetSessionByID(ctx context.Context, userID *uuid.UUID) (*models.
 
 func (s *Store) RefreshSession(ctx context.Context, newSession *models.SessionData) error {
 	logger := models.GetLoggerFromCtx(ctx)
-	query := fmt.Sprintf(updateSession,
-		newSession.Token,
-		newSession.Expiry.UnixMilli(),
-		newSession.ID,
-	)
 
 	_, err := s.DB.ExecContext(ctx, updateSession, newSession.Token, newSession.Expiry, newSession.ID)
 	if err == nil {
