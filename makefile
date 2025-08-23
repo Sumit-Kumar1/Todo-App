@@ -1,5 +1,4 @@
 # Change these variables as necessary.
-MAIN_PACKAGE_PATH := ./cmd
 BINARY_NAME := todoapp 
 
 # ==================================================================================== #
@@ -86,8 +85,8 @@ css/output:
 .PHONY: build
 build: css/output
     # Include additional build steps, like TypeScript, SCSS or Tailwind compilation here...
-	go build -o=/tmp/bin/${BINARY_NAME} ${MAIN_PACKAGE_PATH}
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o=./Build/main ${MAIN_PACKAGE_PATH}
+	go build -o=/tmp/bin/${BINARY_NAME} .
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o=./Build/main .
 
 ## run: run the  application
 .PHONY: run

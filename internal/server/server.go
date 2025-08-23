@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"database/sql"
 	"log"
 	"log/slog"
 	"net/http"
@@ -11,7 +12,6 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
-	"github.com/sqlitecloud/sqlitecloud-go"
 )
 
 type Configs struct {
@@ -26,9 +26,9 @@ type Configs struct {
 }
 
 type Health struct {
-	DBStatus      bool   `json:"dbStatus"`
-	ServiceStatus bool   `json:"serviceStatus"`
-	Msg           string `json:"msg"`
+	DB      bool   `json:"DB"`
+	Service bool   `json:"Service"`
+	Msg     string `json:"Message"`
 }
 
 type rateLimiter struct {
@@ -44,7 +44,7 @@ type limiterAttempt struct {
 }
 
 type Server struct {
-	DB            *sqlitecloud.SQCloud
+	DB            *sql.DB
 	Logger        *slog.Logger
 	ShutDownFxn   func(context.Context) error
 	Mux           *http.ServeMux
@@ -104,19 +104,19 @@ func defaultServer() *Server {
 		},
 		Mux: http.NewServeMux(),
 		Health: &Health{
-			DBStatus:      false,
-			ServiceStatus: false,
-			Msg:           "INIT HEALTH",
+			DB:      false,
+			Service: false,
+			Msg:     "INIT HEALTH",
 		},
 		globalLimiter: &rateLimiter{
 			attempts:    make(map[string]*limiterAttempt),
-			timeWindow:  time.Minute * 1,
-			maxAttempts: 20,
+			maxAttempts: getEnvAsInt("GLOBAL_ATTEMPTS", 300),
+			timeWindow:  time.Second * time.Duration(getEnvAsInt("GLOBAL_TIME_WINDOW", 60)),
 		},
 		loginLimiter: &rateLimiter{
 			attempts:    make(map[string]*limiterAttempt),
-			maxAttempts: 5,
-			timeWindow:  time.Minute * 1,
+			maxAttempts: getEnvAsInt("LOGIN_ATTEMPTS", 10),
+			timeWindow:  time.Second * time.Duration(getEnvAsInt("LOGIN_TIME_WINDOW", 60)),
 		},
 	}
 }

@@ -169,14 +169,14 @@ func newLogger() *slog.Logger {
 
 	replaceFn := func(_ []string, a slog.Attr) slog.Attr {
 		if a.Key == "time" {
-			a.Value = slog.StringValue(time.Now().Format(time.RFC1123))
+			a.Value = slog.StringValue(time.Now().Format(time.RFC3339))
 		}
 
 		return a
 	}
 
-	logger := slog.New(newHandler(&slog.HandlerOptions{
-		AddSource:   false,
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		// AddSource:   true,
 		Level:       leveler,
 		ReplaceAttr: replaceFn,
 	}))

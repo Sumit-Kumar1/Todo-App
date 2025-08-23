@@ -1,8 +1,10 @@
 package models
 
 import (
-	"errors"
+	liberrors "errors"
 	"testing"
+
+	"todoapp/internal/errors"
 )
 
 const (
@@ -19,19 +21,19 @@ func TestLoginReqValidate(t *testing.T) {
 		wantErr error
 	}{
 		{name: "valid case", email: validEmail, passwd: validPasswd, wantErr: nil},
-		{name: "missing email", email: "", passwd: validPasswd, wantErr: ErrRequired("email")},
+		{name: "missing email", email: "", passwd: validPasswd, wantErr: errors.ErrRequired("email")},
 		{
 			name:    "invalid email",
 			email:   "acbcd@abc",
 			passwd:  validPasswd,
-			wantErr: ErrInvalid("email"),
+			wantErr: errors.ErrInvalid("email"),
 		},
-		{name: "missing password", email: validEmail, passwd: "", wantErr: ErrRequired("password")},
+		{name: "missing password", email: validEmail, passwd: "", wantErr: errors.ErrRequired("password")},
 		{
 			name:    "invalid password",
 			email:   validEmail,
 			passwd:  "abcd",
-			wantErr: ErrInvalid("password is too short"),
+			wantErr: errors.ErrInvalid("password is too short"),
 		},
 	}
 
@@ -42,7 +44,7 @@ func TestLoginReqValidate(t *testing.T) {
 				Password: tt.passwd,
 			}
 
-			if err := l.Validate(); !errors.Is(err, tt.wantErr) {
+			if err := l.Validate(); !liberrors.Is(err, tt.wantErr) {
 				t.Errorf("LoginReq.Validate()::\nGOT:\t%v\nWant:\t%v", err, tt.wantErr)
 			}
 		})
@@ -56,8 +58,8 @@ func TestRegisterReqValidate(t *testing.T) {
 		wantErr  error
 	}{
 		{name: "valid info", userName: validName},
-		{name: "missing user name", userName: "", wantErr: ErrRequired("name")},
-		{name: "invalid user name", userName: "a", wantErr: ErrInvalid("name is too short")},
+		{name: "missing user name", userName: "", wantErr: errors.ErrRequired("name")},
+		{name: "invalid user name", userName: "a", wantErr: errors.ErrInvalid("name is too short")},
 	}
 
 	for _, tt := range tests {
@@ -67,7 +69,7 @@ func TestRegisterReqValidate(t *testing.T) {
 				LoginReq: &LoginReq{Email: validEmail, Password: validPasswd},
 			}
 
-			if err := r.Validate(); !errors.Is(err, tt.wantErr) {
+			if err := r.Validate(); !liberrors.Is(err, tt.wantErr) {
 				t.Errorf("RegisterReq.Validate()::\nGOT:\t%v\nWant:\t%v", err, tt.wantErr)
 			}
 		})

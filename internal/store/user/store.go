@@ -2,91 +2,52 @@ package userstore
 
 import (
 	"context"
-	"fmt"
-	"log/slog"
-	"todoapp/internal/models"
+	"database/sql"
+	liberrors "errors"
 
-	"github.com/google/uuid"
-	"github.com/sqlitecloud/sqlitecloud-go"
+	"todoapp/internal/errors"
+	"todoapp/internal/models"
 )
 
 const (
-	getUser       = "SELECT id, name, email, password FROM users WHERE email='%s';"
-	registerQuery = "INSERT INTO users(id, name, email, password) VALUES ('%v','%v','%v','%v');"
+	getUser       = "SELECT id, name, email, password FROM users WHERE email=$1;"
+	registerQuery = "INSERT INTO users(id, name, email, password) VALUES ($1,$2,$3,$4);"
 )
 
 type Store struct {
-	DB *sqlitecloud.SQCloud
+	DB *sql.DB
 }
 
-func New(db *sqlitecloud.SQCloud) *Store {
+func New(db *sql.DB) *Store {
 	return &Store{
 		DB: db,
 	}
 }
 
 func (s *Store) RegisterUser(ctx context.Context, data *models.UserData) error {
-	logger := models.GetLoggerFromCtx(ctx)
-
-	query := fmt.Sprintf(registerQuery, data.ID, data.Name, data.Email, data.Password)
-	if err := s.DB.Execute(query); err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, "error while running Register query",
-			slog.String("error", err.Error()),
-		)
-
+	res, err := s.DB.ExecContext(ctx, registerQuery, data.ID, data.Name, data.Email, data.Password)
+	if err != nil {
 		return err
+	}
+
+	if _, err2 := res.RowsAffected(); err2 != nil {
+		return err2
 	}
 
 	return nil
 }
 
 func (s *Store) GetUserByEmail(ctx context.Context, email string) (*models.UserData, error) {
-	logger := models.GetLoggerFromCtx(ctx)
+	user := models.UserData{}
 
-	res, err := s.DB.Select(fmt.Sprintf(getUser, email))
-	if err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, "error in fetching user by email",
-			slog.String("error", err.Error()),
-		)
+	res := s.DB.QueryRowContext(ctx, getUser, email)
+
+	if err := res.Scan(&user.ID, &user.Name, &user.Email, &user.Password); err != nil {
+		if liberrors.Is(err, sql.ErrNoRows) {
+			return nil, errors.ErrUserNotFound
+		}
 
 		return nil, err
-	}
-
-	return populateUserFields(res)
-}
-
-func populateUserFields(res *sqlitecloud.Result) (*models.UserData, error) {
-	var user models.UserData
-
-	if res.GetNumberOfRows() == 0 {
-		return nil, models.ErrUserNotFound
-	}
-
-	for r := uint64(0); r < res.GetNumberOfRows(); r++ {
-		c1, err := res.GetStringValue(r, 0)
-		if err != nil {
-			return nil, err
-		}
-
-		c2, err := res.GetStringValue(r, 1)
-		if err != nil {
-			return nil, err
-		}
-
-		c3, err := res.GetStringValue(r, 2)
-		if err != nil {
-			return nil, err
-		}
-
-		c4, err := res.GetStringValue(r, 3)
-		if err != nil {
-			return nil, err
-		}
-
-		user.ID = uuid.MustParse(c1)
-		user.Name = c2
-		user.Email = c3
-		user.Password = c4
 	}
 
 	return &user, nil

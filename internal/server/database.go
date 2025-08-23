@@ -2,47 +2,44 @@ package server
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
 	"log/slog"
-	"os"
-	"strconv"
-	"todoapp/internal/models"
+	"strings"
 
-	"github.com/sqlitecloud/sqlitecloud-go"
+	"todoapp/internal/errors"
+
+	// postgres import for driver
+	_ "github.com/lib/pq"
 )
 
-func newDB(logger *slog.Logger) (*sqlitecloud.SQCloud, error) {
+func newDB(logger *slog.Logger) (*sql.DB, error) {
 	ctx := context.Background()
+	host := getEnvOrDefault("DB_HOST", "localhost")
+	port := getEnvOrDefault("DB_PORT", "5432")
+	user := getEnvOrDefault("DB_USER", "postgres")
+	password := getEnvOrDefault("DB_PASSWORD", "")
+	dbName := getEnvOrDefault("DB_NAME", "todo")
 
-	config := sqlitecloud.SQCloudConfig{
-		Host:     os.Getenv("DB_HOST"),
-		Port:     getEnvAsInt("DB_PORT", 8860),
-		Database: os.Getenv("DB_NAME"),
-		ApiKey:   os.Getenv("DB_API_KEY"),
-		MaxRows:  getEnvAsInt("DB_MAX_ROWS", 20),
+	if strings.TrimSpace(password) == "" {
+		logger.LogAttrs(ctx, slog.LevelError, "DATABASE_URL environment variable not set")
+		return nil, errors.ConstError("empty db password")
 	}
 
-	isSecure, err := strconv.ParseBool(os.Getenv("DB_SECURE_FLAG"))
+	psqlConn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		host, port, user, password, dbName)
+
+	db, err := sql.Open("postgres", psqlConn)
 	if err != nil {
+		logger.LogAttrs(ctx, slog.LevelError, "database error opening connection",
+			slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	config.Secure = isSecure
-
-	sqcl := sqlitecloud.New(config)
-
-	if err := sqcl.Connect(); err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, "error while connecting to Database",
-			slog.String("error", err.Error()),
-		)
-
+	if err := db.PingContext(ctx); err != nil {
+		logger.LogAttrs(ctx, slog.LevelError, "database error pinging connection")
 		return nil, err
 	}
 
-	if !sqcl.IsConnected() {
-		return nil, models.NewConstError("database is not connected after conn success")
-	}
-
-	logger.LogAttrs(ctx, slog.LevelInfo, "DB connected successfully")
-
-	return sqcl, nil
+	return db, nil
 }

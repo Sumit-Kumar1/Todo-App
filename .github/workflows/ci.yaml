@@ -13,7 +13,7 @@ jobs:
   build-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -42,20 +42,20 @@ jobs:
   code-quality:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: 'go.mod'
+          go-version-file: "go.mod"
           cache: true
 
       - name: Install dependencies
         run: go mod download
 
       - name: Run linter check
-        uses: golangci/golangci-lint-action@v8
+        uses: golangci/golangci-lint-action@030ca6c9fbdb3112d99584f1992f5216eb38ad86
         with:
-          version: v2.1
+          version: v2.4
           working-directory: .
           args: ./... --timeout=5m
           skip-cache: false
