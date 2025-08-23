@@ -63,6 +63,15 @@ func (s *Store) GetAll(ctx context.Context, userID *uuid.UUID) ([]models.Task, e
 
 func (s *Store) Create(ctx context.Context, task *models.Task) error {
 	logger := models.GetLoggerFromCtx(ctx)
+	query := fmt.Sprintf(insertQuery,
+		task.ID,
+		task.UserID,
+		task.Title,
+		task.Description,
+		task.IsDone,
+		task.DueDate.UnixMilli(),
+		task.AddedAt.UnixMilli(),
+	)
 
 	if _, err := s.DB.ExecContext(ctx, insertQuery, task.ID, task.UserID,
 		task.Title, task.Description, task.IsDone, task.DueDate, task.AddedAt); err != nil {
@@ -78,6 +87,14 @@ func (s *Store) Create(ctx context.Context, task *models.Task) error {
 
 func (s *Store) Update(ctx context.Context, task *models.Task) error {
 	logger := models.GetLoggerFromCtx(ctx)
+	query := fmt.Sprintf(updateQuery,
+		task.Title,
+		task.Description,
+		task.IsDone,
+		task.ModifiedAt.UnixMilli(),
+		task.ID,
+		task.UserID,
+	)
 
 	if _, err := s.DB.ExecContext(ctx, updateQuery, task.Title, task.Description,
 		task.IsDone, task.ModifiedAt, task.ID, task.UserID); err != nil {
@@ -148,5 +165,68 @@ func populateTaskFields(rows *sql.Rows) (*models.Task, error) {
 		return nil, err
 	}
 
+	return task, nil
+}
+
+func populateTaskFields(rows *sqlitecloud.Result, r uint64) (*models.Task, error) {
+	var (
+		task models.Task
+		err  error
+	)
+
+	task.ID, err = rows.GetStringValue(r, 0) // taskID
+	if err != nil {
+		return nil, err
+	}
+
+	v2, err := rows.GetStringValue(r, 1) // userID
+	if err != nil {
+		return nil, err
+	}
+
+	task.Title, err = rows.GetStringValue(r, 2) // title
+	if err != nil {
+		return nil, err
+	}
+
+	task.Description, err = rows.GetStringValue(r, 3) // description
+	if err != nil {
+		return nil, err
+	}
+
+	v4, err := rows.GetInt64Value(r, 4) // done status
+	if err != nil {
+		return nil, err
+	}
+
+	dd, err := rows.GetInt64Value(r, 5) // due date
+	if err != nil {
+		return nil, err
+	}
+
+	v5, err := rows.GetInt64Value(r, 6) // added time
+	if err != nil {
+		return nil, err
+	}
+
+	v6 := rows.GetInt64Value_(r, 7) // modified time
+
+	task.UserID = uuid.MustParse(v2)
+
+	task.IsDone = (v4 == 1)
+	task.DueDate = dateRef(dd)
+	task.AddedAt = *dateRef(v5)
+	task.ModifiedAt = dateRef(v6)
+
 	return &task, nil
+}
+
+func dateRef(data int64) *time.Time {
+	if data == 0 {
+		return nil
+	}
+
+	t := time.UnixMilli(data)
+
+	return &t
 }

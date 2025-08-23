@@ -53,3 +53,20 @@ func (t *Task) ToTaskResp() *TaskResp {
 
 	return &tr
 }
+
+func (t *Task) ToTaskResp() *TaskResp {
+	tr := TaskResp{
+		ID:          t.ID,
+		UserID:      t.UserID,
+		Title:       t.Title,
+		Description: t.Description,
+		IsDone:      t.IsDone,
+		AddedAt:     t.AddedAt,
+		ModifiedAt:  t.ModifiedAt,
+	}
+
+	dd := t.DueDate.Format(time.DateOnly)
+	tr.DueDate = &dd
+
+	return &tr
+}

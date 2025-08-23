@@ -43,6 +43,18 @@ type limiterAttempt struct {
 	firstTime time.Time
 }
 
+type rateLimiter struct {
+	mu          sync.Mutex
+	attempts    map[string]*limiterAttempt
+	maxAttempts int
+	timeWindow  time.Duration
+}
+
+type limiterAttempt struct {
+	count     int
+	firstTime time.Time
+}
+
 type Server struct {
 	DB            *sql.DB
 	Logger        *slog.Logger
@@ -117,6 +129,16 @@ func defaultServer() *Server {
 			attempts:    make(map[string]*limiterAttempt),
 			maxAttempts: getEnvAsInt("LOGIN_ATTEMPTS", 10),
 			timeWindow:  time.Second * time.Duration(getEnvAsInt("LOGIN_TIME_WINDOW", 60)),
+		},
+		globalLimiter: &rateLimiter{
+			attempts:    make(map[string]*limiterAttempt),
+			timeWindow:  time.Minute * 1,
+			maxAttempts: 20,
+		},
+		loginLimiter: &rateLimiter{
+			attempts:    make(map[string]*limiterAttempt),
+			maxAttempts: 5,
+			timeWindow:  time.Minute * 1,
 		},
 	}
 }
