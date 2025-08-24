@@ -11,10 +11,6 @@ help:
 	@echo 'Usage:'
 	@sed -n 's/^##//p' ${MAKEFILE_LIST} | column -t -s ':' |  sed -e 's/^/ /'
 
-.PHONY: confirm
-confirm:
-    @echo -n 'Are you sure? [y/N] ' && read ans && [ $${ans:-N} = y ]
-
 .PHONY: no-dirty
 no-dirty:
 	git diff --exit-code
@@ -70,20 +66,9 @@ tests:
 	go tool cover -html=cover.out
 
 
-## css/watch: constantly generate css and watch for new changes
-.PHONY: css/watch
-css/watch:
-	npx tailwindcss -i ./public/app.css -o ./public/style.css --watch
-
-## css/output: generate output css from used classes in views/*.html
-.PHONY: css/output
-css/output:
-	npx tailwindcss -i ./public/app.css -o ./public/style.css
-
-
 ## build: build the application
 .PHONY: build
-build: css/output
+build:
     # Include additional build steps, like TypeScript, SCSS or Tailwind compilation here...
 	go build -o=/tmp/bin/${BINARY_NAME} .
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o=./Build/main .
