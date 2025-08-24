@@ -35,16 +35,15 @@ func (s *Service) GetAll(ctx *gofr.Context, userID *uuid.UUID) ([]models.Task, e
 
 func (s *Service) AddTask(ctx *gofr.Context, taskInp *models.TaskReq, userID *uuid.UUID) (*models.Task, error) {
 	logger := models.GetLoggerFromCtx(ctx)
-	id := generateID()
 
-	if err := validateTask(id, taskInp); err != nil {
+	if err := taskInp.Validate(); err != nil {
 		return nil, err
 	}
 
 	dd, _ := time.Parse(time.DateOnly, taskInp.DueDate)
 
 	task := models.Task{
-		ID:          id,
+		ID:          taskInp.ID,
 		UserID:      *userID,
 		Title:       taskInp.Title,
 		Description: taskInp.Description,
@@ -107,8 +106,9 @@ func (s *Service) MarkDone(ctx *gofr.Context, id string, userID *uuid.UUID) (*mo
 func (s *Service) UpdateTask(ctx *gofr.Context, id string, taskInp *models.TaskReq, isDone bool, userID *uuid.UUID,
 ) (*models.Task, error) {
 	logger := models.GetLoggerFromCtx(ctx)
+	taskInp.ID = id
 
-	if err := validateTask(id, taskInp); err != nil {
+	if err := taskInp.Validate(); err != nil {
 		return nil, err
 	}
 
@@ -136,4 +136,13 @@ func (s *Service) UpdateTask(ctx *gofr.Context, id string, taskInp *models.TaskR
 	}
 
 	return &task, nil
+}
+
+func validateID(id string) error {
+	uid, err := uuid.Parse(id)
+	if err != nil || uid == uuid.Nil {
+		return errors.ErrInvalid("task id")
+	}
+
+	return nil
 }
