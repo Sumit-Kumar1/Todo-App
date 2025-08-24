@@ -1,7 +1,9 @@
 package models
 
 import (
+	"strings"
 	"time"
+	"todoapp/internal/errors"
 
 	"github.com/google/uuid"
 )
@@ -52,4 +54,51 @@ func (t *Task) ToTaskResp() *TaskResp {
 	tr.DueDate = &dd
 
 	return &tr
+}
+
+func (t *TaskReq) Validate() error {
+	if err := validateID(t.ID); err != nil {
+		return err
+	}
+
+	t.Title = strings.TrimSpace(t.Title)
+	t.Description = strings.TrimSpace(t.Description)
+
+	if t.Title == "" {
+		return errors.ErrRequired("task title")
+	}
+
+	if len(t.Description) > 1000 {
+		return errors.ErrInvalid("task description, size > 1K characters")
+	}
+
+	return validateDueDate(t.DueDate)
+}
+
+func validateDueDate(val string) error {
+	tn := time.Now().AddDate(0, 0, -1)
+
+	if strings.TrimSpace(val) == "" {
+		return errors.ErrRequired("due date")
+	}
+
+	tt, err := time.Parse(time.DateOnly, val)
+	if err != nil {
+		return errors.ErrInvalid("due date")
+	}
+
+	if !tt.After(tn) {
+		return errors.NewConstError("older due date from today")
+	}
+
+	return nil
+}
+
+func validateID(id string) error {
+	uid, err := uuid.Parse(id)
+	if err != nil || uid == uuid.Nil {
+		return errors.ErrInvalid("task id")
+	}
+
+	return nil
 }
