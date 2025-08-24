@@ -3,7 +3,6 @@ package errors
 import (
 	"errors"
 	"fmt"
-	"net/http"
 )
 
 const (
@@ -48,13 +47,4 @@ func ErrInvalid(entity string) error {
 
 func ErrRequired(entity string) error {
 	return NewConstError(fmt.Sprintf(missingFieldFmt, entity))
-}
-
-func HandleHTTPError(w http.ResponseWriter, err error, status int) {
-	w.WriteHeader(status)
-
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	_, _ = fmt.Fprintf(w, `<div class="toast toast-top toast-end" id="notifi">
-  <div class="alert alert-error"><i class="fa-solid fa-xmark" id="toastClost" onclick="removeToast()"></i>
-    </svg><span>%d: %s</span></div></div>`, status, err.Error())
 }

@@ -1,7 +1,6 @@
 package sessionstore
 
 import (
-	"context"
 	"database/sql"
 	liberrors "errors"
 	"log/slog"
@@ -10,6 +9,7 @@ import (
 	"todoapp/internal/models"
 
 	"github.com/google/uuid"
+	"gofr.dev/pkg/gofr"
 )
 
 const (
@@ -22,15 +22,14 @@ const (
 )
 
 type Store struct {
-	DB *sql.DB
 }
 
-func New(db *sql.DB) *Store {
-	return &Store{DB: db}
+func New() *Store {
+	return &Store{}
 }
 
-func (s *Store) CreateSession(ctx context.Context, session *models.SessionData) error {
-	res, err := s.DB.ExecContext(ctx, createSession, session.ID, session.UserID, session.Token, session.Expiry)
+func (s *Store) CreateSession(ctx *gofr.Context, session *models.SessionData) error {
+	res, err := ctx.SQL.ExecContext(ctx, createSession, session.ID, session.UserID, session.Token, session.Expiry)
 	if err != nil {
 		return err
 	}
@@ -42,12 +41,12 @@ func (s *Store) CreateSession(ctx context.Context, session *models.SessionData) 
 	return nil
 }
 
-func (s *Store) GetSessionByID(ctx context.Context, userID *uuid.UUID) (*models.SessionData, error) {
+func (s *Store) GetSessionByID(ctx *gofr.Context, userID *uuid.UUID) (*models.SessionData, error) {
 	logger := models.GetLoggerFromCtx(ctx)
 
 	var session models.SessionData
 
-	row := s.DB.QueryRowContext(ctx, getSessionByUserID, *userID)
+	row := ctx.SQL.QueryRowContext(ctx, getSessionByUserID, *userID)
 	if err := row.Scan(&session.ID, &session.UserID, &session.Token, &session.Expiry); err != nil {
 		if liberrors.Is(err, sql.ErrNoRows) {
 			logger.LogAttrs(ctx, slog.LevelError, "store : no user session found for userID",
@@ -63,10 +62,10 @@ func (s *Store) GetSessionByID(ctx context.Context, userID *uuid.UUID) (*models.
 	return &session, nil
 }
 
-func (s *Store) RefreshSession(ctx context.Context, newSession *models.SessionData) error {
+func (s *Store) RefreshSession(ctx *gofr.Context, newSession *models.SessionData) error {
 	logger := models.GetLoggerFromCtx(ctx)
 
-	_, err := s.DB.ExecContext(ctx, updateSession, newSession.Token, newSession.Expiry, newSession.ID)
+	_, err := ctx.SQL.ExecContext(ctx, updateSession, newSession.Token, newSession.Expiry, newSession.ID)
 	if err == nil {
 		return nil
 	}
@@ -78,7 +77,7 @@ func (s *Store) RefreshSession(ctx context.Context, newSession *models.SessionDa
 	return err
 }
 
-func (s *Store) Logout(ctx context.Context, token *uuid.UUID) error {
+func (s *Store) Logout(ctx *gofr.Context, token *uuid.UUID) error {
 	logger := models.GetLoggerFromCtx(ctx)
 
 	var (
@@ -86,7 +85,7 @@ func (s *Store) Logout(ctx context.Context, token *uuid.UUID) error {
 		r1 string
 	)
 
-	res := s.DB.QueryRowContext(ctx, getSessionByToken, *token)
+	res := ctx.SQL.QueryRowContext(ctx, getSessionByToken, *token)
 	if err := res.Scan(&r1); err != nil {
 		if liberrors.Is(err, sql.ErrNoRows) {
 			return errors.ErrNotFound("session with current user")
@@ -101,7 +100,7 @@ func (s *Store) Logout(ctx context.Context, token *uuid.UUID) error {
 
 	id = uuid.MustParse(r1)
 
-	_, err := s.DB.ExecContext(ctx, deleteSessionByID, id)
+	_, err := ctx.SQL.ExecContext(ctx, deleteSessionByID, id)
 
 	return err
 }

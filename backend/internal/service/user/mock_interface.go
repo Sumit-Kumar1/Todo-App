@@ -10,12 +10,12 @@
 package usersvc
 
 import (
-	context "context"
 	reflect "reflect"
 	models "todoapp/internal/models"
 
 	uuid "github.com/google/uuid"
 	gomock "go.uber.org/mock/gomock"
+	gofr "gofr.dev/pkg/gofr"
 )
 
 // MockUserStorer is a mock of UserStorer interface.
@@ -43,7 +43,7 @@ func (m *MockUserStorer) EXPECT() *MockUserStorerMockRecorder {
 }
 
 // GetUserByEmail mocks base method.
-func (m *MockUserStorer) GetUserByEmail(ctx context.Context, email string) (*models.UserData, error) {
+func (m *MockUserStorer) GetUserByEmail(ctx *gofr.Context, email string) (*models.UserData, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetUserByEmail", ctx, email)
 	ret0, _ := ret[0].(*models.UserData)
@@ -58,7 +58,7 @@ func (mr *MockUserStorerMockRecorder) GetUserByEmail(ctx, email any) *gomock.Cal
 }
 
 // RegisterUser mocks base method.
-func (m *MockUserStorer) RegisterUser(ctx context.Context, data *models.UserData) error {
+func (m *MockUserStorer) RegisterUser(ctx *gofr.Context, data *models.UserData) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RegisterUser", ctx, data)
 	ret0, _ := ret[0].(error)
@@ -96,7 +96,7 @@ func (m *MockSessionStorer) EXPECT() *MockSessionStorerMockRecorder {
 }
 
 // CreateSession mocks base method.
-func (m *MockSessionStorer) CreateSession(ctx context.Context, session *models.SessionData) error {
+func (m *MockSessionStorer) CreateSession(ctx *gofr.Context, session *models.SessionData) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateSession", ctx, session)
 	ret0, _ := ret[0].(error)
@@ -110,7 +110,7 @@ func (mr *MockSessionStorerMockRecorder) CreateSession(ctx, session any) *gomock
 }
 
 // GetSessionByID mocks base method.
-func (m *MockSessionStorer) GetSessionByID(ctx context.Context, userID *uuid.UUID) (*models.SessionData, error) {
+func (m *MockSessionStorer) GetSessionByID(ctx *gofr.Context, userID *uuid.UUID) (*models.SessionData, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetSessionByID", ctx, userID)
 	ret0, _ := ret[0].(*models.SessionData)
@@ -125,7 +125,7 @@ func (mr *MockSessionStorerMockRecorder) GetSessionByID(ctx, userID any) *gomock
 }
 
 // Logout mocks base method.
-func (m *MockSessionStorer) Logout(ctx context.Context, token *uuid.UUID) error {
+func (m *MockSessionStorer) Logout(ctx *gofr.Context, token *uuid.UUID) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Logout", ctx, token)
 	ret0, _ := ret[0].(error)
@@ -139,7 +139,7 @@ func (mr *MockSessionStorerMockRecorder) Logout(ctx, token any) *gomock.Call {
 }
 
 // RefreshSession mocks base method.
-func (m *MockSessionStorer) RefreshSession(ctx context.Context, newSession *models.SessionData) error {
+func (m *MockSessionStorer) RefreshSession(ctx *gofr.Context, newSession *models.SessionData) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RefreshSession", ctx, newSession)
 	ret0, _ := ret[0].(error)

@@ -10,11 +10,11 @@
 package userhttp
 
 import (
-	context "context"
 	reflect "reflect"
 	models "todoapp/internal/models"
 
 	gomock "go.uber.org/mock/gomock"
+	gofr "gofr.dev/pkg/gofr"
 )
 
 // MockUserServicer is a mock of UserServicer interface.
@@ -42,7 +42,7 @@ func (m *MockUserServicer) EXPECT() *MockUserServicerMockRecorder {
 }
 
 // Login mocks base method.
-func (m *MockUserServicer) Login(ctx context.Context, req *models.LoginReq) (*models.SessionData, error) {
+func (m *MockUserServicer) Login(ctx *gofr.Context, req *models.LoginReq) (*models.SessionData, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Login", ctx, req)
 	ret0, _ := ret[0].(*models.SessionData)
@@ -57,7 +57,7 @@ func (mr *MockUserServicerMockRecorder) Login(ctx, req any) *gomock.Call {
 }
 
 // Logout mocks base method.
-func (m *MockUserServicer) Logout(ctx context.Context, token string) error {
+func (m *MockUserServicer) Logout(ctx *gofr.Context, token string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Logout", ctx, token)
 	ret0, _ := ret[0].(error)
@@ -71,7 +71,7 @@ func (mr *MockUserServicerMockRecorder) Logout(ctx, token any) *gomock.Call {
 }
 
 // Register mocks base method.
-func (m *MockUserServicer) Register(ctx context.Context, req *models.RegisterReq) (*models.SessionData, error) {
+func (m *MockUserServicer) Register(ctx *gofr.Context, req *models.RegisterReq) (*models.SessionData, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Register", ctx, req)
 	ret0, _ := ret[0].(*models.SessionData)

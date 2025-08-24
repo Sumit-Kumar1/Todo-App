@@ -1,4 +1,4 @@
-package models
+package constant
 
 type ContextKey string
 

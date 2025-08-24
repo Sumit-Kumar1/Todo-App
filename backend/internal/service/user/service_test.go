@@ -1,7 +1,6 @@
 package usersvc
 
 import (
-	"context"
 	"strings"
 	"testing"
 	"time"
@@ -12,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
+	"gofr.dev/pkg/gofr"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -23,11 +23,11 @@ func TestServiceRegister(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
+	ctx := gofr.Context{}
 	userMock := NewMockUserStorer(ctrl)
 	sessionMock := NewMockSessionStorer(ctrl)
 	s := New(userMock, sessionMock)
 	email := "abcd@cdef.com"
-	ctx := context.Background()
 	userData := models.UserData{}
 	longPass := strings.Repeat("abcd", 20)
 	req := models.RegisterReq{
@@ -93,7 +93,7 @@ func TestServiceRegister(t *testing.T) {
 				tt.mockCall(userMock, sessionMock)
 			}
 
-			got, err := s.Register(context.Background(), tt.req)
+			got, err := s.Register(&ctx, tt.req)
 
 			assert.Equalf(t, tt.wantErr, err, testFailFmt, i, tt.name)
 
@@ -110,7 +110,7 @@ func TestServiceLogin(t *testing.T) {
 
 	mockSession := NewMockSessionStorer(ctrl)
 	mockUser := NewMockUserStorer(ctrl)
-	ctx := context.Background()
+	ctx := gofr.Context{}
 	id := uuid.New()
 	pass := "abcd@abcd"
 	email := "abcd@cdef.com"
@@ -182,7 +182,7 @@ func TestServiceLogin(t *testing.T) {
 				tt.mockCall(mockUser, mockSession)
 			}
 
-			got, err := s.Login(ctx, tt.req)
+			got, err := s.Login(&ctx, tt.req)
 
 			assert.Equalf(t, tt.wantErr, err, testFailFmt, i, tt.name)
 			assert.Equalf(t, tt.want, got, testFailFmt, i, tt.want)
@@ -195,7 +195,7 @@ func TestServiceLogout(t *testing.T) {
 	defer ctrl.Finish()
 	mockSession := NewMockSessionStorer(ctrl)
 	token := uuid.New()
-	ctx := context.Background()
+	ctx := gofr.Context{}
 
 	_, uidErr := uuid.Parse("123")
 
@@ -218,7 +218,7 @@ func TestServiceLogout(t *testing.T) {
 				SessionStore: mockSession,
 			}
 
-			err := s.Logout(ctx, tt.token)
+			err := s.Logout(&ctx, tt.token)
 
 			assert.Equalf(t, tt.wantErr, err, testFailFmt, i, tt.name)
 		})
@@ -256,7 +256,7 @@ func TestServiceHandleLoginSession(t *testing.T) {
 
 	mockSession := NewMockSessionStorer(ctrl)
 	s := &Service{SessionStore: mockSession}
-	ctx := context.Background()
+	ctx := gofr.Context{}
 	uid := uuid.New()
 	tt := time.Now().Add(time.Minute * 10).UTC()
 	ss := models.SessionData{UserID: uid, ID: uuid.New(), Token: uuid.NewString(), Expiry: tt}
@@ -317,7 +317,7 @@ func TestServiceHandleLoginSession(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.mockFxn(mockSession)
 
-			got, err := s.handleLoginSession(ctx, tt.user)
+			got, err := s.handleLoginSession(&ctx, tt.user)
 
 			assert.Equalf(t, tt.wantErr, err, testFailFmt, i, tt.name)
 

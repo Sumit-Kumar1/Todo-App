@@ -1,12 +1,13 @@
 package userstore
 
 import (
-	"context"
 	"database/sql"
 	liberrors "errors"
 
 	"todoapp/internal/errors"
 	"todoapp/internal/models"
+
+	"gofr.dev/pkg/gofr"
 )
 
 const (
@@ -15,17 +16,14 @@ const (
 )
 
 type Store struct {
-	DB *sql.DB
 }
 
-func New(db *sql.DB) *Store {
-	return &Store{
-		DB: db,
-	}
+func New() *Store {
+	return &Store{}
 }
 
-func (s *Store) RegisterUser(ctx context.Context, data *models.UserData) error {
-	res, err := s.DB.ExecContext(ctx, registerQuery, data.ID, data.Name, data.Email, data.Password)
+func (s *Store) RegisterUser(ctx *gofr.Context, data *models.UserData) error {
+	res, err := ctx.SQL.ExecContext(ctx, registerQuery, data.ID, data.Name, data.Email, data.Password)
 	if err != nil {
 		return err
 	}
@@ -37,10 +35,10 @@ func (s *Store) RegisterUser(ctx context.Context, data *models.UserData) error {
 	return nil
 }
 
-func (s *Store) GetUserByEmail(ctx context.Context, email string) (*models.UserData, error) {
+func (s *Store) GetUserByEmail(ctx *gofr.Context, email string) (*models.UserData, error) {
 	user := models.UserData{}
 
-	res := s.DB.QueryRowContext(ctx, getUser, email)
+	res := ctx.SQL.QueryRowContext(ctx, getUser, email)
 
 	if err := res.Scan(&user.ID, &user.Name, &user.Email, &user.Password); err != nil {
 		if liberrors.Is(err, sql.ErrNoRows) {

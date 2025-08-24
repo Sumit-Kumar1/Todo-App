@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"todoapp/internal/constant"
 	"todoapp/internal/errors"
 
 	"github.com/google/uuid"
@@ -43,15 +44,15 @@ func (l *LoginReq) Validate() error {
 	passwd := strings.TrimSpace(l.Password)
 
 	if email == "" {
-		return errors.ErrRequired(Email)
+		return errors.ErrRequired(constant.Email)
 	}
 
 	if !emailRegex.MatchString(email) {
-		return errors.ErrInvalid(Email)
+		return errors.ErrInvalid(constant.Email)
 	}
 
 	if passwd == "" {
-		return errors.ErrRequired(Password)
+		return errors.ErrRequired(constant.Password)
 	}
 
 	if len(passwd) < 8 {

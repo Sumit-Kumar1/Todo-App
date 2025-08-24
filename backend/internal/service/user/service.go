@@ -1,7 +1,6 @@
 package usersvc
 
 import (
-	"context"
 	"log/slog"
 	"time"
 
@@ -9,6 +8,7 @@ import (
 	"todoapp/internal/models"
 
 	"github.com/google/uuid"
+	"gofr.dev/pkg/gofr"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -21,7 +21,7 @@ func New(st UserStorer, ss SessionStorer) *Service {
 	return &Service{UserStore: st, SessionStore: ss}
 }
 
-func (s *Service) Register(ctx context.Context, req *models.RegisterReq) (*models.SessionData, error) {
+func (s *Service) Register(ctx *gofr.Context, req *models.RegisterReq) (*models.SessionData, error) {
 	if req == nil {
 		return nil, nil
 	}
@@ -84,7 +84,7 @@ func (s *Service) Register(ctx context.Context, req *models.RegisterReq) (*model
 	return &session, nil
 }
 
-func (s *Service) Login(ctx context.Context, req *models.LoginReq) (*models.SessionData, error) {
+func (s *Service) Login(ctx *gofr.Context, req *models.LoginReq) (*models.SessionData, error) {
 	if req == nil {
 		return nil, errors.ErrRequired("login request")
 	}
@@ -110,7 +110,7 @@ func (s *Service) Login(ctx context.Context, req *models.LoginReq) (*models.Sess
 	return s.handleLoginSession(ctx, user)
 }
 
-func (s *Service) Logout(ctx context.Context, token string) error {
+func (s *Service) Logout(ctx *gofr.Context, token string) error {
 	t, err := uuid.Parse(token)
 	if err != nil {
 		return err
@@ -119,7 +119,7 @@ func (s *Service) Logout(ctx context.Context, token string) error {
 	return s.SessionStore.Logout(ctx, &t)
 }
 
-func (s *Service) handleLoginSession(ctx context.Context, user *models.UserData) (*models.SessionData, error) {
+func (s *Service) handleLoginSession(ctx *gofr.Context, user *models.UserData) (*models.SessionData, error) {
 	session, err := s.SessionStore.GetSessionByID(ctx, &user.ID)
 	if err != nil {
 		if errors.ErrNotFound("user ID").Error() != err.Error() {
