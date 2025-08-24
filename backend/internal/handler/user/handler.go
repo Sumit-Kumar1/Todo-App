@@ -6,54 +6,37 @@ import (
 	"gofr.dev/pkg/gofr"
 )
 
-// const (
-// 	appJSON     = "application/json"
-// 	contentType = "Content-Type"
-// 	token       = "token"
-// 	hxRedirect  = "HX-Redirect"
-// 	name        = "name"
-// 	email       = "email"
-// 	password    = "password"
-// )
-
-type AuthAPI interface {
-	SignIn(ctx *gofr.Context, email, password string) (*models.AuthUserResp, error)
-	SignUp(ctx *gofr.Context, email, password string) error
-	Refresh(ctx *gofr.Context) (*string, error)
-	Revoke(ctx *gofr.Context) error
-}
-
 type Handler struct {
-	AuthService AuthAPI
+	svc UserServicer
 }
 
-func New(authSvc AuthAPI) *Handler {
-	return &Handler{AuthService: authSvc}
+func New(svc UserServicer) *Handler {
+	return &Handler{svc: svc}
 }
 
 func (h *Handler) Register(ctx *gofr.Context) (any, error) {
-	var user models.UserData
+	var user models.RegisterReq
 	if err := ctx.Bind(&user); err != nil {
 		return nil, err
 	}
 
-	return nil, h.AuthService.SignUp(ctx, user.Email, user.Password)
+	return nil, h.svc.Register(ctx, &user)
 }
 
 func (h *Handler) Login(ctx *gofr.Context) (any, error) {
-	var user models.UserData
+	var user models.LoginReq
 	if err := ctx.Bind(&user); err != nil {
 		return nil, err
 	}
 
-	resp, err := h.AuthService.SignIn(ctx, user.Email, user.Password)
+	authResp, err := h.svc.Login(ctx, &user)
 	if err != nil {
 		return nil, err
 	}
 
-	return resp, nil
+	return authResp, nil
 }
 
 func (h *Handler) Logout(ctx *gofr.Context) (any, error) {
-	return nil, h.AuthService.Revoke(ctx)
+	return nil, h.svc.Logout(ctx, "")
 }

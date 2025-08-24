@@ -8,7 +8,7 @@ import (
 
 //go:generate mockgen --source=interface.go --destination=mock_interface.go --package=userhttp
 type UserServicer interface {
-	Register(ctx *gofr.Context, req *models.RegisterReq) (*models.SessionData, error)
-	Login(ctx *gofr.Context, req *models.LoginReq) (*models.SessionData, error)
+	Register(ctx *gofr.Context, req *models.RegisterReq) error
+	Login(ctx *gofr.Context, req *models.LoginReq) (*models.AuthUserResp, error)
 	Logout(ctx *gofr.Context, token string) error
 }
