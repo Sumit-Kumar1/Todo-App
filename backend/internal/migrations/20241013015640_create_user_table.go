@@ -1,28 +1,26 @@
 package migrations
 
 import (
-	"database/sql"
+	"gofr.dev/pkg/gofr/migration"
 )
 
 const (
-	userDown = "DROP TABLE IF EXISTS users;"
-	userUp   = `CREATE TABLE IF NOT EXISTS users(
+	userTable = `CREATE TABLE IF NOT EXISTS users(
     id VARCHAR(50) NOT NULL PRIMARY KEY, 
     name TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE,
     password BYTEA NOT NULL);`
 )
 
-type M20241013015640 string
+func createTableUser() migration.Migrate {
+	return migration.Migrate{
+		UP: func(d migration.Datasource) error {
+			_, err := d.SQL.Exec(userTable)
+			if err != nil {
+				return err
+			}
 
-// nolint:revive // unused but need this as method
-func (m M20241013015640) up(db *sql.Tx) error {
-	_, err := db.Exec(userUp)
-	return err
-}
-
-// nolint:revive // unused but need this as method
-func (m M20241013015640) down(db *sql.Tx) error {
-	_, err := db.Exec(userDown)
-	return err
+			return nil
+		},
+	}
 }
