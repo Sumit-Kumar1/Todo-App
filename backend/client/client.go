@@ -22,7 +22,6 @@ func New(svc service.HTTP) *Client {
 	return &Client{service: svc}
 }
 
-// TODO: enhance these functionality
 func (c *Client) SignUp(ctx *gofr.Context, email, password string) error {
 	var req = models.AuthUserReq{Email: email, Password: password}
 
@@ -106,6 +105,7 @@ func (c *Client) Refresh(ctx *gofr.Context) (*string, error) {
 	return token.RefToten, nil
 }
 
-func (c *Client) Revoke(ctx *gofr.Context) error {
+func (c *Client) Revoke(ctx *gofr.Context, token string) error {
+	// TODO: complete revoke functionality
 	return nil
 }
