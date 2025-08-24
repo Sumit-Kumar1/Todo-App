@@ -32,7 +32,6 @@ linters:
     - unparam
     - unused
     - whitespace
-    - wsl_v5
   settings:
     gocyclo:
       min-complexity: 10

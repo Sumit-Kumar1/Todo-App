@@ -15,4 +15,4 @@ USER nonroot
 
 ENTRYPOINT [ "./main" ]
 
-EXPOSE 9001
+EXPOSE 8080
