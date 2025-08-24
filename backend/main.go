@@ -3,11 +3,13 @@ package main
 import (
 	"strconv"
 	"todoapp/client"
+
 	todohttp "todoapp/internal/handler/todo"
 	userhttp "todoapp/internal/handler/user"
 	"todoapp/internal/migrations"
-	"todoapp/internal/service/todosvc"
-	todostore "todoapp/internal/store/todo"
+	todosvc "todoapp/internal/service/todo"
+	usersvc "todoapp/internal/service/user"
+	todostore "todoapp/internal/store"
 
 	"gofr.dev/pkg/gofr"
 	"gofr.dev/pkg/gofr/service"
@@ -49,9 +51,10 @@ func setupUserRoutes(app *gofr.App) {
 	httpSvc := service.NewHTTPService(authURL, app.Logger(), app.Metrics(), retryCfg, healthCfg)
 
 	authClient := client.New(httpSvc)
-	usrHTTP := userhttp.New(authClient)
+	userSvc := usersvc.New(authClient)
+	userHTTP := userhttp.New(userSvc)
 
-	app.POST("/register", usrHTTP.Register)
-	app.POST("/login", usrHTTP.Login)
-	app.POST("/logout", usrHTTP.Logout)
+	app.POST("/register", userHTTP.Register)
+	app.POST("/login", userHTTP.Login)
+	app.POST("/logout", userHTTP.Logout)
 }
