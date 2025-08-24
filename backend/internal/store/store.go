@@ -1,4 +1,4 @@
-package todostore
+package store
 
 import (
 	"database/sql"
