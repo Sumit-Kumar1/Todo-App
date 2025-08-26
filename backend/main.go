@@ -20,6 +20,14 @@ func main() {
 
 	app.Migrate(migrations.All())
 
+	// jwtOpts := []jwt.ParserOption{
+	// 	jwt.WithAudience("todoapp"),
+	// 	jwt.WithExpirationRequired(),
+	// 	jwt.WithIssuer("auth-rest-api"),
+	// }
+
+	// app.EnableOAuth("http://localhost:9001", 10, jwtOpts...)
+
 	setupTasksRoutes(app)
 	setupUserRoutes(app)
 
