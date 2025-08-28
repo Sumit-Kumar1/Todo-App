@@ -4,9 +4,9 @@
 </script>
 
 <div>
-	<div class="navbar border-accent border-b-2 p-2">
+	<div class="navbar border-b-2 border-accent p-2">
 		<div class="flex-1">
-			<a href="" class="btn btn-ghost text-2xl">Todo App</a>
+			<a href="" class="btn text-2xl btn-ghost">Todo App</a>
 			<a href="/?page=api" class="btn btn-ghost">API Specification</a>
 		</div>
 		<div class="flex-none gap-2">
@@ -18,7 +18,7 @@
 
 	<div class="flex h-screen w-full flex-col items-center gap-5 p-3">
 		<button
-			class="btn btn-accent w-1/3"
+			class="btn w-1/3 btn-accent"
 			aria-label="task-create"
 			onclick={() => {
 				document.getElementById('add_modal').showModal();
@@ -68,7 +68,7 @@
 						<button type="submit" class="btn btn-accent">Add Task</button>
 					</div>
 				</form>
-				<div class="modal-action absolute bottom-4 right-3 p-2">
+				<div class="absolute right-3 bottom-4 modal-action p-2">
 					<form method="dialog">
 						<!-- if there is a button in form, it will close the modal -->
 						<button class="btn">Cancel</button>

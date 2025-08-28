@@ -1,13 +1,9 @@
 <script>
 	import Fa from 'svelte-fa';
-	import { faKey, faEnvelope, faEye, faEyeSlash, faE } from '@fortawesome/free-solid-svg-icons';
+	import { faKey, faEnvelope, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
 
-	let passwordVisible = $state(false);
-	let isLoginPage = $state(false);
-
-	function togglePasswordVisibility() {
-		passwordVisible = !passwordVisible;
-	}
+	let passwordVisible = $state.raw(false);
+	let isLoginPage = $state.raw(false);
 
 	function getType() {
 		if (passwordVisible) {
@@ -15,10 +11,6 @@
 		} else {
 			return 'password';
 		}
-	}
-
-	function changePage() {
-		isLoginPage = !isLoginPage;
 	}
 </script>
 
@@ -61,7 +53,13 @@
 							placeholder="password"
 							minlength="8"
 						/>
-						<a href="#password" aria-label="password" onclick={togglePasswordVisibility}>
+						<a
+							href="#password"
+							aria-label="password-eye"
+							onclick={() => {
+								passwordVisible = !passwordVisible;
+							}}
+						>
 							{#if !passwordVisible}
 								<Fa icon={faEye}></Fa>
 							{:else}
@@ -88,7 +86,9 @@
 				<a
 					href="/"
 					class="leading-6 font-semibold text-base-content hover:text-neutral"
-					onclick={changePage}
+					onclick={() => {
+						isLoginPage = !isLoginPage;
+					}}
 					>{#if isLoginPage}Register{:else}Login{/if}</a
 				>
 			</p>
