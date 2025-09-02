@@ -1,8 +1,9 @@
 package migrations
 
-import "gofr.dev/pkg/gofr/migration"
+import "database/sql"
 
 const (
+	tasksDown = "DROP TABLE IF EXISTS tasks;"
 	taskTable = `CREATE TABLE IF NOT EXISTS tasks(
     id VARCHAR(50) PRIMARY KEY,
     user_id VARCHAR(50) NOT NULL,
@@ -14,15 +15,16 @@ const (
     modified_at TIMESTAMP);`
 )
 
-func createTableTask() migration.Migrate {
-	return migration.Migrate{
-		UP: func(d migration.Datasource) error {
-			_, err := d.SQL.Exec(taskTable)
-			if err != nil {
-				return err
-			}
+type M20241013015650 string
 
-			return nil
-		},
-	}
+// nolint:revive // unused but need this as method
+func (m M20241013015650) up(db *sql.Tx) error {
+	_, err := db.Exec(taskTable)
+	return err
+}
+
+// nolint:revive // unused but need this as method
+func (m M20241013015650) down(db *sql.Tx) error {
+	_, err := db.Exec(tasksDown)
+	return err
 }

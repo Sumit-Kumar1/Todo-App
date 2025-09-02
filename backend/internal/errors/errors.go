@@ -1,7 +1,10 @@
 package errors
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
+	"net/http"
 )
 
 const (
@@ -90,4 +93,27 @@ func ErrInvalid(entity string) error {
 // It formats the error message using the requiredFormat constant.
 func ErrRequired(entity string) error {
 	return NewConstError(fmt.Sprintf(missingFieldFmt, entity))
+}
+
+func HandleHTTPError(w http.ResponseWriter, err error) {
+	hErr := NewHTTPError(http.StatusServiceUnavailable, err.Error(), "")
+
+	switch {
+	case errors.Is(err, ErrUserAlreadyExists):
+		hErr.Code = http.StatusConflict
+	case errors.Is(err, ErrInvalidCookie):
+		hErr.Code = http.StatusUnauthorized
+	case errors.Is(err, ErrUserNotFound):
+		hErr.Code = http.StatusNotFound
+	case errors.Is(err, ErrPsswdNotMatch):
+		hErr.Code = http.StatusUnauthorized
+	default:
+		hErr.Code = http.StatusServiceUnavailable
+	}
+
+	data, _ := json.Marshal(hErr)
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(hErr.Code)
+	w.Write(data)
 }
