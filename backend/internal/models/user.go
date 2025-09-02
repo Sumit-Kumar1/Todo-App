@@ -27,11 +27,6 @@ type LoginReq struct {
 	Password string `json:"password"`
 }
 
-type RegisterReq struct {
-	Name string `json:"name"`
-	*LoginReq
-}
-
 type SessionData struct {
 	ID     uuid.UUID `json:"id"`
 	UserID uuid.UUID `json:"userId"`
@@ -60,17 +55,4 @@ func (l *LoginReq) Validate() error {
 	}
 
 	return nil
-}
-
-func (r *RegisterReq) Validate() error {
-	name := strings.TrimSpace(r.Name)
-	if name == "" {
-		return errors.ErrRequired("name")
-	}
-
-	if len(name) < 3 {
-		return errors.ErrInvalid("name is too short")
-	}
-
-	return r.LoginReq.Validate()
 }
