@@ -10,12 +10,12 @@
 package todosvc
 
 import (
+	context "context"
 	reflect "reflect"
 	models "todoapp/internal/models"
 
 	uuid "github.com/google/uuid"
 	gomock "go.uber.org/mock/gomock"
-	gofr "gofr.dev/pkg/gofr"
 )
 
 // MockTodoStorer is a mock of TodoStorer interface.
@@ -43,7 +43,7 @@ func (m *MockTodoStorer) EXPECT() *MockTodoStorerMockRecorder {
 }
 
 // Create mocks base method.
-func (m *MockTodoStorer) Create(ctx *gofr.Context, task *models.Task) error {
+func (m *MockTodoStorer) Create(ctx context.Context, task *models.Task) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Create", ctx, task)
 	ret0, _ := ret[0].(error)
@@ -57,7 +57,7 @@ func (mr *MockTodoStorerMockRecorder) Create(ctx, task any) *gomock.Call {
 }
 
 // Delete mocks base method.
-func (m *MockTodoStorer) Delete(ctx *gofr.Context, id string, userID *uuid.UUID) error {
+func (m *MockTodoStorer) Delete(ctx context.Context, id string, userID *uuid.UUID) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Delete", ctx, id, userID)
 	ret0, _ := ret[0].(error)
@@ -71,7 +71,7 @@ func (mr *MockTodoStorerMockRecorder) Delete(ctx, id, userID any) *gomock.Call {
 }
 
 // GetAll mocks base method.
-func (m *MockTodoStorer) GetAll(ctx *gofr.Context, userID *uuid.UUID) ([]models.Task, error) {
+func (m *MockTodoStorer) GetAll(ctx context.Context, userID *uuid.UUID) ([]models.Task, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetAll", ctx, userID)
 	ret0, _ := ret[0].([]models.Task)
@@ -86,7 +86,7 @@ func (mr *MockTodoStorerMockRecorder) GetAll(ctx, userID any) *gomock.Call {
 }
 
 // MarkDone mocks base method.
-func (m *MockTodoStorer) MarkDone(ctx *gofr.Context, id string, userID *uuid.UUID) (*models.Task, error) {
+func (m *MockTodoStorer) MarkDone(ctx context.Context, id string, userID *uuid.UUID) (*models.Task, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MarkDone", ctx, id, userID)
 	ret0, _ := ret[0].(*models.Task)
@@ -101,7 +101,7 @@ func (mr *MockTodoStorerMockRecorder) MarkDone(ctx, id, userID any) *gomock.Call
 }
 
 // Update mocks base method.
-func (m *MockTodoStorer) Update(ctx *gofr.Context, task *models.Task) error {
+func (m *MockTodoStorer) Update(ctx context.Context, task *models.Task) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Update", ctx, task)
 	ret0, _ := ret[0].(error)

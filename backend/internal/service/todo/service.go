@@ -1,6 +1,7 @@
 package todosvc
 
 import (
+	"context"
 	"log/slog"
 	"time"
 
@@ -8,7 +9,6 @@ import (
 	"todoapp/internal/models"
 
 	"github.com/google/uuid"
-	"gofr.dev/pkg/gofr"
 )
 
 type Service struct {
@@ -19,7 +19,7 @@ func New(st TodoStorer) *Service {
 	return &Service{Store: st}
 }
 
-func (s *Service) GetAll(ctx *gofr.Context, userID *uuid.UUID) ([]models.Task, error) {
+func (s *Service) GetAll(ctx context.Context, userID *uuid.UUID) ([]models.Task, error) {
 	logger := models.GetLoggerFromCtx(ctx)
 
 	tasks, err := s.Store.GetAll(ctx, userID)
@@ -33,7 +33,7 @@ func (s *Service) GetAll(ctx *gofr.Context, userID *uuid.UUID) ([]models.Task, e
 	return tasks, nil
 }
 
-func (s *Service) AddTask(ctx *gofr.Context, taskInp *models.TaskReq, userID *uuid.UUID) (*models.Task, error) {
+func (s *Service) AddTask(ctx context.Context, taskInp *models.TaskReq, userID *uuid.UUID) (*models.Task, error) {
 	logger := models.GetLoggerFromCtx(ctx)
 
 	if err := taskInp.Validate(); err != nil {
@@ -64,7 +64,7 @@ func (s *Service) AddTask(ctx *gofr.Context, taskInp *models.TaskReq, userID *uu
 	return &task, nil
 }
 
-func (s *Service) DeleteTask(ctx *gofr.Context, id string, userID *uuid.UUID) error {
+func (s *Service) DeleteTask(ctx context.Context, id string, userID *uuid.UUID) error {
 	logger := models.GetLoggerFromCtx(ctx)
 
 	if err := validateID(id); err != nil {
@@ -83,7 +83,7 @@ func (s *Service) DeleteTask(ctx *gofr.Context, id string, userID *uuid.UUID) er
 	return nil
 }
 
-func (s *Service) MarkDone(ctx *gofr.Context, id string, userID *uuid.UUID) (*models.Task, error) {
+func (s *Service) MarkDone(ctx context.Context, id string, userID *uuid.UUID) (*models.Task, error) {
 	logger := models.GetLoggerFromCtx(ctx)
 
 	if err := validateID(id); err != nil {
@@ -103,7 +103,7 @@ func (s *Service) MarkDone(ctx *gofr.Context, id string, userID *uuid.UUID) (*mo
 	return task, nil
 }
 
-func (s *Service) UpdateTask(ctx *gofr.Context, id string, taskInp *models.TaskReq, isDone bool, userID *uuid.UUID,
+func (s *Service) UpdateTask(ctx context.Context, id string, taskInp *models.TaskReq, isDone bool, userID *uuid.UUID,
 ) (*models.Task, error) {
 	logger := models.GetLoggerFromCtx(ctx)
 	taskInp.ID = id

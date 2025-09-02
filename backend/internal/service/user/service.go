@@ -1,10 +1,9 @@
 package usersvc
 
 import (
+	"context"
 	"todoapp/internal/errors"
 	"todoapp/internal/models"
-
-	"gofr.dev/pkg/gofr"
 )
 
 type Service struct {
@@ -15,7 +14,7 @@ func New(auth AuthClient) *Service {
 	return &Service{Auth: auth}
 }
 
-func (s *Service) Register(ctx *gofr.Context, req *models.RegisterReq) error {
+func (s *Service) Register(ctx context.Context, req *models.LoginReq) error {
 	if req == nil {
 		return errors.ErrRequired("user login and password")
 	}
@@ -27,7 +26,7 @@ func (s *Service) Register(ctx *gofr.Context, req *models.RegisterReq) error {
 	return s.Auth.SignUp(ctx, req.Email, req.Password)
 }
 
-func (s *Service) Login(ctx *gofr.Context, req *models.LoginReq) (*models.AuthUserResp, error) {
+func (s *Service) Login(ctx context.Context, req *models.LoginReq) (*models.AuthUserResp, error) {
 	if req == nil {
 		return nil, errors.ErrRequired("user login and password")
 	}
@@ -48,7 +47,7 @@ func (s *Service) Login(ctx *gofr.Context, req *models.LoginReq) (*models.AuthUs
 	return authResp, nil
 }
 
-func (s *Service) Logout(ctx *gofr.Context, token string) error {
+func (s *Service) Logout(ctx context.Context, token string) error {
 	if token == "" {
 		return errors.ErrRequired("token")
 	}
