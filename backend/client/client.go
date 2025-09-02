@@ -1,72 +1,89 @@
 package client
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
+	"sync"
 	"todoapp/internal/errors"
 	"todoapp/internal/models"
-
-	"gofr.dev/pkg/gofr"
-	"gofr.dev/pkg/gofr/service"
 )
 
 var (
-	invalidStatus = errors.NewConstError("invalid status found")
+	errInvalidStatus = errors.NewConstError("invalid status found")
+	errAuthNilResp   = errors.NewConstError("nil response from auth-rest-api")
+	once             sync.Once
+	clientInstance   *Client
 )
 
 type Client struct {
-	service service.HTTP
+	http.Client
+	url string
 }
 
-func New(svc service.HTTP) *Client {
-	return &Client{service: svc}
+func New(url string) *Client {
+	if clientInstance == nil {
+		slog.LogAttrs(context.Background(), slog.LevelInfo, "creating auth-rest-api client")
+		once.Do(func() {
+			clientInstance = &Client{url: url}
+			clientInstance.Transport = http.DefaultTransport
+		})
+
+		return clientInstance
+	}
+
+	slog.LogAttrs(context.Background(), slog.LevelInfo, "using existing auth-rest-api client")
+
+	return clientInstance
 }
 
-func (c *Client) SignUp(ctx *gofr.Context, email, password string) error {
-	var req = models.AuthUserReq{Email: email, Password: password}
+func (c *Client) SignUp(ctx context.Context, email, password string) error {
+	req := models.AuthUserReq{Email: email, Password: password}
+	headers := map[string]string{models.HeaderCorrelation: models.GetCorrelationID(ctx)}
 
-	data, err := json.Marshal(req)
+	resp, err := c.postWithHeaders(ctx, "/signup", headers, req)
 	if err != nil {
 		return err
 	}
 
-	resp, err := c.service.Post(ctx, "signup", nil, data)
+	_, err = handleResponse[string](resp)
 	if err != nil {
-		return err
-	}
-
-	if _, err = handleResponse[models.AuthUserResp](resp); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (c *Client) SignIn(ctx *gofr.Context, email, password string) (*models.AuthUserResp, error) {
-	var req = models.AuthUserReq{Email: email, Password: password}
+func (c *Client) SignIn(ctx context.Context, email, password string) (*models.AuthUserResp, error) {
+	req := models.AuthUserReq{Email: email, Password: password}
+	headers := map[string]string{models.HeaderCorrelation: models.GetCorrelationID(ctx)}
 
-	data, err := json.Marshal(req)
+	resp, err := c.postWithHeaders(ctx, "/signin", headers, req)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := c.service.Post(ctx, "signin", nil, data)
-	if err != nil {
-		return nil, err
-	}
-
-	authUser, err := handleResponse[models.AuthUserResp](resp)
-	if err != nil {
-		return nil, err
-	}
-
-	return authUser, nil
+	return handleResponse[models.AuthUserResp](resp)
 }
 
-func (c *Client) Refresh(ctx *gofr.Context) (*string, error) {
-	headers := make(map[string]string)
+func (c *Client) Refresh(ctx context.Context, auth string) (*string, error) {
+	headers := map[string]string{
+		models.HeaderCorrelation: models.GetCorrelationID(ctx),
+		"Authorization":          "Bearer " + auth,
+	}
 
-	resp, err := c.service.PostWithHeaders(ctx, "refresh", nil, nil, headers)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.url+"/refresh", http.NoBody)
+	if err != nil {
+		return nil, err
+	}
+
+	for key, val := range headers {
+		req.Header.Add(key, val)
+	}
+
+	resp, err := c.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -76,11 +93,11 @@ func (c *Client) Refresh(ctx *gofr.Context) (*string, error) {
 	}
 
 	if resp == nil {
-		return nil, errors.NewConstError("auth service - nil response for refresh")
+		return nil, errAuthNilResp
 	}
 
 	if resp.StatusCode != http.StatusCreated {
-		return nil, invalidStatus
+		return nil, errInvalidStatus
 	}
 
 	defer resp.Body.Close()
@@ -91,17 +108,42 @@ func (c *Client) Refresh(ctx *gofr.Context) (*string, error) {
 	return token.RefToken, nil
 }
 
-func (c *Client) Revoke(ctx *gofr.Context, token string) error {
+func (c *Client) Revoke(ctx context.Context, token string) error {
 	// TODO: complete revoke functionality
 	return nil
 }
 
-func handleResponse[T any](resp *http.Response) (*T, error) {
-	if resp == nil {
-		return nil, errors.ErrRequired("auth-rest-api : response body")
+func (c *Client) postWithHeaders(ctx context.Context, endpoint string, headers map[string]string, reqModel models.AuthUserReq) (*http.Response, error) {
+	data, err := json.Marshal(reqModel)
+	if err != nil {
+		return nil, err
 	}
 
-	var res T
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.url+endpoint, bytes.NewBuffer(data))
+	if err != nil {
+		return nil, err
+	}
+
+	for key, val := range headers {
+		req.Header.Add(key, val)
+	}
+
+	resp, err := c.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
+func handleResponse[T any](resp *http.Response) (*T, error) {
+	if resp == nil {
+		return nil, errAuthNilResp
+	}
+
+	var res struct {
+		Data T `json:"data,omitempty"`
+	}
 
 	switch resp.StatusCode {
 	case http.StatusNotFound:
@@ -115,8 +157,8 @@ func handleResponse[T any](resp *http.Response) (*T, error) {
 
 		defer resp.Body.Close()
 	default:
-		return nil, errors.ErrInvalid("auth-response : status code")
+		return nil, errInvalidStatus
 	}
 
-	return &res, nil
+	return &res.Data, nil
 }
