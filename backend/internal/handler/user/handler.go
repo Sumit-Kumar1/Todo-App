@@ -2,6 +2,7 @@ package userhttp
 
 import (
 	"encoding/json"
+	pkgErr "errors"
 	"log/slog"
 	"net/http"
 	"time"
@@ -90,12 +91,31 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	logger := models.GetLoggerFromCtx(ctx)
 
-	if err := h.svc.Logout(ctx, ""); err != nil {
+	cookie, err := r.Cookie("auth")
+	if err != nil {
+		if pkgErr.Is(err, http.ErrNoCookie) {
+			logger.Log(ctx, slog.LevelError, "logout:service:no cookie in the request")
+		}
+
+		logger.Log(ctx, slog.LevelError, "logout:service:error while fetching cookie")
+		errors.HandleHTTPError(w, err)
+		return
+	}
+
+	if cookie.Value == "" {
+		logger.Log(ctx, slog.LevelError, "logout:service:auth cookie is empty")
+		errors.HandleHTTPError(w, errors.ErrInvalidCookie)
+		return
+	}
+
+	if err := h.svc.Logout(ctx, cookie.Value); err != nil {
 		logger.LogAttrs(ctx, slog.LevelError, "logout:error while calling service",
 			slog.String("error", err.Error()))
 		errors.HandleHTTPError(w, err)
 		return
 	}
+
+	// set cookie as -1 for both auth and refresh
 
 	w.WriteHeader(http.StatusOK)
 }
