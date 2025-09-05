@@ -14,6 +14,41 @@ servers:
   - url: "http://localhost:9001"
 
 paths:
+  /register:
+    post:
+      tags:
+        - User
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  description: "a valid email address, must be unique"
+                  example: "sumit@kumar.com"
+                  required: true
+                password:
+                  type: string
+                  description: "a minimum of 8 character long password"
+                  example: "Pass#1234"
+                  required: true
+            encoding:
+              name:
+                allowReserved: true
+              email:
+                allowReserved: true
+              password:
+                allowReserved: true
+      responses:
+        "201":
+          description: User registered
+        "400":
+          description: Invalid input
+
   /login:
     post:
       tags:
@@ -30,13 +65,12 @@ paths:
                   type: string
                   description: "a valid email address"
                   example: "sumit@kumar.com"
+                  required: true
                 password:
                   type: string
                   description: "a minimum of 8 character long password"
                   example: "Pass#1234"
-              required:
-                - email
-                - password
+                  required: true
             encoding:
               email:
                 allowReserved: true
@@ -53,6 +87,10 @@ paths:
               schema:
                 type: string
                 example: token=a420e905-acfd-4967-aeb2-ed41429debc4; Path=/; Expires=Sat, 26 Oct 2024 03:14:42 GMT; HttpOnly
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResp"
         "401":
           description: Invalid username or password
         "404":
@@ -143,6 +181,8 @@ paths:
       tags:
         - Todo
       summary: Retrieve all tasks for authenticated user
+      security:
+        - cookieAuth: [ ]
       responses:
         "200":
           description: A list of tasks
@@ -207,10 +247,12 @@ paths:
           description: Task not found
 
   /tasks/{id}/done:
+    patch:
+  /tasks/{taskId}/done:
     put:
       tags:
         - Todo
-      summary: marks the task as done for authenticated user
+      summary: update task's specific field e.g. done state, end-date
       parameters:
         - name: id
           in: path
@@ -220,14 +262,14 @@ paths:
             type: string
             format: uuid
       security:
-        - cookieAuth: []
+        - cookieAuth: [ ]
       responses:
         "200":
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/TodoTask"
-          description: Task is marked as done
+          description: done updating task
         "404":
           description: Task not found
 
@@ -285,18 +327,14 @@ components:
         password:
           type: string
 
-    UserRegister:
+    LoginResp:
       type: object
-      required:
-        - name
-        - email
-        - password
       properties:
-        name:
-          type: string
         email:
           type: string
-        password:
+        accessToken:
+          type: string
+        refreshToken:
           type: string
 
     UserResp:

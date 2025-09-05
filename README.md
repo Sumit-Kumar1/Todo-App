@@ -8,7 +8,7 @@ This is a simple todo app created using HTMX and golang
 
 ## Steps to run the project
 
-- Clone the repo & make sure you install `go v1.23 or newer` and `make`  
+- Clone the repo & make sure you install `go v1.23 or newer` and `make`
 - cd `Todo-App` and open a terminal in the directory
 - In terminal run `make help` : will list you all available make commands
 - or run directly the `make run`
@@ -21,7 +21,7 @@ This is a simple todo app created using HTMX and golang
 
 ## Requirements
 
- User Should Be able to do:
+User Should Be able to do:
 
 - [x] Add new todos to list
 - [x] Mark todo as complete
@@ -31,5 +31,5 @@ This is a simple todo app created using HTMX and golang
 - [ ] Toggle light and dark mode
 - [ ] View the optimal layout for the app depending on device screen size
 - [ ] See hover states for all interactive elements on the page
-- [ ]  **Bonus**: Drag and drop to reorder items on list
-- [ ]  **Bonus**: Build this project as a full-stack application
+- [ ] **Bonus**: Drag and drop to reorder items on list
+- [ ] **Bonus**: Build this project as a full-stack application
