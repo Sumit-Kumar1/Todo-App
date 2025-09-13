@@ -115,5 +115,5 @@ func HandleHTTPError(w http.ResponseWriter, err error) {
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(hErr.Code)
-	w.Write(data)
+	_, _ = w.Write(data)
 }

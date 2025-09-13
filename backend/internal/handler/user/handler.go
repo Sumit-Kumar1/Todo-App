@@ -2,11 +2,17 @@ package userhttp
 
 import (
 	"encoding/json"
-	"io"
 	"log/slog"
 	"net/http"
+	"time"
+
 	"todoapp/internal/errors"
 	"todoapp/internal/models"
+)
+
+const (
+	authCookieName    = "auth"
+	refreshCookieName = "refresh"
 )
 
 type Handler struct {
@@ -23,13 +29,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 
 	var user models.LoginReq
 
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			logger.LogAttrs(ctx, slog.LevelError, "Register: error while closing body",
-				slog.String("error", err.Error()))
-		}
-	}(r.Body)
+	defer r.Body.Close()
 
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 		logger.LogAttrs(ctx, slog.LevelError, "login:error while closing req body",
@@ -56,13 +56,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 	var user models.LoginReq
 
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			logger.LogAttrs(ctx, slog.LevelError, "login:error while closing req body",
-				slog.String("error", err.Error()))
-		}
-	}(r.Body)
+	defer r.Body.Close()
 
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 		logger.LogAttrs(ctx, slog.LevelError, "login:error while decoding req body",
@@ -79,10 +73,12 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data, _ := json.Marshal(resp)
+	authCookie, refCookie := getLoginCookie(resp)
+	http.SetCookie(w, &authCookie)
+	http.SetCookie(w, &refCookie)
 
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(data)
+	http.Redirect(w, r, "/tasks", http.StatusFound)
 }
 
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
@@ -97,4 +93,32 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func getLoginCookie(resp *models.AuthUserResp) (auth, refresh http.Cookie) {
+	if resp == nil {
+		return
+	}
+
+	auth = http.Cookie{
+		Name:     authCookieName,
+		Value:    resp.AccessToken,
+		Path:     "/",
+		Secure:   true,
+		HttpOnly: true,
+		MaxAge:   int(time.Minute * 10),
+		SameSite: http.SameSiteStrictMode,
+	}
+
+	refresh = http.Cookie{
+		Name:     refreshCookieName,
+		Value:    resp.RefreshToken,
+		Path:     "/",
+		Secure:   true,
+		HttpOnly: true,
+		MaxAge:   int(time.Hour * 24),
+		SameSite: http.SameSiteStrictMode,
+	}
+
+	return
 }

@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"time"
+
 	"todoapp/client"
 	"todoapp/internal/migrations"
 	"todoapp/internal/server"
@@ -46,7 +47,7 @@ func Run(c context.Context, _ io.Writer, _ []string) error {
 
 	httpServer := &http.Server{
 		Addr:         net.JoinHostPort(app.Host, app.Port),
-		Handler:      app.GlobalRateLimiter(app.Mux),
+		Handler:      app.ServerWideMiddlewares(app.Mux),
 		ReadTimeout:  time.Duration(app.ReadTimeout * int(time.Second)),
 		WriteTimeout: time.Duration(app.WriteTimeout * int(time.Second)),
 		IdleTimeout:  time.Duration(app.IdleTimeout * int(time.Second)),
@@ -109,12 +110,12 @@ func setupTasksRoutes(app *server.Server) {
 	todoSvc := todosvc.New(todoStore)
 	todoHTTP := todohttp.New(todoSvc)
 
-	app.Mux.HandleFunc("POST /task", server.Chain(todoHTTP.AddTask, server.AddCorrelation(), server.MethodWithCORS("POST")))
-	app.Mux.HandleFunc("GET /tasks", server.Chain(todoHTTP.GetAllTasks, server.AddCorrelation(), server.MethodWithCORS("GET")))
-	app.Mux.HandleFunc("PATCH /task/{id}", server.Chain(todoHTTP.Patch, server.AddCorrelation(), server.MethodWithCORS("PATCH")))
-	app.Mux.HandleFunc("PUT /tasks/{id}", server.Chain(todoHTTP.Update, server.AddCorrelation(), server.MethodWithCORS("PUT")))
+	app.Mux.HandleFunc("POST /task", server.Chain(todoHTTP.AddTask, server.AddCorrelation()))
+	app.Mux.HandleFunc("GET /tasks", server.Chain(todoHTTP.GetAllTasks, server.CorsEnabled(), server.AddCorrelation()))
+	app.Mux.HandleFunc("PATCH /task/{id}", server.Chain(todoHTTP.Patch, server.CorsEnabled(), server.AddCorrelation()))
+	app.Mux.HandleFunc("PUT /tasks/{id}", server.Chain(todoHTTP.Update, server.CorsEnabled(), server.AddCorrelation()))
 	app.Mux.HandleFunc("DELETE /tasks/{id}/delete",
-		server.Chain(todoHTTP.DeleteTask, server.MethodWithCORS("DELETE")))
+		server.Chain(todoHTTP.DeleteTask, server.CorsEnabled(), server.AddCorrelation()))
 }
 
 func setupUserRoutes(app *server.Server) {
@@ -126,5 +127,5 @@ func setupUserRoutes(app *server.Server) {
 
 	app.Mux.HandleFunc("POST /register", server.Chain(userHTTP.Register, server.AddCorrelation()))
 	app.Mux.HandleFunc("POST /login", server.Chain(userHTTP.Login, server.AddCorrelation()))
-	app.Mux.HandleFunc("POST /logout", server.Chain(userHTTP.Logout, server.AddCorrelation(), server.MethodWithCORS("POST")))
+	app.Mux.HandleFunc("POST /logout", server.Chain(userHTTP.Logout, server.AddCorrelation()))
 }

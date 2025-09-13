@@ -165,7 +165,7 @@ func newLogger() *slog.Logger {
 	}
 
 	logger := slog.New(newHandler(&slog.HandlerOptions{
-		// AddSource:   true,
+		AddSource:   true,
 		Level:       leveler,
 		ReplaceAttr: replaceFn,
 	}))

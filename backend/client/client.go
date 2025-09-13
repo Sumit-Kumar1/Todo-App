@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"sync"
+
 	"todoapp/internal/errors"
 	"todoapp/internal/models"
 )
@@ -150,6 +151,8 @@ func handleResponse[T any](resp *http.Response) (*T, error) {
 		return nil, errors.ErrUserNotFound
 	case http.StatusConflict:
 		return nil, errors.ErrUserAlreadyExists
+	case http.StatusUnauthorized, http.StatusForbidden:
+		return nil, errors.ErrPsswdNotMatch
 	case http.StatusOK, http.StatusCreated:
 		if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
 			return nil, err

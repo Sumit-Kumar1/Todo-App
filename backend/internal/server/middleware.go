@@ -21,7 +21,7 @@ const (
 	cookieName = "token"
 )
 
-var errMethodNotAllowed = libErr.New(http.StatusText(http.StatusMethodNotAllowed))
+// var errMethodNotAllowed = libErr.New(http.StatusText(http.StatusMethodNotAllowed))
 
 type Middleware func(http.HandlerFunc) http.HandlerFunc
 
@@ -33,18 +33,19 @@ func Chain(f http.HandlerFunc, middlewares ...Middleware) http.HandlerFunc {
 	return f
 }
 
-// TODO: do we still need this ??
-func MethodWithCORS(m string) Middleware {
+func CorsEnabled() Middleware {
 	return func(f http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
-			if r.Method != m {
-				errors.HandleHTTPError(w, errMethodNotAllowed)
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "POST, GET, PUT, DELETE, PATCH, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding")
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+
+			if r.Method == "OPTIONS" {
+				w.WriteHeader(http.StatusOK)
+				slog.Log(r.Context(), slog.LevelInfo, "responded cors req with OK")
 				return
 			}
-
-			w.Header().Set("Access-Control-Allow-Origin", "todo.zone.id")
-			w.Header().Set("Access-Control-Allow-Methods", "POST, GET, PUT, DELETE, PATCH")
-			w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding")
 
 			f(w, r)
 		}
@@ -105,7 +106,38 @@ func AddCorrelation() Middleware {
 	}
 }
 
-func (s *Server) GlobalRateLimiter(next http.Handler) http.Handler {
+func (s *Server) ServerWideMiddlewares(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// CORS Part
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+
+		if r.Method == http.MethodOptions {
+			w.Header().Set("Access-Control-Allow-Methods", "POST, GET, PUT, DELETE, PATCH, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding")
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+			w.Header().Set("Access-Control-Max-Age", "86400")
+
+			w.WriteHeader(http.StatusOK)
+
+			slog.Log(r.Context(), slog.LevelInfo, "responded cors req with OK")
+			return
+		}
+
+		next.ServeHTTP(w, r)
+
+		s.globalRateLimiter(next)
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (s *Server) serverCORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+	})
+}
+
+func (s *Server) globalRateLimiter(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ip := clientIP(r)
 		now := time.Now()
