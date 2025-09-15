@@ -78,7 +78,6 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &refCookie)
 
 	w.WriteHeader(http.StatusOK)
-	http.Redirect(w, r, "/tasks", http.StatusFound)
 }
 
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {

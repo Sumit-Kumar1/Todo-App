@@ -10,17 +10,14 @@ import (
 	"os"
 	"os/signal"
 	"time"
-
 	"todoapp/client"
-	"todoapp/internal/migrations"
-	"todoapp/internal/server"
-	"todoapp/internal/store"
-
 	todohttp "todoapp/internal/handler/todo"
 	userhttp "todoapp/internal/handler/user"
-
+	"todoapp/internal/migrations"
+	"todoapp/internal/server"
 	todosvc "todoapp/internal/service/todo"
 	usersvc "todoapp/internal/service/user"
+	"todoapp/internal/store"
 )
 
 func Run(c context.Context, _ io.Writer, _ []string) error {
@@ -111,11 +108,11 @@ func setupTasksRoutes(app *server.Server) {
 	todoHTTP := todohttp.New(todoSvc)
 
 	app.Mux.HandleFunc("POST /task", server.Chain(todoHTTP.AddTask, server.AddCorrelation()))
-	app.Mux.HandleFunc("GET /tasks", server.Chain(todoHTTP.GetAllTasks, server.CorsEnabled(), server.AddCorrelation()))
-	app.Mux.HandleFunc("PATCH /task/{id}", server.Chain(todoHTTP.Patch, server.CorsEnabled(), server.AddCorrelation()))
-	app.Mux.HandleFunc("PUT /tasks/{id}", server.Chain(todoHTTP.Update, server.CorsEnabled(), server.AddCorrelation()))
+	app.Mux.HandleFunc("GET /tasks", server.Chain(todoHTTP.GetAllTasks, server.AddCorrelation()))
+	app.Mux.HandleFunc("PATCH /task/{id}", server.Chain(todoHTTP.Patch, server.AddCorrelation()))
+	app.Mux.HandleFunc("PUT /tasks/{id}", server.Chain(todoHTTP.Update, server.AddCorrelation()))
 	app.Mux.HandleFunc("DELETE /tasks/{id}/delete",
-		server.Chain(todoHTTP.DeleteTask, server.CorsEnabled(), server.AddCorrelation()))
+		server.Chain(todoHTTP.DeleteTask, server.AddCorrelation()))
 }
 
 func setupUserRoutes(app *server.Server) {

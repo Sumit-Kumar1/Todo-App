@@ -21,8 +21,6 @@ const (
 	cookieName = "token"
 )
 
-// var errMethodNotAllowed = libErr.New(http.StatusText(http.StatusMethodNotAllowed))
-
 type Middleware func(http.HandlerFunc) http.HandlerFunc
 
 func Chain(f http.HandlerFunc, middlewares ...Middleware) http.HandlerFunc {
@@ -33,26 +31,7 @@ func Chain(f http.HandlerFunc, middlewares ...Middleware) http.HandlerFunc {
 	return f
 }
 
-func CorsEnabled() Middleware {
-	return func(f http.HandlerFunc) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.Header().Set("Access-Control-Allow-Methods", "POST, GET, PUT, DELETE, PATCH, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding")
-			w.Header().Set("Access-Control-Allow-Credentials", "true")
-
-			if r.Method == "OPTIONS" {
-				w.WriteHeader(http.StatusOK)
-				slog.Log(r.Context(), slog.LevelInfo, "responded cors req with OK")
-				return
-			}
-
-			f(w, r)
-		}
-	}
-}
-
-// TODO: fix auth Middleware
+// FIXME : fix auth Middleware ?? do we need this
 func (s *Server) AuthMiddleware(ctx context.Context) Middleware {
 	return func(f http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
@@ -92,7 +71,7 @@ func AddCorrelation() Middleware {
 			}
 
 			logger := slog.With(slog.Group("request",
-				slog.String(string(models.HeaderCorrelation), corrID),
+				slog.String(models.HeaderCorrelation, corrID),
 				slog.String("method", r.Method),
 				slog.String("path", r.URL.Path),
 				slog.String("host", r.Host),
@@ -119,21 +98,12 @@ func (s *Server) ServerWideMiddlewares(next http.Handler) http.Handler {
 
 			w.WriteHeader(http.StatusOK)
 
-			slog.Log(r.Context(), slog.LevelInfo, "responded cors req with OK")
+			slog.Log(r.Context(), slog.LevelDebug, "responded cors req with OK")
 			return
 		}
 
-		next.ServeHTTP(w, r)
-
 		s.globalRateLimiter(next)
-
 		next.ServeHTTP(w, r)
-	})
-}
-
-func (s *Server) serverCORS(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
 	})
 }
 
@@ -178,7 +148,7 @@ func (s *Server) globalRateLimiter(next http.Handler) http.Handler {
 	})
 }
 
-// nolint:gocognit // can't divide it furthur
+// nolint:gocognit // can't divide it further FIXME: is this still required??
 func (s *Server) rateLimiterLogin() Middleware {
 	return func(f http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
