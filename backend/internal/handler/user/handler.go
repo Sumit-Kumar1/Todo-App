@@ -39,7 +39,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.svc.Register(ctx, &user); err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, "login:error while closing req body",
+		logger.LogAttrs(ctx, slog.LevelError, "login:service:error while registering user",
 			slog.String("error", err.Error()))
 		errors.HandleHTTPError(w, err)
 		return
@@ -47,7 +47,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusCreated)
 	_, _ = w.Write([]byte("user created successfully!"))
-	logger.LogAttrs(ctx, slog.LevelInfo, "login:user created sucessfully!", slog.String("email", user.Email))
+	logger.LogAttrs(ctx, slog.LevelInfo, "login:user created successfully!", slog.String("email", user.Email))
 }
 
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
@@ -67,7 +67,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.svc.Login(ctx, &user)
 	if err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, "login:error while calling service",
+		logger.LogAttrs(ctx, slog.LevelError, "login:service:error while calling service",
 			slog.String("error", err.Error()))
 		errors.HandleHTTPError(w, err)
 		return

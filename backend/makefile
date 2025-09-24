@@ -55,7 +55,7 @@ mocks:
 
 ## lint: check for lint errors
 .PHONY: lint
-lint:
+lint: mocks
 	golangci-lint run ./... --timeout=5m
 
 
@@ -81,9 +81,9 @@ run: build
 ## run/live: run the application with reloading on file changes
 .PHONY: run/live
 run/live:
-	go run github.com/air-verse/air@v1.61.1 \
+	go run github.com/air-verse/air@latest \
         --build.cmd "make build" --build.bin "/tmp/bin/${BINARY_NAME}" --build.delay "100" \
-        --build.exclude_dir "" \
+        --build.exclude_dir "views" \
         --build.include_ext "go, tpl, tmpl, html, css, scss, js, ts, sql, jpeg, jpg, gif, png, bmp, svg, webp, ico" \
         --misc.clean_on_exit "true"
 

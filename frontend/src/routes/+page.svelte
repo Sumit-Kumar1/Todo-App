@@ -40,8 +40,9 @@
             }
 
             response = "user login successfully";
-            console.log("response for login: ",res);
-		} catch (error) {
+            // Redirect to /tasks on login success
+            window.location.href = '/todo';
+        } catch (error) {
 			console.error('Error posting data:', error);
 			response = `Error: ${error}`;
 		}
