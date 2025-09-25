@@ -1,6 +1,6 @@
 <script lang="ts">
-	import Fa from 'svelte-fa';
-	import { faKey, faEnvelope, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
+	import { Fa } from 'svelte-fa';
+	import { faEnvelope, faEye, faEyeSlash, faKey } from '@fortawesome/free-solid-svg-icons';
 
 	let passwordVisible = $state.raw(false);
 	let isLoginPage = $state.raw(true);
@@ -24,8 +24,8 @@
 
 		try {
 			const res = await fetch(url, {
-                method: 'POST',
-				headers: {'Content-Type': 'application/json'},
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(reqData)
 			});
 
@@ -33,16 +33,16 @@
 				throw new Error(`HTTP error! status: ${res.status}`);
 			}
 
-            if (!isLoginPage) {
-                const data = await res.json();
-                response = data.message;
-                return
-            }
+			if (!isLoginPage) {
+				const data = await res.json();
+				response = data.data;
+			} else {
+				response = 'user login successfully';
+			}
 
-            response = "user login successfully";
-            // Redirect to /tasks on login success
-            window.location.href = '/todo';
-        } catch (error) {
+			// Redirect to /tasks on success
+			window.location.href = '/todo';
+		} catch (error) {
 			console.error('Error posting data:', error);
 			response = `Error: ${error}`;
 		}
@@ -67,14 +67,14 @@
 				<label class="input w-full">
 					<Fa icon={faEnvelope}></Fa>
 					<input
+						autocomplete="email"
 						bind:value={email}
+						class="grow"
 						id="email"
 						name="email"
-						type="email"
-						autocomplete="email"
-						required
-						class="grow"
 						placeholder="e-mail"
+						required
+						type="email"
 					/>
 				</label>
 				<div class="w-full">
@@ -82,17 +82,17 @@
 						<Fa icon={faKey}></Fa>
 						<input
 							bind:value={password}
-							id="password"
-							name="password"
-							type={getType()}
-							required
 							class="w-full grow"
-							placeholder="password"
+							id="password"
 							minlength="8"
+							name="password"
+							placeholder="password"
+							required
+							type={getType()}
 						/>
 						<a
-							href="#password"
 							aria-label="password-eye"
+							href="#password"
 							onclick={() => {
 								passwordVisible = !passwordVisible;
 							}}
@@ -105,7 +105,7 @@
 						</a>
 					</label>
 				</div>
-				<button type="submit" class="btn btn-outline btn-primary lg:w-1/3">
+				<button class="btn btn-outline btn-primary lg:w-1/3" type="submit">
 					{#if isLoginPage}
 						Sign in
 					{:else}
@@ -121,8 +121,8 @@
 					Already registered?
 				{/if}
 				<a
-					href="/"
 					class="text-base-content hover:text-neutral font-semibold leading-6"
+					href="/"
 					onclick={() => {
 						isLoginPage = !isLoginPage;
 					}}
