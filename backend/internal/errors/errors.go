@@ -9,7 +9,7 @@ import (
 
 const (
 	notFoundFormat  = "%s not found"
-	invalidFieldFmt = "invalid field: %s"
+	invalidFieldFmt = "incorrect value for field: %s"
 	missingFieldFmt = "missing field: %s"
 )
 

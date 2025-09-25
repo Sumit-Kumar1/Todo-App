@@ -45,8 +45,11 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	_, _ = w.Write([]byte("user created successfully!"))
+
+	_, _ = w.Write(json.RawMessage("{\"data\":\"user created successfully\"}"))
+
 	logger.LogAttrs(ctx, slog.LevelInfo, "login:user created successfully!", slog.String("email", user.Email))
 }
 
@@ -77,7 +80,10 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &authCookie)
 	http.SetCookie(w, &refCookie)
 
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
+
+	_, _ = w.Write(json.RawMessage("{\"data\":\"user login successfully\"}"))
 }
 
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
