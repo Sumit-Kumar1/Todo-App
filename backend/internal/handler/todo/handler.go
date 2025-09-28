@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"net/http"
 
-	"todoapp/internal/constant"
 	"todoapp/internal/errors"
 	"todoapp/internal/models"
 
@@ -27,7 +26,7 @@ func (h *Handler) AddTask(w http.ResponseWriter, r *http.Request) {
 
 	var taskReq models.TaskReq
 
-	userID, ok := ctx.Value(constant.CtxKeyUserID).(uuid.UUID)
+	userID, ok := ctx.Value(models.CtxKeyUserID).(uuid.UUID)
 	if !ok {
 		logger.LogAttrs(ctx, slog.LevelError, "invalid user id")
 		errors.HandleHTTPError(w, errors.ErrUserNotFound)
@@ -60,11 +59,11 @@ func (h *Handler) AddTask(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(data)
 }
 
-func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) MarkDone(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	logger := models.GetLoggerFromCtx(ctx)
 
-	userID, ok := ctx.Value(constant.CtxKeyUserID).(uuid.UUID)
+	userID, ok := ctx.Value(models.CtxKeyUserID).(uuid.UUID)
 	if !ok {
 		logger.LogAttrs(ctx, slog.LevelError, "invalid user id")
 		errors.HandleHTTPError(w, errors.ErrUserNotFound)
@@ -89,7 +88,7 @@ func (h *Handler) GetAllTasks(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	logger := models.GetLoggerFromCtx(ctx)
 
-	userID, ok := ctx.Value(constant.CtxKeyUserID).(uuid.UUID)
+	userID, ok := ctx.Value(models.CtxKeyUserID).(uuid.UUID)
 	if !ok {
 		logger.LogAttrs(ctx, slog.LevelError, "invalid user id")
 		errors.HandleHTTPError(w, errors.ErrUserNotFound)
@@ -125,7 +124,7 @@ func (h *Handler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	logger := models.GetLoggerFromCtx(ctx)
 
-	userID, ok := ctx.Value(constant.CtxKeyUserID).(uuid.UUID)
+	userID, ok := ctx.Value(models.CtxKeyUserID).(uuid.UUID)
 	if !ok {
 		logger.LogAttrs(ctx, slog.LevelError, "invalid user id")
 		errors.HandleHTTPError(w, errors.ErrUserNotFound)
@@ -149,7 +148,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 
 	var taskReq models.TaskReq
 
-	userID, ok := ctx.Value(constant.CtxKeyUserID).(uuid.UUID)
+	userID, ok := ctx.Value(models.CtxKeyUserID).(uuid.UUID)
 	if !ok {
 		logger.LogAttrs(ctx, slog.LevelError, "invalid user id")
 		errors.HandleHTTPError(w, errors.ErrUserNotFound)

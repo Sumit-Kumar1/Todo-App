@@ -9,6 +9,7 @@ import (
 
 	"todoapp/internal/errors"
 	"todoapp/internal/models"
+	"todoapp/internal/todocookie"
 )
 
 const (
@@ -78,20 +79,34 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	authCookie, refCookie := getLoginCookie(resp)
-	http.SetCookie(w, &authCookie)
-	http.SetCookie(w, &refCookie)
+	err = todocookie.WriteCookie(w, authCookie)
+	if err != nil {
+		logger.LogAttrs(ctx, slog.LevelError, "login:writing cookie auth",
+			slog.String("error", err.Error()))
+		errors.HandleHTTPError(w, err)
+		return
+	}
+
+	err = todocookie.WriteCookie(w, refCookie)
+	if err != nil {
+		logger.LogAttrs(ctx, slog.LevelError, "login:writing cookie refresh",
+			slog.String("error", err.Error()))
+		errors.HandleHTTPError(w, err)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
 	_, _ = w.Write(json.RawMessage("{\"data\":\"user login successfully\"}"))
+	logger.LogAttrs(ctx, slog.LevelInfo, "user login successfully")
 }
 
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	logger := models.GetLoggerFromCtx(ctx)
 
-	cookie, err := r.Cookie("auth")
+	authCookie, err := todocookie.ReadCookie(r, authCookieName)
 	if err != nil {
 		if pkgErr.Is(err, http.ErrNoCookie) {
 			logger.Log(ctx, slog.LevelError, "logout:service:no cookie in the request")
@@ -102,22 +117,25 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if cookie.Value == "" {
-		logger.Log(ctx, slog.LevelError, "logout:service:auth cookie is empty")
-		errors.HandleHTTPError(w, errors.ErrInvalidCookie)
-		return
-	}
-
-	if err := h.svc.Logout(ctx, cookie.Value); err != nil {
+	if err := h.svc.Logout(ctx, authCookie); err != nil {
 		logger.LogAttrs(ctx, slog.LevelError, "logout:error while calling service",
 			slog.String("error", err.Error()))
 		errors.HandleHTTPError(w, err)
 		return
 	}
 
-	// set cookie as -1 for both auth and refresh
+	_ = todocookie.WriteCookie(w, http.Cookie{
+		Name:     authCookieName,
+		Value:    "",
+		Path:     "/",
+		Secure:   true,
+		HttpOnly: true,
+		MaxAge:   -1,
+		SameSite: http.SameSiteLaxMode,
+	})
 
 	w.WriteHeader(http.StatusOK)
+	logger.LogAttrs(ctx, slog.LevelInfo, "user logout successfully")
 }
 
 func getLoginCookie(resp *models.AuthUserResp) (auth, refresh http.Cookie) {
@@ -132,7 +150,7 @@ func getLoginCookie(resp *models.AuthUserResp) (auth, refresh http.Cookie) {
 		Secure:   true,
 		HttpOnly: true,
 		MaxAge:   int(time.Minute * 10),
-		SameSite: http.SameSiteStrictMode,
+		SameSite: http.SameSiteLaxMode,
 	}
 
 	refresh = http.Cookie{
@@ -141,8 +159,8 @@ func getLoginCookie(resp *models.AuthUserResp) (auth, refresh http.Cookie) {
 		Path:     "/",
 		Secure:   true,
 		HttpOnly: true,
-		MaxAge:   int(time.Hour * 24),
-		SameSite: http.SameSiteStrictMode,
+		MaxAge:   int(time.Hour * 6),
+		SameSite: http.SameSiteLaxMode,
 	}
 
 	return

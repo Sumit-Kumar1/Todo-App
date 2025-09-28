@@ -2,8 +2,6 @@ package server
 
 import (
 	"context"
-	"database/sql"
-	libErr "errors"
 	"log/slog"
 	"net"
 	"net/http"
@@ -11,15 +9,25 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
+
 	"todoapp/internal/errors"
 	"todoapp/internal/models"
+	"todoapp/internal/todocookie"
 
 	"github.com/google/uuid"
 )
 
 const (
-	cookieName = "token"
+	cookieName = "auth"
 )
+
+type Claims struct {
+	Email    string `json:"email"`
+	ClaimUID string `json:"claimID"`
+	// registeredClaim's subject is userID from db
+	jwt.RegisteredClaims
+}
 
 type Middleware func(http.HandlerFunc) http.HandlerFunc
 
@@ -31,29 +39,17 @@ func Chain(f http.HandlerFunc, middlewares ...Middleware) http.HandlerFunc {
 	return f
 }
 
-// FIXME : fix auth Middleware ?? do we need this
-func (s *Server) AuthMiddleware(ctx context.Context) Middleware {
+func (s *Server) AuthMiddleware() Middleware {
 	return func(f http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
-			cookieVal, err := validateCookie(ctx, s.Logger, r)
+			ctx := r.Context()
+
+			uid, err := s.validateCookie(ctx, s.Logger, r)
 			if err != nil {
 				errors.HandleHTTPError(w, err)
-
 				s.Logger.LogAttrs(ctx, slog.LevelError, "error while validating cookie",
 					slog.String("error", err.Error()))
 
-				w.Header().Set("HX-Redirect", "/")
-				return
-			}
-
-			uid, err := getSessionID(ctx, s.DB, s.Logger, cookieVal)
-			if err != nil {
-				s.Logger.LogAttrs(ctx, slog.LevelError, "error while validating session",
-					slog.String("error", err.Error()))
-
-				http.Error(w, err.Error(), http.StatusUnauthorized)
-
-				w.Header().Set("HX-Redirect", "/")
 				return
 			}
 
@@ -85,9 +81,9 @@ func AddCorrelation() Middleware {
 	}
 }
 
+// ServerWideMiddlewares CORS Part middleware
 func (s *Server) ServerWideMiddlewares(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// CORS Part
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 
 		if r.Method == http.MethodOptions {
@@ -148,7 +144,7 @@ func (s *Server) globalRateLimiter(next http.Handler) http.Handler {
 	})
 }
 
-// nolint:gocognit // can't divide it further FIXME: is this still required??
+// FIXME: is this still required??
 func (s *Server) rateLimiterLogin() Middleware {
 	return func(f http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
@@ -198,57 +194,38 @@ func (s *Server) rateLimiterLogin() Middleware {
 	}
 }
 
-func validateCookie(ctx context.Context, logger *slog.Logger, r *http.Request) (*uuid.UUID, error) {
-	cookie, err := r.Cookie(cookieName)
-	if err == nil {
-		uid, err := uuid.Parse(cookie.Value)
-		if err != nil {
-			logger.LogAttrs(ctx, slog.LevelError, "invalid cookie found, please login again")
-
-			return nil, errors.ErrInvalidCookie
-		}
-
-		return &uid, nil
-	}
-
-	if libErr.Is(err, http.ErrNoCookie) {
-		logger.LogAttrs(ctx, slog.LevelError, err.Error(),
-			slog.String("error", "no cookie found, please login again!"),
-		)
-
-		return nil, err
-	}
-
-	logger.LogAttrs(ctx, slog.LevelError, err.Error())
-
-	return nil, err
-}
-
-func getSessionID(ctx context.Context, db *sql.DB, logger *slog.Logger, sessionToken *uuid.UUID) (*uuid.UUID, error) {
-	var (
-		userID string
-		uid    uuid.UUID
-		err    error
-	)
-
-	query := "SELECT user_id FROM sessions WHERE token=$1;"
-
-	row := db.QueryRowContext(ctx, query, *sessionToken)
-	if err := row.Scan(&userID); err != nil {
-		if libErr.Is(err, sql.ErrNoRows) {
-			logger.LogAttrs(ctx, slog.LevelError, "no valid session found, please login again")
-
-			return nil, errors.ErrInvalidCookie
-		}
-
-		logger.LogAttrs(ctx, slog.LevelError, err.Error())
-
-		return nil, err
-	}
-
-	uid, err = uuid.Parse(userID)
+func (s *Server) validateCookie(ctx context.Context, logger *slog.Logger, r *http.Request) (*uuid.UUID, error) {
+	val, err := todocookie.ReadCookie(r, cookieName)
 	if err != nil {
 		return nil, err
+	}
+
+	token, err := jwt.ParseWithClaims(val, &Claims{}, func(token *jwt.Token) (any, error) {
+		secVal := GetOrDefault("AUTH_SECRET", "33cea8f88c5c8ad73b1700af7d72891fe3097297e59fb6cbe5fd8b545a8316d0")
+		return []byte(secVal), nil
+	}, jwt.WithExpirationRequired())
+	if err != nil {
+		return nil, err
+	}
+
+	claims, ok := token.Claims.(*Claims)
+	if !ok {
+		return nil, errors.ErrInvalid("claim")
+	}
+
+	if !token.Valid {
+		return nil, jwt.ErrSignatureInvalid
+	}
+
+	userID := claims.Subject
+
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	if uid == uuid.Nil {
+		return nil, errors.ErrInvalid("nil user id in claims")
 	}
 
 	return &uid, nil

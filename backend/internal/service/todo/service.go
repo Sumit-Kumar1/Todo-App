@@ -43,7 +43,7 @@ func (s *Service) AddTask(ctx context.Context, taskInp *models.TaskReq, userID *
 	dd, _ := time.Parse(time.DateOnly, taskInp.DueDate)
 
 	task := models.Task{
-		ID:          taskInp.ID,
+		ID:          uuid.NewString(),
 		UserID:      *userID,
 		Title:       taskInp.Title,
 		Description: taskInp.Description,
@@ -86,10 +86,6 @@ func (s *Service) DeleteTask(ctx context.Context, id string, userID *uuid.UUID) 
 func (s *Service) MarkDone(ctx context.Context, id string, userID *uuid.UUID) (*models.Task, error) {
 	logger := models.GetLoggerFromCtx(ctx)
 
-	if err := validateID(id); err != nil {
-		return nil, err
-	}
-
 	task, err := s.Store.MarkDone(ctx, id, userID)
 	if err != nil {
 		logger.LogAttrs(ctx, slog.LevelError, "error while marking task done",
@@ -106,7 +102,6 @@ func (s *Service) MarkDone(ctx context.Context, id string, userID *uuid.UUID) (*
 func (s *Service) UpdateTask(ctx context.Context, id string, taskInp *models.TaskReq, isDone bool, userID *uuid.UUID,
 ) (*models.Task, error) {
 	logger := models.GetLoggerFromCtx(ctx)
-	taskInp.ID = id
 
 	if err := taskInp.Validate(); err != nil {
 		return nil, err
@@ -129,7 +124,7 @@ func (s *Service) UpdateTask(ctx context.Context, id string, taskInp *models.Tas
 	if err != nil {
 		logger.LogAttrs(ctx, slog.LevelError, "error while updating task",
 			slog.String("error", err.Error()),
-			slog.String("task", id),
+			slog.String("task_id", id),
 		)
 
 		return nil, err

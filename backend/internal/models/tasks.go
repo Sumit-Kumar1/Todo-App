@@ -21,7 +21,7 @@ type Task struct {
 
 type TaskResp struct {
 	ID          string     `json:"id"`
-	UserID      uuid.UUID  `json:"user_id"`
+	UserID      uuid.UUID  `json:"-"`
 	Title       string     `json:"title"`
 	Description string     `json:"description"`
 	IsDone      bool       `json:"isDone"`
@@ -31,8 +31,6 @@ type TaskResp struct {
 }
 
 type TaskReq struct {
-	ID          string `json:"id"`
-	UserID      string `json:"userId"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
 	DueDate     string `json:"dueDate"`
@@ -57,10 +55,6 @@ func (t *Task) ToTaskResp() *TaskResp {
 }
 
 func (t *TaskReq) Validate() error {
-	if err := validateID(t.ID); err != nil {
-		return err
-	}
-
 	t.Title = strings.TrimSpace(t.Title)
 	t.Description = strings.TrimSpace(t.Description)
 
@@ -79,7 +73,7 @@ func validateDueDate(val string) error {
 	tn := time.Now().AddDate(0, 0, -1)
 
 	if strings.TrimSpace(val) == "" {
-		return errors.ErrRequired("due date")
+		return nil
 	}
 
 	tt, err := time.Parse(time.DateOnly, val)

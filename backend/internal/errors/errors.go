@@ -17,7 +17,8 @@ var (
 	ErrUserAlreadyExists = NewConstError("user already exists")
 	ErrPsswdNotMatch     = NewConstError("password does not match")
 	ErrUserNotFound      = NewConstError("user not found")
-	ErrInvalidCookie     = NewConstError("invalid cookie")
+	ErrInvalidCookie     = NewConstError("invalid cookie value")
+	ErrCookieValTooLong  = NewConstError("cookie value too long")
 )
 
 // CustomError represents an error that can be sent in HTTP responses.
