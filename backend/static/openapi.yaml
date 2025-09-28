@@ -14,41 +14,6 @@ servers:
   - url: "http://localhost:9001"
 
 paths:
-  /register:
-    post:
-      tags:
-        - User
-      summary: Register a new user
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                email:
-                  type: string
-                  description: "a valid email address, must be unique"
-                  example: "sumit@kumar.com"
-                  required: true
-                password:
-                  type: string
-                  description: "a minimum of 8 character long password"
-                  example: "Pass#1234"
-                  required: true
-            encoding:
-              name:
-                allowReserved: true
-              email:
-                allowReserved: true
-              password:
-                allowReserved: true
-      responses:
-        "201":
-          description: User registered
-        "400":
-          description: Invalid input
-
   /login:
     post:
       tags:
@@ -65,12 +30,13 @@ paths:
                   type: string
                   description: "a valid email address"
                   example: "sumit@kumar.com"
-                  required: true
                 password:
                   type: string
                   description: "a minimum of 8 character long password"
                   example: "Pass#1234"
-                  required: true
+              required:
+                - email
+                - password
             encoding:
               email:
                 allowReserved: true
@@ -248,8 +214,6 @@ paths:
 
   /tasks/{id}/done:
     patch:
-  /tasks/{taskId}/done:
-    put:
       tags:
         - Todo
       summary: update task's specific field e.g. done state, end-date
