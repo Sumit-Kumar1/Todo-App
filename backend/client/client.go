@@ -42,9 +42,9 @@ func New(url string) *Client {
 
 func (c *Client) SignUp(ctx context.Context, email, password string) error {
 	req := models.AuthUserReq{Email: email, Password: password}
-	headers := map[string]string{models.HeaderCorrelation: models.GetCorrelationID(ctx)}
+	headers := prepareAuthAPIHeaders(ctx, "")
 
-	resp, err := c.postWithHeaders(ctx, "/signup", headers, req)
+	resp, err := c.postWithHeaders(ctx, "/signup", headers, &req)
 	if err != nil {
 		return err
 	}
@@ -59,9 +59,9 @@ func (c *Client) SignUp(ctx context.Context, email, password string) error {
 
 func (c *Client) SignIn(ctx context.Context, email, password string) (*models.AuthUserResp, error) {
 	req := models.AuthUserReq{Email: email, Password: password}
-	headers := map[string]string{models.HeaderCorrelation: models.GetCorrelationID(ctx)}
+	headers := prepareAuthAPIHeaders(ctx, "")
 
-	resp, err := c.postWithHeaders(ctx, "/signin", headers, req)
+	resp, err := c.postWithHeaders(ctx, "/signin", headers, &req)
 	if err != nil {
 		return nil, err
 	}
@@ -70,31 +70,19 @@ func (c *Client) SignIn(ctx context.Context, email, password string) (*models.Au
 }
 
 func (c *Client) Refresh(ctx context.Context, auth string) (*string, error) {
-	headers := map[string]string{
-		models.HeaderCorrelation: models.GetCorrelationID(ctx),
-		"Authorization":          "Bearer " + auth,
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.url+"/refresh", http.NoBody)
-	if err != nil {
-		return nil, err
-	}
-
-	for key, val := range headers {
-		req.Header.Add(key, val)
-	}
-
-	resp, err := c.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
 	var token struct {
 		RefToken *string `json:"refreshToken,omitempty"`
 	}
 
+	headers := prepareAuthAPIHeaders(ctx, auth)
+
+	resp, err := c.postWithHeaders(ctx, "/refresh", headers, nil)
+	if err != nil {
+		return nil, err
+	}
+
 	if resp == nil {
-		return nil, errAuthNilResp
+		return nil, errors.ErrRequired("response for refresh")
 	}
 
 	if resp.StatusCode != http.StatusCreated {
@@ -110,14 +98,35 @@ func (c *Client) Refresh(ctx context.Context, auth string) (*string, error) {
 }
 
 func (c *Client) Revoke(ctx context.Context, token string) error {
-	// TODO: complete revoke functionality
+	headers := prepareAuthAPIHeaders(ctx, token)
+
+	resp, err := c.postWithHeaders(ctx, "/revoke", headers, nil)
+	if err != nil {
+		return err
+	}
+
+	if resp == nil {
+		return errors.ErrRequired("response from revoke")
+	}
+
+	if resp.StatusCode != http.StatusNoContent {
+		return errors.ErrInvalid("revoke status code: " + resp.Status)
+	}
+
 	return nil
 }
 
-func (c *Client) postWithHeaders(ctx context.Context, endpoint string, headers map[string]string, reqModel models.AuthUserReq) (*http.Response, error) {
-	data, err := json.Marshal(reqModel)
-	if err != nil {
-		return nil, err
+func (c *Client) postWithHeaders(ctx context.Context, endpoint string, headers map[string]string, reqModel *models.AuthUserReq) (*http.Response, error) {
+	var (
+		data []byte
+		err  error
+	)
+
+	if reqModel != nil {
+		data, err = json.Marshal(*reqModel)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.url+endpoint, bytes.NewBuffer(data))
@@ -135,33 +144,4 @@ func (c *Client) postWithHeaders(ctx context.Context, endpoint string, headers m
 	}
 
 	return resp, nil
-}
-
-func handleResponse[T any](resp *http.Response) (*T, error) {
-	if resp == nil {
-		return nil, errAuthNilResp
-	}
-
-	var res struct {
-		Data T `json:"data,omitempty"`
-	}
-
-	switch resp.StatusCode {
-	case http.StatusNotFound:
-		return nil, errors.ErrUserNotFound
-	case http.StatusConflict:
-		return nil, errors.ErrUserAlreadyExists
-	case http.StatusUnauthorized, http.StatusForbidden:
-		return nil, errors.ErrPsswdNotMatch
-	case http.StatusOK, http.StatusCreated:
-		if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
-			return nil, err
-		}
-
-		defer resp.Body.Close()
-	default:
-		return nil, errInvalidStatus
-	}
-
-	return &res.Data, nil
 }
