@@ -22,9 +22,13 @@ func New(st TodoStorer) *Service {
 func (s *Service) GetAll(ctx context.Context, userID *uuid.UUID) ([]models.Task, error) {
 	logger := models.GetLoggerFromCtx(ctx)
 
+	if err := validateID(userID.String()); err != nil {
+		return nil, err
+	}
+
 	tasks, err := s.Store.GetAll(ctx, userID)
 	if err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, "error while fetcing all tasks",
+		logger.LogAttrs(ctx, slog.LevelError, "error while fetching all tasks",
 			slog.String("error", err.Error()), slog.String("user", userID.String()))
 
 		return nil, err
@@ -41,9 +45,10 @@ func (s *Service) AddTask(ctx context.Context, taskInp *models.TaskReq, userID *
 	}
 
 	dd, _ := time.Parse(time.DateOnly, taskInp.DueDate)
+	taskID := uuid.NewString()
 
 	task := models.Task{
-		ID:          uuid.NewString(),
+		ID:          taskID,
 		UserID:      *userID,
 		Title:       taskInp.Title,
 		Description: taskInp.Description,
@@ -61,14 +66,14 @@ func (s *Service) AddTask(ctx context.Context, taskInp *models.TaskReq, userID *
 		return nil, err
 	}
 
-	return &task, nil
+	return s.Store.GetTaskByID(ctx, taskID, userID)
 }
 
 func (s *Service) DeleteTask(ctx context.Context, id string, userID *uuid.UUID) error {
 	logger := models.GetLoggerFromCtx(ctx)
 
 	if err := validateID(id); err != nil {
-		return errors.ErrInvalid("task id")
+		return err
 	}
 
 	if err := s.Store.Delete(ctx, id, userID); err != nil {
@@ -86,8 +91,11 @@ func (s *Service) DeleteTask(ctx context.Context, id string, userID *uuid.UUID) 
 func (s *Service) MarkDone(ctx context.Context, id string, userID *uuid.UUID) (*models.Task, error) {
 	logger := models.GetLoggerFromCtx(ctx)
 
-	task, err := s.Store.MarkDone(ctx, id, userID)
-	if err != nil {
+	if err := validateID(id); err != nil {
+		return nil, err
+	}
+
+	if err := s.Store.MarkDone(ctx, id, userID); err != nil {
 		logger.LogAttrs(ctx, slog.LevelError, "error while marking task done",
 			slog.String("error", err.Error()),
 			slog.String("task", id),
@@ -96,12 +104,15 @@ func (s *Service) MarkDone(ctx context.Context, id string, userID *uuid.UUID) (*
 		return nil, err
 	}
 
-	return task, nil
+	return s.Store.GetTaskByID(ctx, id, userID)
 }
 
-func (s *Service) UpdateTask(ctx context.Context, id string, taskInp *models.TaskReq, isDone bool, userID *uuid.UUID,
-) (*models.Task, error) {
+func (s *Service) UpdateTask(ctx context.Context, id string, taskInp *models.TaskReq, userID *uuid.UUID) (*models.Task, error) {
 	logger := models.GetLoggerFromCtx(ctx)
+
+	if err := validateID(id); err != nil {
+		return nil, err
+	}
 
 	if err := taskInp.Validate(); err != nil {
 		return nil, err
@@ -109,14 +120,13 @@ func (s *Service) UpdateTask(ctx context.Context, id string, taskInp *models.Tas
 
 	dd, _ := time.Parse(time.DateOnly, taskInp.DueDate)
 	mt := time.Now().UTC()
-
 	task := models.Task{
 		ID:          id,
 		UserID:      *userID,
 		Title:       taskInp.Title,
 		Description: taskInp.Description,
+		IsDone:      taskInp.IsDone,
 		DueDate:     &dd,
-		IsDone:      isDone,
 		ModifiedAt:  &mt,
 	}
 
@@ -130,13 +140,13 @@ func (s *Service) UpdateTask(ctx context.Context, id string, taskInp *models.Tas
 		return nil, err
 	}
 
-	return &task, nil
+	return s.Store.GetTaskByID(ctx, id, userID)
 }
 
 func validateID(id string) error {
 	uid, err := uuid.Parse(id)
 	if err != nil || uid == uuid.Nil {
-		return errors.ErrInvalid("task id")
+		return errors.ErrInvalidTaskID
 	}
 
 	return nil

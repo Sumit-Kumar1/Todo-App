@@ -13,5 +13,6 @@ type TodoStorer interface {
 	Create(ctx context.Context, task *models.Task) error
 	Update(ctx context.Context, task *models.Task) error
 	Delete(ctx context.Context, id string, userID *uuid.UUID) error
-	MarkDone(ctx context.Context, id string, userID *uuid.UUID) (*models.Task, error)
+	MarkDone(ctx context.Context, id string, userID *uuid.UUID) error
+	GetTaskByID(ctx context.Context, taskID string, userID *uuid.UUID) (*models.Task, error)
 }

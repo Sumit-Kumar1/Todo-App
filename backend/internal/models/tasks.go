@@ -20,14 +20,14 @@ type Task struct {
 }
 
 type TaskResp struct {
-	ID          string     `json:"id"`
+	ID          string     `json:"id,omitempty"`
 	UserID      uuid.UUID  `json:"-"`
-	Title       string     `json:"title"`
-	Description string     `json:"description"`
-	IsDone      bool       `json:"isDone"`
-	DueDate     *string    `json:"dueDate"`
-	AddedAt     time.Time  `json:"addedAt"`
-	ModifiedAt  *time.Time `json:"modifiedAt"`
+	Title       string     `json:"title,omitempty"`
+	Description string     `json:"description,omitempty"`
+	IsDone      bool       `json:"isDone,omitempty"`
+	DueDate     *string    `json:"dueDate,omitempty"`
+	AddedAt     time.Time  `json:"addedAt,omitempty"`
+	ModifiedAt  *time.Time `json:"modifiedAt,omitempty"`
 }
 
 type TaskReq struct {
@@ -83,15 +83,6 @@ func validateDueDate(val string) error {
 
 	if !tt.After(tn) {
 		return errors.NewConstError("older due date from today")
-	}
-
-	return nil
-}
-
-func validateID(id string) error {
-	uid, err := uuid.Parse(id)
-	if err != nil || uid == uuid.Nil {
-		return errors.ErrInvalid("task id")
 	}
 
 	return nil
