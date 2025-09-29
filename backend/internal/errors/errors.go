@@ -19,6 +19,8 @@ var (
 	ErrUserNotFound      = NewConstError("user not found")
 	ErrInvalidCookie     = NewConstError("invalid cookie value")
 	ErrCookieValTooLong  = NewConstError("cookie value too long")
+	ErrTaskNotFound      = NewConstError("task not found")
+	ErrInvalidTaskID     = NewConstError("invalid task id")
 )
 
 // CustomError represents an error that can be sent in HTTP responses.
@@ -106,7 +108,7 @@ func HandleHTTPError(w http.ResponseWriter, err error) {
 		hErr.Code = http.StatusConflict
 	case errors.Is(err, ErrInvalidCookie):
 		hErr.Code = http.StatusUnauthorized
-	case errors.Is(err, ErrUserNotFound):
+	case errors.Is(err, ErrUserNotFound), errors.Is(err, ErrTaskNotFound):
 		hErr.Code = http.StatusNotFound
 	case errors.Is(err, ErrPsswdNotMatch):
 		hErr.Code = http.StatusUnauthorized
@@ -114,7 +116,11 @@ func HandleHTTPError(w http.ResponseWriter, err error) {
 		hErr.Code = http.StatusServiceUnavailable
 	}
 
-	data, _ := json.Marshal(hErr)
+	respErr := struct {
+		Error CustomError `json:"error"`
+	}{Error: *hErr}
+
+	data, _ := json.Marshal(respErr)
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(hErr.Code)

@@ -110,10 +110,10 @@ func setupTasksRoutes(app *server.Server) {
 
 	app.Mux.HandleFunc("POST /task", server.Chain(todoHTTP.AddTask, server.AddCorrelation(), app.AuthMiddleware()))
 	app.Mux.HandleFunc("GET /tasks", server.Chain(todoHTTP.GetAllTasks, server.AddCorrelation(), app.AuthMiddleware()))
-	app.Mux.HandleFunc("PATCH /task/{id}/done", server.Chain(todoHTTP.MarkDone, server.AddCorrelation(), app.AuthMiddleware()))
-	app.Mux.HandleFunc("DELETE /tasks/{id}/delete",
-		server.Chain(todoHTTP.DeleteTask, server.AddCorrelation(), app.AuthMiddleware()))
+	app.Mux.HandleFunc("PATCH /tasks/{id}/done", server.Chain(todoHTTP.MarkDone, server.AddCorrelation(), app.AuthMiddleware()))
 	app.Mux.HandleFunc("PUT /tasks/{id}", server.Chain(todoHTTP.Update, server.AddCorrelation(), app.AuthMiddleware()))
+	app.Mux.HandleFunc("DELETE /tasks/{id}",
+		server.Chain(todoHTTP.DeleteTask, server.AddCorrelation(), app.AuthMiddleware()))
 }
 
 func setupUserRoutes(app *server.Server) {

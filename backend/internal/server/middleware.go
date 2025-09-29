@@ -39,6 +39,8 @@ func Chain(f http.HandlerFunc, middlewares ...Middleware) http.HandlerFunc {
 	return f
 }
 
+// AuthMiddleware check for valid cookie and extracts user id for the user
+// TODO: Decide wether if token is expired had to refresh and add a new auth cookie to disrupt the flow ?
 func (s *Server) AuthMiddleware() Middleware {
 	return func(f http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
@@ -217,9 +219,11 @@ func (s *Server) validateCookie(ctx context.Context, logger *slog.Logger, r *htt
 		return nil, jwt.ErrSignatureInvalid
 	}
 
-	userID := claims.Subject
+	return extractUserID(claims.Subject)
+}
 
-	uid, err := uuid.Parse(userID)
+func extractUserID(claimSubject string) (*uuid.UUID, error) {
+	uid, err := uuid.Parse(claimSubject)
 	if err != nil {
 		return nil, err
 	}
