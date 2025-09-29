@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"todoapp/internal/errors"
+	"todoapp/internal/handler"
 	"todoapp/internal/models"
 	"todoapp/internal/todocookie"
 )
@@ -34,23 +35,29 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, "login:error while closing req body",
+		logger.LogAttrs(ctx, slog.LevelError, "register:error while closing req body",
 			slog.String("error", err.Error()))
 		errors.HandleHTTPError(w, err)
 		return
 	}
 
 	if err := h.svc.Register(ctx, &user); err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, "login:service:error while registering user",
+		logger.LogAttrs(ctx, slog.LevelError, "register:service:error while registering user",
 			slog.String("error", err.Error()))
 		errors.HandleHTTPError(w, err)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
+	resp := "user created successfully"
 
-	_, _ = w.Write(json.RawMessage("{\"data\":\"user created successfully\"}"))
+	if err := handler.WriteResponse[string](w, http.StatusCreated, &resp); err != nil {
+		logger.LogAttrs(ctx, slog.LevelError, "register:error while writing response",
+			slog.String("error", err.Error()))
+
+		w.WriteHeader(http.StatusInternalServerError)
+
+		return
+	}
 
 	logger.LogAttrs(ctx, slog.LevelInfo, "login:user created successfully!", slog.String("email", user.Email))
 }
@@ -95,10 +102,15 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+	success := "user login successfully"
 
-	_, _ = w.Write(json.RawMessage("{\"data\":\"user login successfully\"}"))
+	if err := handler.WriteResponse[string](w, http.StatusOK, &success); err != nil {
+		logger.LogAttrs(ctx, slog.LevelError, "login:error while writing response",
+			slog.String("error", err.Error()))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	logger.LogAttrs(ctx, slog.LevelInfo, "user login successfully")
 }
 
@@ -134,7 +146,12 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteLaxMode,
 	})
 
-	w.WriteHeader(http.StatusOK)
+	if err := handler.WriteResponse[any](w, int(http.StatusOK), nil); err != nil {
+		logger.LogAttrs(ctx, slog.LevelError, err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	logger.LogAttrs(ctx, slog.LevelInfo, "user logout successfully")
 }
 

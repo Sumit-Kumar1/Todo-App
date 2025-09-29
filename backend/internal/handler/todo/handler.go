@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"todoapp/internal/errors"
+	"todoapp/internal/handler"
 	"todoapp/internal/models"
 
 	"github.com/google/uuid"
@@ -41,22 +42,26 @@ func (h *Handler) AddTask(w http.ResponseWriter, r *http.Request) {
 	}(r.Body)
 
 	if err := json.NewDecoder(r.Body).Decode(&taskReq); err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, "Add task: decoding body error", slog.String("error", err.Error()))
+		logger.LogAttrs(ctx, slog.LevelError, "add task: decoding body error", slog.String("error", err.Error()))
 		errors.HandleHTTPError(w, err)
 		return
 	}
 
 	task, err := h.Service.AddTask(ctx, &taskReq, &userID)
 	if err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, "service:add task error", slog.String("error", err.Error()))
+		logger.LogAttrs(ctx, slog.LevelError, "add task:service error",
+			slog.String("error", err.Error()))
 		errors.HandleHTTPError(w, errors.ErrUserNotFound)
 		return
 	}
 
-	data, _ := json.Marshal(task)
+	if err := handler.WriteResponse[models.TaskResp](w, http.StatusCreated, task.ToTaskResp()); err != nil {
+		logger.LogAttrs(ctx, slog.LevelError, "add-task:error while writing response",
+			slog.String("err", err.Error()))
+		return
+	}
 
-	w.WriteHeader(http.StatusCreated)
-	_, _ = w.Write(data)
+	logger.LogAttrs(ctx, slog.LevelInfo, "task added successfully", slog.String("task id", task.ID))
 }
 
 func (h *Handler) MarkDone(w http.ResponseWriter, r *http.Request) {
@@ -79,9 +84,13 @@ func (h *Handler) MarkDone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data, _ := json.Marshal(resp)
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(data)
+	if err := handler.WriteResponse[models.TaskResp](w, http.StatusOK, resp.ToTaskResp()); err != nil {
+		logger.LogAttrs(ctx, slog.LevelError, "mark done:error while writing response",
+			slog.String("err", err.Error()))
+		return
+	}
+
+	logger.LogAttrs(ctx, slog.LevelInfo, "mark done task successfully", slog.String("task id", resp.ID))
 }
 
 func (h *Handler) GetAllTasks(w http.ResponseWriter, r *http.Request) {
@@ -114,32 +123,42 @@ func (h *Handler) GetAllTasks(w http.ResponseWriter, r *http.Request) {
 		tasks = append(tasks, *resp[i].ToTaskResp())
 	}
 
-	data, _ := json.Marshal(tasks)
+	if err := handler.WriteResponse[[]models.TaskResp](w, http.StatusOK, &tasks); err != nil {
+		logger.LogAttrs(ctx, slog.LevelError, "get-all task:error while writing response",
+			slog.String("err", err.Error()))
+		return
+	}
 
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(data)
+	logger.LogAttrs(ctx, slog.LevelInfo, "fetched all task successfully")
 }
 
 func (h *Handler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	logger := models.GetLoggerFromCtx(ctx)
 
+	id := r.PathValue("id")
+
 	userID, ok := ctx.Value(models.CtxKeyUserID).(uuid.UUID)
 	if !ok {
 		logger.LogAttrs(ctx, slog.LevelError, "invalid user id")
-		errors.HandleHTTPError(w, errors.ErrUserNotFound)
+		errors.HandleHTTPError(w, errors.ErrInvalidCookie)
 		return
 	}
 
-	id := r.PathValue("id")
-
 	if err := h.Service.DeleteTask(ctx, id, &userID); err != nil {
 		logger.LogAttrs(ctx, slog.LevelError, "delete task error", slog.String("error", err.Error()))
+
 		errors.HandleHTTPError(w, err)
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	if err := handler.WriteResponse[any](w, http.StatusNoContent, nil); err != nil {
+		logger.LogAttrs(ctx, slog.LevelError, "delete task:error while writing response",
+			slog.String("err", err.Error()))
+		return
+	}
+
+	logger.LogAttrs(ctx, slog.LevelInfo, "delete task successfully", slog.String("task id", id))
 }
 
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
@@ -163,15 +182,18 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.Service.UpdateTask(ctx, id, &taskReq, false, &userID)
+	resp, err := h.Service.UpdateTask(ctx, id, &taskReq, &userID)
 	if err != nil {
 		logger.LogAttrs(ctx, slog.LevelError, "update task error", slog.String("error", err.Error()))
 		errors.HandleHTTPError(w, err)
 		return
 	}
 
-	data, _ := json.Marshal(resp)
+	if err := handler.WriteResponse[models.TaskResp](w, http.StatusOK, resp.ToTaskResp()); err != nil {
+		logger.LogAttrs(ctx, slog.LevelError, "mark done:error while writing response",
+			slog.String("err", err.Error()))
+		return
+	}
 
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(data)
+	logger.LogAttrs(ctx, slog.LevelInfo, "updated task successfully", slog.String("task id", resp.ID))
 }
