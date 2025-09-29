@@ -3,7 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
-	liberrors "errors"
+	pkgErr "errors"
 	"log/slog"
 	"time"
 
@@ -36,11 +36,12 @@ func (s *Store) GetAll(ctx context.Context, userID *uuid.UUID) ([]models.Task, e
 	var (
 		res    = make([]models.Task, 0)
 		logger = models.GetLoggerFromCtx(ctx)
+		task   models.Task
 	)
 
 	rows, err := s.DB.QueryContext(ctx, getAllByUserID, *userID)
 	if err != nil {
-		if liberrors.Is(err, sql.ErrNoRows) {
+		if pkgErr.Is(err, sql.ErrNoRows) {
 			return res, nil
 		}
 
@@ -48,12 +49,13 @@ func (s *Store) GetAll(ctx context.Context, userID *uuid.UUID) ([]models.Task, e
 	}
 
 	for rows.Next() {
-		task, err := populateTaskFields(rows)
+		err = rows.Scan(&task.ID, &task.UserID, &task.Title, &task.Description, &task.IsDone,
+			&task.DueDate, &task.AddedAt, &task.ModifiedAt)
 		if err != nil {
 			return nil, err
 		}
 
-		res = append(res, *task)
+		res = append(res, task)
 	}
 
 	logger.LogAttrs(ctx, slog.LevelDebug, "get all tasks", slog.String("user", userID.String()))
@@ -64,9 +66,19 @@ func (s *Store) GetAll(ctx context.Context, userID *uuid.UUID) ([]models.Task, e
 func (s *Store) Create(ctx context.Context, task *models.Task) error {
 	logger := models.GetLoggerFromCtx(ctx)
 
-	if _, err := s.DB.ExecContext(ctx, insertQuery, task.ID, task.UserID,
-		task.Title, task.Description, task.IsDone, task.DueDate, task.AddedAt); err != nil {
+	res, err := s.DB.ExecContext(ctx, insertQuery, task.ID, task.UserID,
+		task.Title, task.Description, task.IsDone, task.DueDate, task.AddedAt)
+	if err != nil {
 		return err
+	}
+
+	inserted, err := res.LastInsertId()
+	if err != nil {
+		return err
+	}
+
+	if inserted == 0 {
+		return errors.NewConstError("not able to insert into database")
 	}
 
 	logger.LogAttrs(ctx, slog.LevelDebug, "task added successfully",
@@ -79,9 +91,19 @@ func (s *Store) Create(ctx context.Context, task *models.Task) error {
 func (s *Store) Update(ctx context.Context, task *models.Task) error {
 	logger := models.GetLoggerFromCtx(ctx)
 
-	if _, err := s.DB.ExecContext(ctx, updateQuery, task.Title, task.Description,
-		task.IsDone, task.ModifiedAt, task.ID, task.UserID); err != nil {
+	res, err := s.DB.ExecContext(ctx, updateQuery, task.Title, task.Description,
+		task.IsDone, task.ModifiedAt, task.ID, task.UserID)
+	if err != nil {
 		return err
+	}
+
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if affected == 0 {
+		return errors.ErrTaskNotFound
 	}
 
 	logger.LogAttrs(ctx, slog.LevelDebug, "task updated successfully",
@@ -93,8 +115,18 @@ func (s *Store) Update(ctx context.Context, task *models.Task) error {
 func (s *Store) Delete(ctx context.Context, id string, userID *uuid.UUID) error {
 	logger := models.GetLoggerFromCtx(ctx)
 
-	if _, err := s.DB.ExecContext(ctx, deleteTask, id, *userID); err != nil {
+	res, err := s.DB.ExecContext(ctx, deleteTask, id, *userID)
+	if err != nil {
 		return err
+	}
+
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if affected == 0 {
+		return errors.ErrTaskNotFound
 	}
 
 	logger.LogAttrs(ctx, slog.LevelDebug, "task deleted successfully", slog.String("task", id))
@@ -102,50 +134,42 @@ func (s *Store) Delete(ctx context.Context, id string, userID *uuid.UUID) error 
 	return nil
 }
 
-func (s *Store) MarkDone(ctx context.Context, id string, userID *uuid.UUID) (*models.Task, error) {
-	var (
-		task = &models.Task{ID: id}
-		err  error
-	)
-
+func (s *Store) MarkDone(ctx context.Context, id string, userID *uuid.UUID) error {
 	res, err := s.DB.ExecContext(ctx, setDone, 1, time.Now(), id, *userID)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	if _, err := res.RowsAffected(); err != nil {
-		return nil, err
-	}
-
-	rows, err := s.DB.QueryContext(ctx, getTaskByID, id, *userID)
+	affected, err := res.RowsAffected()
 	if err != nil {
-		if liberrors.Is(err, sql.ErrNoRows) {
-			return nil, errors.ErrNotFound("task")
+		return err
+	}
+
+	if affected == 0 {
+		return errors.ErrTaskNotFound
+	}
+
+	return nil
+}
+
+func (s *Store) GetTaskByID(ctx context.Context, taskID string, userID *uuid.UUID) (*models.Task, error) {
+	var task models.Task
+
+	rows, err := s.DB.QueryContext(ctx, getTaskByID, taskID, *userID)
+	if err != nil {
+		if pkgErr.Is(err, sql.ErrNoRows) {
+			return nil, errors.ErrTaskNotFound
 		}
 
 		return nil, err
 	}
 
 	for rows.Next() {
-		task, err = populateTaskFields(rows)
+		err = rows.Scan(&task.ID, &task.UserID, &task.Title, &task.Description, &task.IsDone,
+			&task.DueDate, &task.AddedAt, &task.ModifiedAt)
 		if err != nil {
 			return nil, err
 		}
-	}
-
-	return task, nil
-}
-
-func populateTaskFields(rows *sql.Rows) (*models.Task, error) {
-	var (
-		task models.Task
-		err  error
-	)
-
-	err = rows.Scan(&task.ID, &task.UserID, &task.Title, &task.Description, &task.IsDone,
-		&task.DueDate, &task.AddedAt, &task.ModifiedAt)
-	if err != nil {
-		return nil, err
 	}
 
 	return &task, nil
