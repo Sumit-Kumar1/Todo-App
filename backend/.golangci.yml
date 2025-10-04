@@ -53,9 +53,9 @@ linters:
         - style
       disabled-checks:
         - wrapperFunc
-        - dupImport
-        - ifElseChain
-        - octalLiteral
+        # - dupImport
+        # - ifElseChain
+        # - octalLiteral
     funlen:
       lines: 100
       statements: 65
@@ -67,16 +67,15 @@ linters:
         - name: exported
           disabled: true
         - name: line-length-limit
-          disabled: true
+          disabled: false
         - name: cognitive-complexity
-          disabled: true
+          disabled: false
         - name: add-constant
           disabled: true
 
   exclusions:
     warn-unused: true
     rules:
-      # Exclude some linters from running on tests files.
       - path: _test\.go
         linters:
           - gocyclo
@@ -84,11 +83,9 @@ linters:
           - dupl
           - gosec
           - revive
-      # Run some linter only for test files by excluding its issues for everything else.
       - path-except: _test\.go
         linters:
           - forbidigo
-      # Exclude `lll` issues for long lines with `go:generate`.
       - linters:
           - lll
         source: "^//go:generate "
@@ -98,8 +95,8 @@ linters:
 
 formatters:
   enable:
-    - gofmt
     - goimports
+    - gci
 
 issues:
   max-issues-per-linter: 50
@@ -119,5 +116,5 @@ output:
 run:
   timeout: 5m
   allow-parallel-runners: true
-  concurrency: 4
-  go: "1.24"
+  concurrency: 6
+  go: "1.25"
