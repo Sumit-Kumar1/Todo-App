@@ -1,3 +1,4 @@
+// Package errors unified package for service and handler errors
 package errors
 
 import (

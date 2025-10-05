@@ -1,3 +1,4 @@
+// Package cmd setups go server and start the API
 package cmd
 
 import (
@@ -67,6 +68,14 @@ func Run(c context.Context, _ io.Writer, _ []string) error {
 		)
 	}
 
+	// Call the server's shutdown function to clean up resources
+	if app.ShutDownFxn != nil {
+		if err := app.ShutDownFxn(ctx); err != nil {
+			slog.LogAttrs(ctx, slog.LevelError, "error during server shutdown",
+				slog.String("error", err.Error()))
+		}
+	}
+
 	return nil
 }
 
@@ -84,20 +93,11 @@ func checkForTrigger(ctx context.Context, app *server.Server, srvErr chan error)
 			return err
 		}
 
-		if app.DB == nil {
-			return nil
-		}
-
-		if err := app.DB.Close(); err != nil {
-			app.Logger.LogAttrs(ctx, slog.LevelError, "error while closing database connection",
-				slog.String("error", err.Error()))
-
-			return err
-		}
-
-		app.Logger.LogAttrs(ctx, slog.LevelInfo, "database connection closed successfully")
+		// Database and log file cleanup is now handled by the server's shutdown function
+		app.Logger.LogAttrs(ctx, slog.LevelInfo, "server stopped due to error")
 
 	case <-ctx.Done():
+		app.Logger.LogAttrs(ctx, slog.LevelInfo, "server shutdown triggered by signal")
 	}
 
 	return nil
@@ -117,7 +117,7 @@ func setupTasksRoutes(app *server.Server) {
 }
 
 func setupUserRoutes(app *server.Server) {
-	authURL := server.GetOrDefault("AUTH_URL", "http://localhost:9001")
+	authURL := server.GetEnvOrDefault("AUTH_URL", "http://localhost:9001")
 
 	authClient := client.New(authURL)
 	userSvc := usersvc.New(authClient)

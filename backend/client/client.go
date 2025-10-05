@@ -1,3 +1,4 @@
+// Package client helps us communicating with auth-rest-api
 package client
 
 import (
@@ -25,17 +26,20 @@ type Client struct {
 }
 
 func New(url string) *Client {
-	if clientInstance == nil {
-		slog.LogAttrs(context.Background(), slog.LevelInfo, "creating auth-rest-api client")
-		once.Do(func() {
-			clientInstance = &Client{url: url}
-			clientInstance.Transport = http.DefaultTransport
-		})
-
-		return clientInstance
+	if url == "" {
+		slog.Error("auth-rest-api URL cannot be empty")
+		return nil
 	}
 
-	slog.LogAttrs(context.Background(), slog.LevelInfo, "using existing auth-rest-api client")
+	once.Do(func() {
+		slog.LogAttrs(context.Background(), slog.LevelInfo, "creating auth-rest-api client")
+		clientInstance = &Client{
+			url: url,
+			Client: http.Client{
+				Transport: http.DefaultTransport,
+			},
+		}
+	})
 
 	return clientInstance
 }
@@ -49,12 +53,10 @@ func (c *Client) SignUp(ctx context.Context, email, password string) error {
 		return err
 	}
 
-	_, err = handleResponse[string](resp)
-	if err != nil {
-		return err
-	}
+	defer ensureBodyClosed(resp)
 
-	return nil
+	_, err = handleResponse[string](resp)
+	return err
 }
 
 func (c *Client) SignIn(ctx context.Context, email, password string) (*models.AuthUserResp, error) {
@@ -66,12 +68,14 @@ func (c *Client) SignIn(ctx context.Context, email, password string) (*models.Au
 		return nil, err
 	}
 
+	defer ensureBodyClosed(resp)
+
 	return handleResponse[models.AuthUserResp](resp)
 }
 
 func (c *Client) Refresh(ctx context.Context, auth string) (*string, error) {
-	var token struct {
-		RefToken *string `json:"refreshToken,omitempty"`
+	if auth == "" {
+		return nil, errors.ErrRequired("auth token")
 	}
 
 	headers := prepareAuthAPIHeaders(ctx, auth)
@@ -81,6 +85,8 @@ func (c *Client) Refresh(ctx context.Context, auth string) (*string, error) {
 		return nil, err
 	}
 
+	defer ensureBodyClosed(resp)
+
 	if resp == nil {
 		return nil, errors.ErrRequired("response for refresh")
 	}
@@ -89,7 +95,10 @@ func (c *Client) Refresh(ctx context.Context, auth string) (*string, error) {
 		return nil, errInvalidStatus
 	}
 
-	defer resp.Body.Close()
+	var token struct {
+		RefToken *string `json:"refreshToken,omitempty"`
+	}
+
 	if err := json.NewDecoder(resp.Body).Decode(&token); err != nil {
 		return nil, err
 	}
@@ -98,12 +107,18 @@ func (c *Client) Refresh(ctx context.Context, auth string) (*string, error) {
 }
 
 func (c *Client) Revoke(ctx context.Context, token string) error {
+	if token == "" {
+		return errors.ErrRequired("token")
+	}
+
 	headers := prepareAuthAPIHeaders(ctx, token)
 
 	resp, err := c.postWithHeaders(ctx, "/revoke", headers, nil)
 	if err != nil {
 		return err
 	}
+
+	defer ensureBodyClosed(resp)
 
 	if resp == nil {
 		return errors.ErrRequired("response from revoke")
@@ -116,14 +131,11 @@ func (c *Client) Revoke(ctx context.Context, token string) error {
 	return nil
 }
 
-func (c *Client) postWithHeaders(ctx context.Context, endpoint string, headers map[string]string, reqModel *models.AuthUserReq) (*http.Response, error) {
-	var (
-		data []byte
-		err  error
-	)
-
+func (c *Client) postWithHeaders(ctx context.Context, endpoint string, headers map[string]string, reqModel any) (*http.Response, error) {
+	var data []byte
 	if reqModel != nil {
-		data, err = json.Marshal(*reqModel)
+		var err error
+		data, err = json.Marshal(reqModel)
 		if err != nil {
 			return nil, err
 		}
@@ -134,14 +146,17 @@ func (c *Client) postWithHeaders(ctx context.Context, endpoint string, headers m
 		return nil, err
 	}
 
+	req.Header.Set("Content-Type", "application/json")
 	for key, val := range headers {
-		req.Header.Add(key, val)
+		req.Header.Set(key, val)
 	}
 
-	resp, err := c.Do(req)
-	if err != nil {
-		return nil, err
-	}
+	return c.Do(req)
+}
 
-	return resp, nil
+// ensureBodyClosed safely closes the response body if it exists
+func ensureBodyClosed(resp *http.Response) {
+	if resp != nil && resp.Body != nil {
+		resp.Body.Close()
+	}
 }
