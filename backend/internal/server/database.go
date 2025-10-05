@@ -27,11 +27,11 @@ func newDB(logger *slog.Logger) (*sql.DB, error) {
 	if dbInstance == nil {
 		logger.LogAttrs(ctx, slog.LevelInfo, "creating new db instance")
 		dbOnce.Do(func() {
-			host := GetOrDefault("DB_HOST", "localhost")
-			port := GetOrDefault("DB_PORT", "5432")
-			user := GetOrDefault("DB_USER", "postgres")
-			password := GetOrDefault("DB_PASSWORD", "")
-			dbName := GetOrDefault("DB_NAME", "todo")
+			host := GetEnvOrDefault("DB_HOST", "localhost")
+			port := GetEnvOrDefault("DB_PORT", "5432")
+			user := GetEnvOrDefault("DB_USER", "postgres")
+			password := GetEnvOrDefault("DB_PASSWORD", "")
+			dbName := GetEnvOrDefault("DB_NAME", "todo")
 
 			if strings.TrimSpace(password) == "" {
 				logger.LogAttrs(ctx, slog.LevelError, "DATABASE_URL environment variable not set")

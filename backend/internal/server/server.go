@@ -1,3 +1,4 @@
+// Package server init server and configure server with all required hard deps
 package server
 
 import (
@@ -57,6 +58,7 @@ type Server struct {
 	Health        *Health
 	loginLimiter  *rateLimiter
 	globalLimiter *rateLimiter
+	logFile       *os.File
 	*Configs
 }
 
@@ -84,15 +86,15 @@ func configureServer() (*Server, error) {
 		return nil, err
 	}
 
-	s.Name = GetOrDefault("APP_NAME", "todo-app")
-	s.Port = GetOrDefault("HTTP_PORT", "9001")
-	s.Env = GetOrDefault("ENV", "dev")
-	s.ReadTimeout = getEnvAsInt("READ_TIMEOUT", 2)
-	s.WriteTimeout = getEnvAsInt("WRITE_TIMEOUT", 3)
-	s.IdleTimeout = getEnvAsInt("IDLE_TIMEOUT", 5)
-	s.MigrationMethod = GetOrDefault("MIGRATION_METHOD", "UP")
+	s.Name = GetEnvOrDefault("APP_NAME", "todo-app")
+	s.Port = GetEnvOrDefault("HTTP_PORT", "9001")
+	s.Env = GetEnvOrDefault("ENV", "dev")
+	s.ReadTimeout = GetEnvOrDefault("READ_TIMEOUT", 2)
+	s.WriteTimeout = GetEnvOrDefault("WRITE_TIMEOUT", 3)
+	s.IdleTimeout = GetEnvOrDefault("IDLE_TIMEOUT", 5)
+	s.MigrationMethod = GetEnvOrDefault("MIGRATION_METHOD", "UP")
 
-	s.Logger = newLogger()
+	s.Logger, s.logFile = newLogger()
 
 	db, err := newDB(s.Logger)
 	if err != nil {
@@ -100,6 +102,9 @@ func configureServer() (*Server, error) {
 	}
 
 	s.DB = db
+
+	// Set up shutdown function
+	s.ShutDownFxn = s.createShutdownFunction()
 
 	return s, nil
 }
@@ -122,13 +127,13 @@ func defaultServer() *Server {
 				},
 				globalLimiter: &rateLimiter{
 					attempts:    make(map[string]*limiterAttempt),
-					maxAttempts: getEnvAsInt("GLOBAL_ATTEMPTS", 300),
-					timeWindow:  time.Second * time.Duration(getEnvAsInt("GLOBAL_TIME_WINDOW", 60)),
+					maxAttempts: GetEnvOrDefault("GLOBAL_ATTEMPTS", 300),
+					timeWindow:  time.Second * time.Duration(GetEnvOrDefault("GLOBAL_TIME_WINDOW", 60)),
 				},
 				loginLimiter: &rateLimiter{
 					attempts:    make(map[string]*limiterAttempt),
-					maxAttempts: getEnvAsInt("LOGIN_ATTEMPTS", 10),
-					timeWindow:  time.Second * time.Duration(getEnvAsInt("LOGIN_TIME_WINDOW", 60)),
+					maxAttempts: GetEnvOrDefault("LOGIN_ATTEMPTS", 10),
+					timeWindow:  time.Second * time.Duration(GetEnvOrDefault("LOGIN_TIME_WINDOW", 60)),
 				},
 			}
 		})
@@ -137,24 +142,52 @@ func defaultServer() *Server {
 	return serverInstance
 }
 
-func getEnvAsInt(key string, defaultValue int) int {
+func (s *Server) createShutdownFunction() func(context.Context) error {
+	return func(ctx context.Context) error {
+		// Close the log file
+		if s.logFile != nil {
+			if err := s.logFile.Close(); err != nil {
+				s.Logger.Error("failed to close log file", "error", err)
+			} else {
+				s.Logger.Info("log file closed successfully")
+			}
+		}
+
+		// Close database connection
+		if s.DB != nil {
+			if err := s.DB.Close(); err != nil {
+				s.Logger.Error("failed to close database connection", "error", err)
+			} else {
+				s.Logger.Info("database connection closed successfully")
+			}
+		}
+
+		s.Logger.Info("server shutdown completed")
+		return nil
+	}
+}
+
+func GetEnvOrDefault[T string | int | bool](key string, defaultValue T) T {
 	env := os.Getenv(key)
 	if strings.TrimSpace(env) == "" {
 		return defaultValue
 	}
 
-	if iVal, err := strconv.Atoi(env); err == nil {
-		return iVal
+	var zero T
+	switch any(zero).(type) {
+	case string:
+		return any(env).(T)
+	case int:
+		if iVal, err := strconv.Atoi(env); err == nil {
+			return any(iVal).(T)
+		}
+		return defaultValue
+	case bool:
+		if bVal, err := strconv.ParseBool(env); err == nil {
+			return any(bVal).(T)
+		}
+		return defaultValue
+	default:
+		return defaultValue
 	}
-
-	return defaultValue
-}
-
-func GetOrDefault(key, defaultVal string) string {
-	eval := os.Getenv(key)
-	if strings.TrimSpace(eval) == "" {
-		return defaultVal
-	}
-
-	return eval
 }

@@ -203,7 +203,7 @@ func (s *Server) validateCookie(ctx context.Context, logger *slog.Logger, r *htt
 	}
 
 	token, err := jwt.ParseWithClaims(val, &Claims{}, func(token *jwt.Token) (any, error) {
-		secVal := GetOrDefault("AUTH_SECRET", "33cea8f88c5c8ad73b1700af7d72891fe3097297e59fb6cbe5fd8b545a8316d0")
+		secVal := GetEnvOrDefault("AUTH_SECRET", "33cea8f88c5c8ad73b1700af7d72891fe3097297e59fb6cbe5fd8b545a8316d0")
 		return []byte(secVal), nil
 	}, jwt.WithExpirationRequired())
 	if err != nil {
