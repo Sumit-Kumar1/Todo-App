@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { Fa } from 'svelte-fa';
 	import { faEnvelope, faEye, faEyeSlash, faKey } from '@fortawesome/free-solid-svg-icons';
+	import { Login, Register } from '$lib/api/user';
+	import { goto } from '$app/navigation';
 
 	let passwordVisible = $state.raw(false);
 	let isLoginPage = $state.raw(true);
@@ -17,34 +19,24 @@
 		return 'password';
 	}
 
-	async function postData(event: Event) {
+	async function submit(event: Event) {
 		event.preventDefault();
-		const url = 'http://localhost:9003/' + (isLoginPage ? 'login' : 'register');
-		const reqData = { email: email, password: password };
+
+		if (isLoginPage) {
+			try {
+				const res = await Login(email, password);
+				goto('/todo');
+			} catch (error) {
+				console.error('error while login', error);
+			}
+			return;
+		}
 
 		try {
-			const res = await fetch(url, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(reqData)
-			});
-
-			if (!res.ok) {
-				throw new Error(`HTTP error! status: ${res.status}`);
-			}
-
-			if (!isLoginPage) {
-				const data = await res.json();
-				response = data.data;
-			} else {
-				response = 'user login successfully';
-			}
-
-			// Redirect to /tasks on success
-			window.location.href = '/todo';
+			await Register(email, password);
+			goto('/');
 		} catch (error) {
-			console.error('Error posting data:', error);
-			response = `Error: ${error}`;
+			console.error('error while register: ', error);
 		}
 	}
 </script>
@@ -63,7 +55,7 @@
 			</h2>
 		</div>
 		<div class="card-body gap-2">
-			<form class="flex flex-col items-center justify-center gap-4" onsubmit={postData}>
+			<form class="flex flex-col items-center justify-center gap-4" onsubmit={submit}>
 				<label class="input w-full">
 					<Fa icon={faEnvelope}></Fa>
 					<input
@@ -126,7 +118,10 @@
 					onclick={() => {
 						isLoginPage = !isLoginPage;
 					}}
-					>{#if isLoginPage}Register{:else}Login{/if}</a
+				>
+					{#if isLoginPage}Register
+					{:else}Login
+					{/if}</a
 				>
 			</p>
 		</div>

@@ -26,5 +26,6 @@ func WriteResponse[T any](w http.ResponseWriter, status int, data *T) error {
 	}
 
 	_, err = w.Write(rawData)
+
 	return err
 }
