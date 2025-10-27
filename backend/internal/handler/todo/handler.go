@@ -55,7 +55,7 @@ func (h *Handler) AddTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := handler.WriteResponse[models.TaskResp](w, http.StatusCreated, task.ToTaskResp()); err != nil {
+	if err := handler.WriteResponse(w, http.StatusCreated, task.ToTaskResp()); err != nil {
 		logger.LogAttrs(ctx, slog.LevelError, "add-task:error while writing response",
 			slog.String("err", err.Error()))
 		return
@@ -84,7 +84,7 @@ func (h *Handler) MarkDone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := handler.WriteResponse[models.TaskResp](w, http.StatusOK, resp.ToTaskResp()); err != nil {
+	if err := handler.WriteResponse(w, http.StatusOK, resp.ToTaskResp()); err != nil {
 		logger.LogAttrs(ctx, slog.LevelError, "mark done:error while writing response",
 			slog.String("err", err.Error()))
 		return
@@ -123,7 +123,7 @@ func (h *Handler) GetAllTasks(w http.ResponseWriter, r *http.Request) {
 		tasks = append(tasks, *resp[i].ToTaskResp())
 	}
 
-	if err := handler.WriteResponse[[]models.TaskResp](w, http.StatusOK, &tasks); err != nil {
+	if err := handler.WriteResponse(w, http.StatusOK, &tasks); err != nil {
 		logger.LogAttrs(ctx, slog.LevelError, "get-all task:error while writing response",
 			slog.String("err", err.Error()))
 		return
@@ -189,7 +189,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := handler.WriteResponse[models.TaskResp](w, http.StatusOK, resp.ToTaskResp()); err != nil {
+	if err := handler.WriteResponse(w, http.StatusOK, resp.ToTaskResp()); err != nil {
 		logger.LogAttrs(ctx, slog.LevelError, "mark done:error while writing response",
 			slog.String("err", err.Error()))
 		return

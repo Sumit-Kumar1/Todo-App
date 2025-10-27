@@ -196,13 +196,9 @@ func (h *Handler) computeAttrs(ctx context.Context, r *slog.Record) (map[string]
 	return attrs, nil
 }
 
-func suppressDefaults(
-	next func([]string, slog.Attr) slog.Attr,
-) func([]string, slog.Attr) slog.Attr {
+func suppressDefaults(next func([]string, slog.Attr) slog.Attr) func([]string, slog.Attr) slog.Attr {
 	return func(groups []string, a slog.Attr) slog.Attr {
-		if a.Key == slog.TimeKey ||
-			a.Key == slog.LevelKey ||
-			a.Key == slog.MessageKey {
+		if a.Key == slog.TimeKey || a.Key == slog.LevelKey || a.Key == slog.MessageKey {
 			return slog.Attr{}
 		}
 
@@ -250,7 +246,7 @@ type LoggerConfig struct {
 	UseColors  bool
 }
 
-func NewLoggerConfig() *LoggerConfig {
+func defaultLoggerConfig() *LoggerConfig {
 	return &LoggerConfig{
 		Level:      "INFO",
 		EnableJSON: true,
@@ -262,19 +258,16 @@ func NewLoggerConfig() *LoggerConfig {
 
 func newLoggerWithConfig(cfg *LoggerConfig) (*slog.Logger, *os.File) {
 	if cfg == nil {
-		cfg = NewLoggerConfig()
+		cfg = defaultLoggerConfig()
 	}
 
-	// Create logs directory
-	if err := os.MkdirAll(logDir, 0o755); err != nil {
-		log.Printf("failed to create logs directory: %v", err)
-	}
-
-	// Create log file with timestamp
-	logFileName := filepath.Join(logDir, fmt.Sprintf("%s.log", time.Now().Format("20060102_150405")))
-	logFile, err := os.Create(logFileName)
-	if err != nil {
-		log.Fatal("Failed to create log file:", err)
+	replaceFunc := func(_ []string, a slog.Attr) slog.Attr {
+		if a.Key == slog.TimeKey {
+			if timeVal, ok := a.Value.Any().(time.Time); ok {
+				a.Value = slog.StringValue(timeVal.Format(time.RFC3339))
+			}
+		}
+		return a
 	}
 
 	// Parse log level
@@ -292,20 +285,16 @@ func newLoggerWithConfig(cfg *LoggerConfig) (*slog.Logger, *os.File) {
 
 	// Common handler options
 	handlerOpts := &slog.HandlerOptions{
-		AddSource: cfg.ShowSource,
-		Level:     leveler,
-		ReplaceAttr: func(_ []string, a slog.Attr) slog.Attr {
-			if a.Key == slog.TimeKey {
-				if timeVal, ok := a.Value.Any().(time.Time); ok {
-					a.Value = slog.StringValue(timeVal.Format(time.RFC3339))
-				}
-			}
-			return a
-		},
+		AddSource:   cfg.ShowSource,
+		Level:       leveler,
+		ReplaceAttr: replaceFunc,
 	}
 
-	// File handler (always JSON)
-	fileHandler := slog.NewJSONHandler(logFile, handlerOpts)
+	var (
+		fileHandler *slog.JSONHandler
+		logFile     *os.File
+		err         error
+	)
 
 	// Terminal handler
 	termHandlerOpts := &HandlerOptions{
@@ -314,21 +303,40 @@ func newLoggerWithConfig(cfg *LoggerConfig) (*slog.Logger, *os.File) {
 		ShowSource:   cfg.ShowSource,
 		Level:        leveler,
 		AddSource:    cfg.ShowSource,
+		ReplaceAttr:  replaceFunc,
 	}
+
 	termHandler := newHandler(termHandlerOpts)
 
-	// Create multi-handler logger
-	logger := slog.New(NewMultiHandler(fileHandler, termHandler))
+	if !GetEnvOrDefault("FILE_LOGGING_ENABLED", false) {
+		logger := slog.New(NewMultiHandler(termHandler))
+		slog.SetDefault(logger)
+
+		return logger, nil
+	}
+
+	if err := os.MkdirAll(logDir, 0o755); err != nil {
+		log.Printf("failed to create logs directory: %v", err)
+	}
+
+	logFileName := filepath.Join(logDir, fmt.Sprintf("%s.log", time.Now().Format("2006_01_02_150405")))
+	logFile, err = os.Create(logFileName)
+	if err != nil {
+		log.Fatal("Failed to create log file:", err)
+	}
+
+	fileHandler = slog.NewJSONHandler(logFile, handlerOpts)
+
+	logger := slog.New(NewMultiHandler(termHandler, fileHandler))
 	slog.SetDefault(logger)
 
 	return logger, logFile
 }
 
 func newLogger() (*slog.Logger, *os.File) {
-	cfg := NewLoggerConfig()
+	cfg := defaultLoggerConfig()
 	cfg.Level = GetEnvOrDefault("LOG_LEVEL", "INFO")
 
-	// Check if we should disable colors (e.g., in CI environments)
 	if GetEnvOrDefault("NO_COLOR", false) || GetEnvOrDefault("CI", false) {
 		cfg.UseColors = false
 	}

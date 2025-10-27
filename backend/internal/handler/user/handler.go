@@ -50,7 +50,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 
 	resp := "user created successfully"
 
-	if err := handler.WriteResponse[string](w, http.StatusCreated, &resp); err != nil {
+	if err := handler.WriteResponse(w, http.StatusCreated, &resp); err != nil {
 		logger.LogAttrs(ctx, slog.LevelError, "register:error while writing response",
 			slog.String("error", err.Error()))
 
@@ -86,16 +86,14 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	authCookie, refCookie := getLoginCookie(resp)
-	err = todocookie.WriteCookie(w, authCookie)
-	if err != nil {
+	if err := todocookie.WriteCookie(w, authCookie); err != nil {
 		logger.LogAttrs(ctx, slog.LevelError, "login:writing cookie auth",
 			slog.String("error", err.Error()))
 		errors.HandleHTTPError(w, err)
 		return
 	}
 
-	err = todocookie.WriteCookie(w, refCookie)
-	if err != nil {
+	if err := todocookie.WriteCookie(w, refCookie); err != nil {
 		logger.LogAttrs(ctx, slog.LevelError, "login:writing cookie refresh",
 			slog.String("error", err.Error()))
 		errors.HandleHTTPError(w, err)
@@ -104,14 +102,14 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 	success := "user login successfully"
 
-	if err := handler.WriteResponse[string](w, http.StatusOK, &success); err != nil {
+	if err := handler.WriteResponse(w, int(http.StatusOK), &success); err != nil {
 		logger.LogAttrs(ctx, slog.LevelError, "login:error while writing response",
 			slog.String("error", err.Error()))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	logger.LogAttrs(ctx, slog.LevelInfo, "user login successfully")
+	logger.LogAttrs(ctx, slog.LevelInfo, "user login successfully!", slog.String("email", user.Email))
 }
 
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
@@ -146,13 +144,16 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteLaxMode,
 	})
 
-	if err := handler.WriteResponse[any](w, int(http.StatusOK), nil); err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, err.Error())
+	success := "user logout successfully"
+
+	if err := handler.WriteResponse(w, int(http.StatusOK), &success); err != nil {
+		logger.LogAttrs(ctx, slog.LevelError, "logout:error while writing response",
+			slog.String("error", err.Error()))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	logger.LogAttrs(ctx, slog.LevelInfo, "user logout successfully")
+	logger.LogAttrs(ctx, slog.LevelInfo, "user logout successfully!")
 }
 
 func getLoginCookie(resp *models.AuthUserResp) (auth, refresh http.Cookie) {

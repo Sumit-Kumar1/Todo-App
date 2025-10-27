@@ -4,7 +4,6 @@ package server
 import (
 	"context"
 	"database/sql"
-	"log"
 	"log/slog"
 	"net/http"
 	"os"
@@ -12,8 +11,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/joho/godotenv"
 )
 
 var (
@@ -79,13 +76,6 @@ func NewServer() (*Server, error) {
 
 func configureServer() (*Server, error) {
 	s := defaultServer()
-
-	if err := godotenv.Load("configs/.env"); err != nil {
-		log.Print("error while loading env file")
-
-		return nil, err
-	}
-
 	s.Name = GetEnvOrDefault("APP_NAME", "todo-app")
 	s.Port = GetEnvOrDefault("HTTP_PORT", "9001")
 	s.Env = GetEnvOrDefault("ENV", "dev")
@@ -110,34 +100,36 @@ func configureServer() (*Server, error) {
 }
 
 func defaultServer() *Server {
-	if serverInstance == nil {
-		serverOnce.Do(func() {
-			serverInstance = &Server{
-				Configs: &Configs{
-					Name: "todoApp",
-					Env:  "dev",
-					Host: "localhost",
-					Port: "9001",
-				},
-				Mux: http.NewServeMux(),
-				Health: &Health{
-					DB:      false,
-					Service: false,
-					Msg:     "INIT HEALTH",
-				},
-				globalLimiter: &rateLimiter{
-					attempts:    make(map[string]*limiterAttempt),
-					maxAttempts: GetEnvOrDefault("GLOBAL_ATTEMPTS", 300),
-					timeWindow:  time.Second * time.Duration(GetEnvOrDefault("GLOBAL_TIME_WINDOW", 60)),
-				},
-				loginLimiter: &rateLimiter{
-					attempts:    make(map[string]*limiterAttempt),
-					maxAttempts: GetEnvOrDefault("LOGIN_ATTEMPTS", 10),
-					timeWindow:  time.Second * time.Duration(GetEnvOrDefault("LOGIN_TIME_WINDOW", 60)),
-				},
-			}
-		})
+	if serverInstance != nil {
+		return serverInstance
 	}
+
+	serverOnce.Do(func() {
+		serverInstance = &Server{
+			Configs: &Configs{
+				Name: "todoApp",
+				Env:  "dev",
+				Host: "localhost",
+				Port: "9003",
+			},
+			Mux: http.NewServeMux(),
+			Health: &Health{
+				DB:      false,
+				Service: false,
+				Msg:     "INIT HEALTH",
+			},
+			globalLimiter: &rateLimiter{
+				attempts:    make(map[string]*limiterAttempt),
+				maxAttempts: GetEnvOrDefault("GLOBAL_ATTEMPTS", 300),
+				timeWindow:  time.Second * time.Duration(GetEnvOrDefault("GLOBAL_TIME_WINDOW", 60)),
+			},
+			loginLimiter: &rateLimiter{
+				attempts:    make(map[string]*limiterAttempt),
+				maxAttempts: GetEnvOrDefault("LOGIN_ATTEMPTS", 10),
+				timeWindow:  time.Second * time.Duration(GetEnvOrDefault("LOGIN_TIME_WINDOW", 60)),
+			},
+		}
+	})
 
 	return serverInstance
 }
