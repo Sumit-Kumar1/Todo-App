@@ -3,6 +3,7 @@
 	import { faEnvelope, faEye, faEyeSlash, faKey } from '@fortawesome/free-solid-svg-icons';
 	import { Login, Register } from '$lib/api/user';
 	import { goto } from '$app/navigation';
+	import { notifications } from '$lib/stores/notifications';
 
 	let passwordVisible = $state.raw(false);
 	let isLoginPage = $state.raw(true);
@@ -22,28 +23,40 @@
 	async function submit(event: Event) {
 		event.preventDefault();
 
-		if (isLoginPage) {
-			try {
-				const res = await Login(email, password);
-				goto('/todo');
-			} catch (error) {
-				console.error('error while login', error);
-			}
-			return;
-		}
-
 		try {
-			await Register(email, password);
-			goto('/');
+			if (isLoginPage) {
+				const res = await Login(email, password);
+				if (res.data === 'user login successfully') {
+					notifications.success(res.data);
+					goto('/todo');
+				} else {
+					notifications.error(res.error);
+				}
+			} else {
+				const res = await Register(email, password);
+				if (res.data === 'user created successfully') {
+					const loginRes = await Login(email, password);
+					if (loginRes.data === 'user login successfully') {
+						notifications.success(loginRes.data);
+						goto('/todo');
+					} else {
+						notifications.error(loginRes.error);
+					}
+				} else {
+					notifications.error(res.error);
+				}
+			}
 		} catch (error) {
-			console.error('error while register: ', error);
+			const context = isLoginPage ? 'login' : 'register';
+			console.error(`error while ${context}:`, error);
+			notifications.error(`Unexpected ${context} error`);
 		}
 	}
 </script>
 
-<div class="bg-base-200 text-base-content flex min-h-screen items-center justify-center">
+<div class="flex min-h-screen items-center justify-center bg-base-200 text-base-content">
 	<div
-		class="card-border overflow-w-hidden card border-base-300 bg-base-100 card-xl gap-2 sm:w-2/3 lg:w-1/2"
+		class="card-border overflow-w-hidden card gap-2 border-base-300 bg-base-100 card-xl sm:w-2/3 lg:w-1/2"
 	>
 		<div class="card-title justify-center p-3">
 			<h2 class="mt-5 text-center text-xl font-bold">
@@ -113,7 +126,7 @@
 					Already registered?
 				{/if}
 				<a
-					class="text-base-content hover:text-neutral font-semibold leading-6"
+					class="leading-6 font-semibold text-base-content hover:text-neutral"
 					href="/"
 					onclick={() => {
 						isLoginPage = !isLoginPage;
