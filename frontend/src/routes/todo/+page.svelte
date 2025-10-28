@@ -4,6 +4,18 @@
 	import { Logout } from '$lib/api/user';
 	import { goto } from '$app/navigation';
 	import { notifications } from '$lib/stores/notifications';
+	import TodoForms from '$lib/components/TodoForms.svelte';
+	import { onMount } from 'svelte';
+	import { tasks, loadTasks } from '$lib/stores/todo';
+	import { DelTask, MarkDone, UpdateTask } from '$lib/api/todo';
+	import {
+		deleteFromStore,
+		markDoneInStore,
+		updateInStore,
+		deletedTasks,
+		moveToDeleted
+	} from '$lib/stores/todo';
+	import type { Task } from '$lib/types/todo';
 
 	async function userLogout(event: Event) {
 		event.preventDefault();
@@ -18,6 +30,56 @@
 		}
 
 		goto('/?page=login');
+	}
+
+	function openCreateModal() {
+		const modal = document.getElementById('add_modal') as HTMLDialogElement | null;
+		modal?.showModal();
+	}
+
+	onMount(() => {
+		loadTasks();
+	});
+
+	let activeTab: 'tasks' | 'done' | 'deleted' = 'tasks';
+
+	async function handleDelete(id: string) {
+		try {
+			await DelTask(id);
+			moveToDeleted(id);
+		} catch (err) {
+			console.error((err as Error).message);
+		}
+	}
+
+	async function handleMarkDone(id: string) {
+		try {
+			const res = await MarkDone(id);
+			if (res?.data) {
+				markDoneInStore(id);
+			}
+		} catch (err) {
+			console.error((err as Error).message);
+		}
+	}
+
+	async function handleEdit(task: Task) {
+		try {
+			const payload = { title: task.Title, description: task.Description, dueDate: task.DueDate };
+			const res = await UpdateTask(task.Id, payload);
+			const updated = res?.data;
+			if (updated) {
+				updateInStore({
+					Id: updated.id,
+					Title: updated.title,
+					Description: updated.description,
+					DueDate: updated.dueDate,
+					IsDone: updated.isDone
+				});
+			}
+		} catch (err) {
+			console.error((err as Error).message);
+		}
 	}
 </script>
 
@@ -35,64 +97,133 @@
 	</div>
 
 	<div class="flex h-screen w-full flex-col items-center gap-5 p-3">
-		<button
-			class="btn w-1/3 btn-accent"
-			aria-label="task-create"
-			onclick={() => {
-				// document.getElementById('add_modal').showModal();
-			}}>Create New Task</button
+		<button class="btn w-1/3 btn-accent" aria-label="task-create" onclick={openCreateModal}
+			>Create New Task</button
 		>
-		<dialog id="add_modal" class="modal modal-bottom sm:modal-middle">
-			<div class="modal-box">
-				<form class="flex flex-col gap-3">
-					<label class="floating-label">
-						<input
-							placeholder="Task name here..."
-							name="title"
-							type="text"
-							id="title"
-							class="validator input input-md w-full"
-							required
-							size="100"
-						/>
-						<span>Task name here...</span>
-					</label>
-					<label class="floating-label">
-						<input
-							placeholder="Description"
-							name="description"
-							type="text"
-							id="description"
-							class="validator input input-md w-full"
-							size="1000"
-						/>
-						<span>Description</span>
-					</label>
-					<div>
-						<label class="validator input">
-							<span class="label">Due Date</span>
-							<input
-								type="date"
-								name="dueDate"
-								id="dueDate"
-								required
-								min="2025-01-01"
-								max="2025-12-31"
-							/>
-						</label>
-					</div>
-					<div>
-						<input type="reset" class="btn btn-outline btn-accent" />
-						<button type="submit" class="btn btn-accent">Add Task</button>
-					</div>
-				</form>
-				<div class="absolute right-3 bottom-4 modal-action p-2">
-					<form method="dialog">
-						<!-- if there is a button in form, it will close the modal -->
-						<button class="btn">Cancel</button>
-					</form>
-				</div>
+
+		<TodoForms />
+
+		<div class="w-full max-w-3xl">
+			<div role="tablist" class="tabs-lift mb-3 tabs justify-center">
+				<button
+					role="tab"
+					class={`tab ${activeTab === 'tasks' ? 'tab-active' : ''}`}
+					onclick={() => (activeTab = 'tasks')}>Tasks</button
+				>
+				<button
+					role="tab"
+					class={`tab ${activeTab === 'done' ? 'tab-active' : ''}`}
+					onclick={() => (activeTab = 'done')}>Done</button
+				>
+				<button
+					role="tab"
+					class={`tab ${activeTab === 'deleted' ? 'tab-active' : ''}`}
+					onclick={() => (activeTab = 'deleted')}>Deleted</button
+				>
 			</div>
-		</dialog>
+			{#if $tasks.length === 0}
+				<p class="text-center opacity-70">No tasks yet.</p>
+			{:else}
+				<ul class="flex flex-col gap-2">
+					{#if activeTab === 'tasks'}
+						{#each $tasks.filter((t) => !t.IsDone) as t}
+							<li class="card bg-base-200 p-4">
+								<div class="flex items-start justify-between gap-3">
+									<div>
+										<p class="font-semibold">{t.Title}</p>
+										<p class="text-sm opacity-80">{t.Description}</p>
+										<p class="text-xs opacity-60">Due: {t.DueDate}</p>
+									</div>
+									<div class="flex gap-2">
+										<button class="btn btn-ghost btn-sm" title="Edit" onclick={() => handleEdit(t)}>
+											<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													stroke-width="2"
+													d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+												/>
+											</svg>
+										</button>
+										<button
+											class="btn btn-ghost btn-sm"
+											title="Delete"
+											onclick={() => handleDelete(t.Id)}
+										>
+											<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													stroke-width="2"
+													d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+												/>
+											</svg>
+										</button>
+										<button
+											class="btn btn-ghost btn-sm"
+											title="Mark done"
+											onclick={() => handleMarkDone(t.Id)}
+										>
+											<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													stroke-width="2"
+													d="M5 13l4 4L19 7"
+												/>
+											</svg>
+										</button>
+									</div>
+								</div>
+							</li>
+						{/each}
+					{:else if activeTab === 'done'}
+						{#each $tasks.filter((t) => t.IsDone) as t}
+							<li class="card bg-base-200 p-4">
+								<div class="flex items-start justify-between gap-3">
+									<div>
+										<p class="font-semibold">{t.Title}</p>
+										<p class="text-sm opacity-80">{t.Description}</p>
+										<p class="text-xs opacity-60">Due: {t.DueDate}</p>
+										<p class="text-xs text-success">Done</p>
+									</div>
+									<div class="flex gap-2">
+										<button
+											class="btn btn-ghost btn-sm"
+											title="Delete"
+											onclick={() => handleDelete(t.Id)}
+										>
+											<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													stroke-width="2"
+													d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+												/>
+											</svg>
+										</button>
+									</div>
+								</div>
+							</li>
+						{/each}
+					{:else}
+						{#each $deletedTasks as t}
+							<li class="card bg-base-200 p-4">
+								<div class="flex items-start justify-between gap-3">
+									<div>
+										<p class="font-semibold">{t.Title}</p>
+										<p class="text-sm opacity-80">{t.Description}</p>
+										<p class="text-xs opacity-60">Due: {t.DueDate}</p>
+									</div>
+									<div class="flex gap-2 text-xl">
+										<!-- No edit or mark-done for deleted -->
+									</div>
+								</div>
+							</li>
+						{/each}
+					{/if}
+				</ul>
+			{/if}
+		</div>
 	</div>
 </div>
