@@ -19,7 +19,11 @@ import (
 )
 
 const (
-	cookieName = "auth"
+	cookieName     = "auth"
+	allowedOrigin  = "http://localhost:4173"
+	allowedMethods = "POST, GET, PUT, DELETE, PATCH, OPTIONS"
+	allowedHeaders = "Accept, Content-Type, Content-Length, Accept-Encoding"
+	corsMaxAge     = "8640"
 )
 
 type Claims struct {
@@ -85,14 +89,19 @@ func AddCorrelation() Middleware {
 
 // ServerWideMiddlewares CORS Part middleware
 func (s *Server) ServerWideMiddlewares(next http.Handler) http.Handler {
+	origin := GetEnvOrDefault("CORS_ORIGIN", allowedOrigin)
+	methods := GetEnvOrDefault("CORS_METHODS", allowedMethods)
+	headers := GetEnvOrDefault("CORS_HEADERS", allowedHeaders)
+	maxAge := GetEnvOrDefault("CORS_MAX_AGE", corsMaxAge)
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:5173")
+		w.Header().Set("Access-Control-Allow-Origin", origin)
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 
 		if r.Method == http.MethodOptions {
-			w.Header().Set("Access-Control-Allow-Methods", "POST, GET, PUT, DELETE, PATCH, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding")
-			w.Header().Set("Access-Control-Max-Age", "8640")
+			w.Header().Set("Access-Control-Allow-Methods", methods)
+			w.Header().Set("Access-Control-Allow-Headers", headers)
+			w.Header().Set("Access-Control-Max-Age", maxAge)
 
 			w.WriteHeader(http.StatusOK)
 
