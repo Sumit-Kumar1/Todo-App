@@ -16,7 +16,6 @@ export async function loadTasks(): Promise<void> {
 				: [];
 		tasks.set(list.map(mapResponseToTask));
 	} catch (err) {
-		// Keep store unchanged on error
 		console.error((err as Error).message);
 	}
 }
@@ -37,10 +36,6 @@ export function mapResponseToTask(resp: TaskResponse): Task {
 
 export function markDoneInStore(id: string): void {
 	tasks.update((current) => current.map((t) => (t.Id === id ? { ...t, IsDone: true } : t)));
-}
-
-export function deleteFromStore(id: string): void {
-	tasks.update((current) => current.filter((t) => t.Id !== id));
 }
 
 export function updateInStore(updated: Task): void {
