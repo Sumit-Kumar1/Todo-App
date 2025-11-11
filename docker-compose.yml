@@ -1,0 +1,58 @@
+"version": "3.8"
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: todo-backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - ENVIRONMENT=production
+      - ACCESS_SECRET=${ACCESS_SECRET:-default_access_secret}
+      - REFRESH_SECRET=${REFRESH_SECRET:-default_refresh_secret}
+      - DATABASE_URL=${DATABASE_URL}
+    depends_on:
+      - database
+    networks:
+      - todo-network
+    volumes:
+      - ./backend/logs:/app/logs
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: todo-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - todo-network
+
+  database:
+    image: postgres:15-alpine
+    container_name: todo-database
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-todoapp}
+      - POSTGRES_USER=${POSTGRES_USER:-todoapp}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-todoapp123}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - todo-network
+
+volumes:
+  postgres_data:
+
+networks:
+  todo-network:
+    driver: bridge"
