@@ -14,6 +14,71 @@ servers:
   - url: "http://localhost:9001"
 
 paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Basic health check endpoint
+      description: Returns health status including database connectivity
+      security: [] # no authentication required
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+        "503":
+          description: Service is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  /ready:
+    get:
+      tags:
+        - Health
+      summary: Readiness check endpoint
+      description: Returns detailed readiness status including database connectivity
+      security: [] # no authentication required
+      responses:
+        "200":
+          description: Service is ready to accept requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+        "503":
+          description: Service is not ready (dependencies unavailable)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  /live:
+    get:
+      tags:
+        - Health
+      summary: Liveness check endpoint
+      description: Returns simple liveness status
+      security: [] # no authentication required
+      responses:
+        "200":
+          description: Service is alive
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "alive"
+                  timestamp:
+                    type: string
+                    format: date-time
+                    example: "2025-10-26T03:14:42Z"
+
   /login:
     post:
       tags:
@@ -52,7 +117,7 @@ paths:
             Set-Cookie:
               schema:
                 type: string
-                example: token=a420e905-acfd-4967-aeb2-ed41429debc4; Path=/; Expires=Sat, 26 Oct 2024 03:14:42 GMT; HttpOnly
+                example: token=a420e905-acfd-4967-aeb2-ed41429debc4; Path=/; Expires=Sat, 26 Oct 2025 03:14:42 GMT; HttpOnly
           content:
             application/json:
               schema:
@@ -99,7 +164,7 @@ paths:
             Set-Cookie:
               schema:
                 type: string
-                example: token=a420e905-acfd-4967-aeb2-ed41429debc4; Path=/; Expires=Sat, 26 Oct 2024 03:14:42 GMT; HttpOnly
+                example: token=a420e905-acfd-4967-aeb2-ed41429debc4; Path=/; Expires=Sat, 26 Oct 2025 03:14:42 GMT; HttpOnly
         "400":
           description: Invalid input
 
@@ -239,6 +304,26 @@ paths:
 
 components:
   schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "healthy"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2025-10-26T03:14:42Z"
+        database:
+          type: boolean
+          example: true
+        service:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Database connection failed"
+
     TaskInput:
       type: object
       required:
@@ -315,6 +400,7 @@ components:
         expiry:
           type: string
           format: date-time
+          example: "2025-10-26T03:14:42Z"
   securitySchemes:
     cookieAuth:
       type: apiKey
