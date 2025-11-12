@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"todoapp/client"
+	"todoapp/internal/handler"
 	todohttp "todoapp/internal/handler/todo"
 	userhttp "todoapp/internal/handler/user"
 	"todoapp/internal/migrations"
@@ -39,6 +40,8 @@ func Run(c context.Context, _ io.Writer, _ []string) error {
 		return err
 	}
 
+	// Setup health endpoints first
+	setupHealthRoutes(app)
 	setupUserRoutes(app)
 	setupTasksRoutes(app)
 
@@ -52,52 +55,82 @@ func Run(c context.Context, _ io.Writer, _ []string) error {
 		IdleTimeout:  time.Duration(app.IdleTimeout * int(time.Second)),
 	}
 
-	go func() {
-		app.Logger.LogAttrs(ctx, slog.LevelInfo, "Server started", slog.String("Address", httpServer.Addr))
+	startServer(ctx, app, httpServer, srvErr)
 
-		srvErr <- httpServer.ListenAndServe()
-	}()
-
-	if err := checkForTrigger(ctx, app, srvErr); err != nil {
+	// Wait for shutdown signal or error
+	if err := handleServerError(ctx, app, srvErr); err != nil {
 		return err
 	}
 
-	if err := httpServer.Shutdown(context.Background()); err != nil {
-		slog.LogAttrs(ctx, slog.LevelError, "error while shutting down the server",
-			slog.String("error", err.Error()),
-		)
-	}
-
-	// Call the server's shutdown function to clean up resources
-	if app.ShutDownFxn != nil {
-		if err := app.ShutDownFxn(ctx); err != nil {
-			slog.LogAttrs(ctx, slog.LevelError, "error during server shutdown",
-				slog.String("error", err.Error()))
-		}
-	}
-
-	return nil
+	// Graceful shutdown
+	return shutdownServer(ctx, app, httpServer)
 }
 
-func checkForTrigger(ctx context.Context, app *server.Server, srvErr chan error) error {
-	var err error
+// setupHealthRoutes configures health check endpoints
+func setupHealthRoutes(app *server.Server) {
+	hh := handler.NewHealthHandler(app)
 
+	healthRoutes := []struct {
+		methodPath string
+		handler    http.HandlerFunc
+		middleware []server.Middleware
+	}{
+		{"GET /health", hh.HealthHandler, []server.Middleware{server.AddCorrelation()}},
+		{"GET /ready", hh.ReadyHandler, []server.Middleware{server.AddCorrelation()}},
+		{"GET /live", hh.LivenessHandler, []server.Middleware{server.AddCorrelation()}},
+	}
+
+	for i := range healthRoutes {
+		app.Mux.HandleFunc(healthRoutes[i].methodPath,
+			server.Chain(healthRoutes[i].handler, healthRoutes[i].middleware...),
+		)
+	}
+}
+
+// handleServerError processes server errors and shutdown signals
+func handleServerError(ctx context.Context, app *server.Server, srvErr chan error) error {
 	select {
-	case err = <-srvErr:
+	case err := <-srvErr:
 		if !errors.Is(err, http.ErrServerClosed) {
 			app.Logger.LogAttrs(ctx, slog.LevelError,
 				"error listening and serving",
 				slog.String("error", err.Error()),
 			)
-
 			return err
 		}
-
-		// Database and log file cleanup is now handled by the server's shutdown function
 		app.Logger.LogAttrs(ctx, slog.LevelInfo, "server stopped due to error")
 
 	case <-ctx.Done():
 		app.Logger.LogAttrs(ctx, slog.LevelInfo, "server shutdown triggered by signal")
+	}
+
+	return nil
+}
+
+// startServer starts the HTTP server in a goroutine
+func startServer(ctx context.Context, app *server.Server, httpServer *http.Server, srvErr chan error) {
+	go func() {
+		app.Logger.LogAttrs(ctx, slog.LevelInfo, "Server started", slog.String("Address", httpServer.Addr))
+		srvErr <- httpServer.ListenAndServe()
+	}()
+}
+
+// shutdownServer gracefully shuts down the server
+func shutdownServer(ctx context.Context, app *server.Server, httpServer *http.Server) error {
+	if err := httpServer.Shutdown(context.Background()); err != nil {
+		app.Logger.LogAttrs(ctx, slog.LevelError, "error while shutting down the server",
+			slog.String("error", err.Error()),
+		)
+		return err
+	}
+
+	// Call the server's shutdown function to clean up resources
+	if app.ShutDownFxn != nil {
+		if err := app.ShutDownFxn(ctx); err != nil {
+			app.Logger.LogAttrs(ctx, slog.LevelError, "error during server shutdown",
+				slog.String("error", err.Error()))
+			return err
+		}
 	}
 
 	return nil
@@ -108,12 +141,23 @@ func setupTasksRoutes(app *server.Server) {
 	todoSvc := todosvc.New(todoStore)
 	todoHTTP := todohttp.New(todoSvc)
 
-	app.Mux.HandleFunc("POST /task", server.Chain(todoHTTP.AddTask, server.AddCorrelation(), app.AuthMiddleware()))
-	app.Mux.HandleFunc("GET /tasks", server.Chain(todoHTTP.GetAllTasks, server.AddCorrelation(), app.AuthMiddleware()))
-	app.Mux.HandleFunc("PATCH /tasks/{id}/done", server.Chain(todoHTTP.MarkDone, server.AddCorrelation(), app.AuthMiddleware()))
-	app.Mux.HandleFunc("PUT /tasks/{id}", server.Chain(todoHTTP.Update, server.AddCorrelation(), app.AuthMiddleware()))
-	app.Mux.HandleFunc("DELETE /tasks/{id}",
-		server.Chain(todoHTTP.DeleteTask, server.AddCorrelation(), app.AuthMiddleware()))
+	taskRoutes := []struct {
+		methodPath string
+		handler    http.HandlerFunc
+		middleware []server.Middleware
+	}{
+		{"POST /task", todoHTTP.AddTask, []server.Middleware{server.AddCorrelation(), app.AuthMiddleware()}},
+		{"GET /tasks", todoHTTP.GetAllTasks, []server.Middleware{server.AddCorrelation(), app.AuthMiddleware()}},
+		{"PATCH /tasks/{id}/done", todoHTTP.MarkDone, []server.Middleware{server.AddCorrelation(), app.AuthMiddleware()}},
+		{"PUT /tasks/{id}", todoHTTP.Update, []server.Middleware{server.AddCorrelation(), app.AuthMiddleware()}},
+		{"DELETE /tasks/{id}", todoHTTP.DeleteTask, []server.Middleware{server.AddCorrelation(), app.AuthMiddleware()}},
+	}
+
+	for i := range taskRoutes {
+		app.Mux.HandleFunc(taskRoutes[i].methodPath,
+			server.Chain(taskRoutes[i].handler, taskRoutes[i].middleware...),
+		)
+	}
 }
 
 func setupUserRoutes(app *server.Server) {
@@ -123,7 +167,19 @@ func setupUserRoutes(app *server.Server) {
 	userSvc := usersvc.New(authClient)
 	userHTTP := userhttp.New(userSvc)
 
-	app.Mux.HandleFunc("POST /register", server.Chain(userHTTP.Register, server.AddCorrelation()))
-	app.Mux.HandleFunc("POST /login", server.Chain(userHTTP.Login, server.AddCorrelation()))
-	app.Mux.HandleFunc("POST /logout", server.Chain(userHTTP.Logout, server.AddCorrelation()))
+	taskRoutes := []struct {
+		methodPath string
+		handler    http.HandlerFunc
+		middleware []server.Middleware
+	}{
+		{"POST /register", userHTTP.Register, []server.Middleware{server.AddCorrelation()}},
+		{"POST /login", userHTTP.Login, []server.Middleware{server.AddCorrelation()}},
+		{"POST /logout", userHTTP.Logout, []server.Middleware{server.AddCorrelation()}},
+	}
+
+	for i := range taskRoutes {
+		app.Mux.HandleFunc(taskRoutes[i].methodPath,
+			server.Chain(taskRoutes[i].handler, taskRoutes[i].middleware...),
+		)
+	}
 }
