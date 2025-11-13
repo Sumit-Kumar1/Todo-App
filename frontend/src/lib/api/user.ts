@@ -1,4 +1,4 @@
-const baseURL = 'http://0.0.0.0:9003';
+const baseURL = import.meta.env.VITE_BACKEND_URL || 'http://todo-backend:9003';
 
 async function Login(email: string, password: string) {
 	const url = baseURL + '/login';

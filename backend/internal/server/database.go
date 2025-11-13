@@ -26,7 +26,7 @@ func newDB(logger *slog.Logger) (*sql.DB, error) {
 	)
 
 	if dbInstance != nil {
-		logger.LogAttrs(ctx, slog.LevelInfo, "using existing db instance")
+		logger.LogAttrs(ctx, slog.LevelDebug, "using existing db instance")
 
 		return dbInstance, errConn
 	}
@@ -41,7 +41,7 @@ func newDB(logger *slog.Logger) (*sql.DB, error) {
 		dbName := GetEnvOrDefault("DB_NAME", "todo")
 
 		if strings.TrimSpace(password) == "" {
-			logger.LogAttrs(ctx, slog.LevelError, "DATABASE_URL environment variable not set")
+			logger.LogAttrs(ctx, slog.LevelError, "DB_PASSWORD environment variable not set")
 			errConn = errors.NewConstError("empty db password")
 			return
 		}

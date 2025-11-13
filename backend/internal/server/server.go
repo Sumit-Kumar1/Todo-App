@@ -77,7 +77,7 @@ func NewServer() (*Server, error) {
 func configureServer() (*Server, error) {
 	s := defaultServer()
 	s.Name = GetEnvOrDefault("APP_NAME", "todo-app")
-	s.Port = GetEnvOrDefault("HTTP_PORT", "9001")
+	s.Port = GetEnvOrDefault("HTTP_PORT", "9003")
 	s.Env = GetEnvOrDefault("ENV", "dev")
 	s.ReadTimeout = GetEnvOrDefault("READ_TIMEOUT", 2)
 	s.WriteTimeout = GetEnvOrDefault("WRITE_TIMEOUT", 3)

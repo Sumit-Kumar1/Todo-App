@@ -55,7 +55,10 @@ func Run(c context.Context, _ io.Writer, _ []string) error {
 		IdleTimeout:  time.Duration(app.IdleTimeout * int(time.Second)),
 	}
 
-	startServer(ctx, app, httpServer, srvErr)
+	go func() {
+		app.Logger.LogAttrs(ctx, slog.LevelInfo, "Server started", slog.String("Address", httpServer.Addr))
+		srvErr <- httpServer.ListenAndServe()
+	}()
 
 	// Wait for shutdown signal or error
 	if err := handleServerError(ctx, app, srvErr); err != nil {
@@ -98,6 +101,7 @@ func handleServerError(ctx context.Context, app *server.Server, srvErr chan erro
 			)
 			return err
 		}
+
 		app.Logger.LogAttrs(ctx, slog.LevelInfo, "server stopped due to error")
 
 	case <-ctx.Done():
@@ -107,20 +111,13 @@ func handleServerError(ctx context.Context, app *server.Server, srvErr chan erro
 	return nil
 }
 
-// startServer starts the HTTP server in a goroutine
-func startServer(ctx context.Context, app *server.Server, httpServer *http.Server, srvErr chan error) {
-	go func() {
-		app.Logger.LogAttrs(ctx, slog.LevelInfo, "Server started", slog.String("Address", httpServer.Addr))
-		srvErr <- httpServer.ListenAndServe()
-	}()
-}
-
 // shutdownServer gracefully shuts down the server
 func shutdownServer(ctx context.Context, app *server.Server, httpServer *http.Server) error {
 	if err := httpServer.Shutdown(context.Background()); err != nil {
 		app.Logger.LogAttrs(ctx, slog.LevelError, "error while shutting down the server",
 			slog.String("error", err.Error()),
 		)
+
 		return err
 	}
 

@@ -22,7 +22,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o todo-backend main.go
 # Stage 2: Create a minimal production image
 FROM alpine:latest AS production
 
-RUN apk add --no-cache ca-certificates tzdata
+RUN apk add --no-cache ca-certificates tzdata wget
 
 WORKDIR /app
 
