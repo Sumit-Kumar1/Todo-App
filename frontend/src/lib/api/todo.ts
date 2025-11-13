@@ -1,6 +1,7 @@
 import type { CreateTaskRequest } from '$lib/types/todo';
 
-const baseURL = 'http://localhost:9003';
+// Use environment variable or default to localhost for development
+const baseURL = import.meta.env.VITE_BACKEND_URL || 'http://0.0.0.0:9003';
 
 export async function AddTask(taskReq: CreateTaskRequest) {
 	const url = baseURL + '/task';

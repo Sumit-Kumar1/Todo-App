@@ -1,6 +1,4 @@
-import { goto } from '$app/navigation';
-
-const baseURL = 'http://localhost:9003';
+const baseURL = 'http://0.0.0.0:9003';
 
 async function Login(email: string, password: string) {
 	const url = baseURL + '/login';
