@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   # PostgreSQL database service
@@ -14,7 +14,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - todo-network
+      - auth-rest-api_app-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -37,36 +37,51 @@ services:
       DB_USER: postgres
       DB_PASSWORD: root123
       HTTP_PORT: 9003
+      FILE_LOGGING_ENABLED: "false"
+      LOG_LEVEL: "DEBUG"
+      NO_COLOR: "false"
+      AUTH_URL: "http://auth-rest-api:9001"
+      CORS_ALLOWED_ORIGINS: "http://localhost:8081,http://todo-frontend:80,https://todo.zone.id"
     depends_on:
       postgres:
         condition: service_healthy
     networks:
-      - todo-network
+      - auth-rest-api_app-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9003/health"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:9003/health",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
 
-  # Svelte frontend service
+  #Svelte frontend service
   todo-frontend:
     container_name: todo_frontend
     build:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "80:80"
+      - "8081:80"
+    environment:
+      VITE_BACKEND_URL: "http://todo-backend:9003"
     depends_on:
       - todo-backend
     networks:
-      - todo-network
+      - auth-rest-api_app-network
     restart: unless-stopped
 
 volumes:
   postgres_data:
 
 networks:
-  todo-network:
-    driver: bridge
+  auth-rest-api_app-network:
+    external: true

@@ -1,24 +1,24 @@
-# Stage 1: Build the Svelte application using Node 22 (latest at the time of writing)
-FROM node:22-alpine AS build
+# Stage 1: Build the Svelte application
+FROM node:25-alpine AS builder
 
 WORKDIR /app
 
-# Copy package.json and install dependencies
+# Copy package files and install dependencies
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 
-# Copy the rest of the source code and build the app
-# The output directory of 'npm run build' is usually 'dist' or 'build'
+# Copy source code and build the application
 COPY . .
 RUN npm run build
 
-# Stage 2: Serve the application with Nginx
-# Use a minimal Nginx image
-FROM nginx:alpine
+# Stage 2: Serve with Nginx
+FROM nginx:stable-alpine
 
-# Copy the built static files from the 'build' stage to Nginx's serving directory
-# Make sure to use the correct build output directory if it's not 'dist'
-COPY --from=build /app/build /usr/share/nginx/html
+# Copy the built static files from the 'builder' stage to Nginx's serving directory
+COPY --from=builder /app/build /usr/share/nginx/html
+
+# Copy custom nginx configuration if needed
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Expose the port Nginx listens on (default 80)
 EXPOSE 80
