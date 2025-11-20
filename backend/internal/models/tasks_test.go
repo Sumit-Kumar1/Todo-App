@@ -6,6 +6,7 @@ import (
 	"time"
 	"todoapp/internal/errors"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -14,12 +15,27 @@ const (
 )
 
 func TestTask_ToTaskResp(t *testing.T) {
+	taskID := uuid.NewString()
+	userID := uuid.New()
+	title := "random task title"
+	description := "how to do a task clear"
+	isDone := false
+	addedAt := time.Now()
+	modifiedAt := time.Now()
+	dueDate := time.Now()
+	dateOnly := dueDate.Format(time.DateOnly)
+
 	tests := []struct {
 		name string
 		task Task
 		want *TaskResp
 	}{
-		// TODO: Add test cases.
+		{name: "valid case", task: Task{ID: taskID, UserID: userID, Title: title, Description: description, IsDone: isDone,
+			DueDate: &dueDate, AddedAt: addedAt, ModifiedAt: &modifiedAt},
+			want: &TaskResp{ID: taskID, UserID: userID, Title: title, Description: description, DueDate: &dateOnly, AddedAt: addedAt, ModifiedAt: &modifiedAt}},
+		{name: "no due date", task: Task{ID: taskID, UserID: userID, Title: title, Description: description, IsDone: isDone,
+			DueDate: nil, AddedAt: addedAt, ModifiedAt: &modifiedAt},
+			want: &TaskResp{ID: taskID, UserID: userID, Title: title, Description: description, DueDate: nil, AddedAt: addedAt, ModifiedAt: &modifiedAt}},
 	}
 
 	for i, tt := range tests {
