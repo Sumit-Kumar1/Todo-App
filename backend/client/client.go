@@ -7,10 +7,17 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"strings"
 	"sync"
+	"time"
 
 	"todoapp/internal/errors"
 	"todoapp/internal/models"
+)
+
+const (
+	healthEndpoint = "/health"
+	healthTimeout  = 10 * time.Second
 )
 
 var (
@@ -31,17 +38,46 @@ func New(url string) *Client {
 		return nil
 	}
 
+	url = strings.Trim(url, `"`)
+
 	once.Do(func() {
-		slog.LogAttrs(context.Background(), slog.LevelInfo, "creating auth-rest-api client")
+		slog.LogAttrs(context.Background(), slog.LevelInfo, "creating auth‑rest‑api client")
 		clientInstance = &Client{
 			url: url,
 			Client: http.Client{
 				Transport: http.DefaultTransport,
+				Timeout:   10 * time.Second, // generic timeout for all calls
 			},
 		}
-	})
 
+		if err := clientInstance.health(context.Background()); err != nil {
+			slog.Error("auth‑rest‑api health check failed during client creation", "err", err)
+			panic(err)
+		}
+	})
 	return clientInstance
+}
+
+func (c *Client) health(ctx context.Context) error {
+	hcCtx, cancel := context.WithTimeout(ctx, healthTimeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(hcCtx, http.MethodGet, c.url+healthEndpoint, nil)
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.Do(req)
+	if err != nil {
+		return err
+	}
+	defer ensureBodyClosed(resp)
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return errors.ErrInvalid("auth service health check failed: " + resp.Status)
+	}
+
+	return nil
 }
 
 func (c *Client) SignUp(ctx context.Context, email, password string) error {

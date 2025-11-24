@@ -1,9 +1,7 @@
-version: "3.8"
-
+name: todo-app
 services:
-  # PostgreSQL database service
-  postgres:
-    container_name: postgres_db
+  db:
+    container_name: todo-db
     image: postgres:15-alpine
     environment:
       POSTGRES_DB: todo
@@ -14,74 +12,70 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - auth-rest-api_app-network
+      - default
+      - global-auth
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 30s
-
-  # Go backend service
-  todo-backend:
-    container_name: todo_backend
+      start_period: 10s
+  backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      args:
+        PORT: 9003
+        HTTP_PORT: 9003
+    container_name: todo-backend
     ports:
-      - "9003:9003"
+      - "${HTTP_PORT:-9003}:9003"
+    env_file:
+      - ./backend/configs/.env
     environment:
-      DB_HOST: postgres_db
-      DB_PORT: 5432
-      DB_NAME: todo
-      DB_USER: postgres
-      DB_PASSWORD: root123
-      HTTP_PORT: 9003
-      FILE_LOGGING_ENABLED: "false"
-      LOG_LEVEL: "DEBUG"
-      NO_COLOR: "false"
-      AUTH_URL: "http://auth-rest-api:9001"
-      CORS_ALLOWED_ORIGINS: "http://localhost:8081,http://todo-frontend:80,https://todo.zone.id"
+      - HTTP_HOST=0.0.0.0
+      - HTTP_PORT=9003
+      - DB_HOST=todo-db
+      - DB_PORT=5432
+      - DB_NAME=todo
+      - DB_USER=postgres
+      - DB_PASSWORD=root123
+      - FILE_LOGGING_ENABLED=false
+      - LOG_LEVEL=DEBUG
+      - NO_COLOR=false
+      - AUTH_URL=http://auth-api:9001
+      - CORS_ALLOWED_ORIGINS=http://todo-frontend:8081
     depends_on:
-      postgres:
+      db:
         condition: service_healthy
     networks:
-      - auth-rest-api_app-network
+      - default
+      - global-auth
     restart: unless-stopped
     healthcheck:
-      test:
-        [
-          "CMD",
-          "wget",
-          "--no-verbose",
-          "--tries=1",
-          "--spider",
-          "http://localhost:9003/health",
-        ]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://0.0.0.0:${HTTP_PORT}/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
-
-  #Svelte frontend service
-  todo-frontend:
-    container_name: todo_frontend
+      start_period: 5s
+  frontend:
+    container_name: todo-frontend
     build:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
       - "8081:80"
     environment:
-      VITE_BACKEND_URL: "http://todo-backend:9003"
+      - VITE_BACKEND_URL=http://todo-backend:9003
     depends_on:
-      - todo-backend
+      - backend
     networks:
-      - auth-rest-api_app-network
+      - default
+      - global-auth
     restart: unless-stopped
-
 volumes:
   postgres_data:
-
 networks:
-  auth-rest-api_app-network:
+  global-auth:
+    name: shared-auth-network
     external: true
