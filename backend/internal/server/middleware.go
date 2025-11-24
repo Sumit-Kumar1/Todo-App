@@ -155,56 +155,6 @@ func (s *Server) globalRateLimiter(next http.Handler) http.Handler {
 	})
 }
 
-// FIXME: is this still required??
-func (s *Server) rateLimiterLogin() Middleware {
-	return func(f http.HandlerFunc) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
-			email := r.PostFormValue("email")
-			if strings.TrimSpace(email) == "" {
-				errors.HandleHTTPError(w, errors.ErrInvalid("email"))
-				s.Logger.LogAttrs(r.Context(), slog.LevelDebug, "invalid email in rate limiter login")
-
-				return
-			}
-
-			s.loginLimiter.mu.Lock()
-
-			attempt, exists := s.loginLimiter.attempts[email]
-			if !exists {
-				attempt = &limiterAttempt{count: 0, firstTime: time.Now()}
-				s.loginLimiter.attempts[email] = attempt
-			}
-
-			if time.Since(attempt.firstTime) > s.loginLimiter.timeWindow {
-				attempt.count = 0
-				attempt.firstTime = time.Now()
-
-				f(w, r)
-
-				return
-			}
-
-			attempt.count++
-			s.Logger.LogAttrs(r.Context(), slog.LevelDebug, "login attempt count increased", slog.Int("count", attempt.count))
-
-			if attempt.count > s.loginLimiter.maxAttempts {
-				s.Logger.LogAttrs(r.Context(), slog.LevelDebug, "login attempt count exceeded",
-					slog.Int("count", attempt.count), slog.Int("max attempt", s.loginLimiter.maxAttempts))
-
-				http.Error(w, "Too many login attempts. Please try again later.", http.StatusTooManyRequests)
-
-				s.loginLimiter.mu.Unlock()
-
-				return
-			}
-
-			s.loginLimiter.mu.Unlock()
-			s.Logger.LogAttrs(r.Context(), slog.LevelDebug, "success login limiter finished")
-			f(w, r)
-		}
-	}
-}
-
 func (s *Server) validateCookie(ctx context.Context, logger *slog.Logger, r *http.Request) (*uuid.UUID, error) {
 	val, err := todocookie.ReadCookie(r, cookieName)
 	if err != nil {

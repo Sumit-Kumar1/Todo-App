@@ -48,8 +48,10 @@ func (t *Task) ToTaskResp() *TaskResp {
 		ModifiedAt:  t.ModifiedAt,
 	}
 
-	dd := t.DueDate.Format(time.DateOnly)
-	tr.DueDate = &dd
+	if t.DueDate != nil {
+		dd := t.DueDate.Format(time.DateOnly)
+		tr.DueDate = &dd
+	}
 
 	return &tr
 }

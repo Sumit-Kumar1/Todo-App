@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"strconv"
@@ -13,38 +14,30 @@ import (
 	"time"
 )
 
-var (
-	serverOnce     sync.Once
-	serverInstance *Server
-)
-
 type Configs struct {
 	Name            string
 	Env             string
 	Host            string
 	Port            string
-	ReadTimeout     int
-	WriteTimeout    int
-	IdleTimeout     int
 	MigrationMethod string
 }
 
 type Health struct {
+	Msg     string `json:"Message"`
 	DB      bool   `json:"DB"`
 	Service bool   `json:"Service"`
-	Msg     string `json:"Message"`
 }
 
 type rateLimiter struct {
-	mu          sync.Mutex
 	attempts    map[string]*limiterAttempt
-	maxAttempts int
 	timeWindow  time.Duration
+	maxAttempts int
+	mu          sync.Mutex
 }
 
 type limiterAttempt struct {
-	count     int
 	firstTime time.Time
+	count     int
 }
 
 type Server struct {
@@ -56,82 +49,93 @@ type Server struct {
 	loginLimiter  *rateLimiter
 	globalLimiter *rateLimiter
 	logFile       *os.File
-	*Configs
+	Configs       Configs
+	*http.Server
 }
 
-type Opts func(s *Server)
-
-func NewServer() (*Server, error) {
-	if serverInstance != nil {
-		return serverInstance, nil
-	}
-
-	s, err := configureServer()
-	if err != nil {
-		return nil, err
-	}
-
-	return s, nil
+type ServerBuilder struct {
+	server *Server
 }
 
-func configureServer() (*Server, error) {
+func NewServerBuilder() *ServerBuilder {
 	s := defaultServer()
-	s.Name = GetEnvOrDefault("APP_NAME", "todo-app")
-	s.Port = GetEnvOrDefault("HTTP_PORT", "9003")
-	s.Env = GetEnvOrDefault("ENV", "dev")
-	s.ReadTimeout = GetEnvOrDefault("READ_TIMEOUT", 2)
-	s.WriteTimeout = GetEnvOrDefault("WRITE_TIMEOUT", 3)
-	s.IdleTimeout = GetEnvOrDefault("IDLE_TIMEOUT", 5)
-	s.MigrationMethod = GetEnvOrDefault("MIGRATION_METHOD", "UP")
 
-	s.Logger, s.logFile = newLogger()
-
-	db, err := newDB(s.Logger)
-	if err != nil {
-		return nil, err
-	}
-
-	s.DB = db
-
-	// Set up shutdown function
-	s.ShutDownFxn = s.createShutdownFunction()
-
-	return s, nil
+	return s
 }
 
-func defaultServer() *Server {
-	if serverInstance != nil {
-		return serverInstance
+func (sb *ServerBuilder) WithHostPort() *ServerBuilder {
+	host := GetEnvOrDefault("HOST_HOST", "localhost")
+	port := GetEnvOrDefault("HTTP_PORT", "9003")
+
+	httpServer := &http.Server{
+		Addr: net.JoinHostPort(host, port),
 	}
 
-	serverOnce.Do(func() {
-		serverInstance = &Server{
-			Configs: &Configs{
-				Name: "todoApp",
-				Env:  "dev",
-				Host: "localhost",
-				Port: "9003",
-			},
-			Mux: http.NewServeMux(),
-			Health: &Health{
-				DB:      false,
-				Service: false,
-				Msg:     "INIT HEALTH",
-			},
-			globalLimiter: &rateLimiter{
-				attempts:    make(map[string]*limiterAttempt),
-				maxAttempts: GetEnvOrDefault("GLOBAL_ATTEMPTS", 300),
-				timeWindow:  time.Second * time.Duration(GetEnvOrDefault("GLOBAL_TIME_WINDOW", 60)),
-			},
-			loginLimiter: &rateLimiter{
-				attempts:    make(map[string]*limiterAttempt),
-				maxAttempts: GetEnvOrDefault("LOGIN_ATTEMPTS", 10),
-				timeWindow:  time.Second * time.Duration(GetEnvOrDefault("LOGIN_TIME_WINDOW", 60)),
-			},
-		}
-	})
+	sb.server.Server = httpServer
 
-	return serverInstance
+	return sb
+}
+
+func (sb *ServerBuilder) WithLogger() *ServerBuilder {
+	sb.server.Logger, sb.server.logFile = newLogger()
+	return sb
+}
+
+func (sb *ServerBuilder) WithConfig() *ServerBuilder {
+	sb.server.Configs.Env = GetEnvOrDefault("ENV", "dev")
+	sb.server.Configs.Name = GetEnvOrDefault("APP_NAME", "todo-app")
+	sb.server.Configs.MigrationMethod = GetEnvOrDefault("MIGRATION_METHOD", "UP")
+	return sb
+}
+
+func (sb *ServerBuilder) WithDB() *ServerBuilder {
+	sb.server.DB, _ = newDB()
+	return sb
+}
+
+func (sb *ServerBuilder) WithServerTimeouts() *ServerBuilder {
+	readTimeout := GetEnvOrDefault("READ_TIMEOUT", 2)
+	writeTimeout := GetEnvOrDefault("WRITE_TIMEOUT", 3)
+	idleTimeout := GetEnvOrDefault("IDLE_TIMEOUT", 5)
+
+	sb.server.ReadTimeout = time.Duration(readTimeout * int(time.Second))
+	sb.server.WriteTimeout = time.Duration(writeTimeout * int(time.Second))
+	sb.server.IdleTimeout = time.Duration(idleTimeout * int(time.Second))
+
+	return sb
+}
+
+func (sb *ServerBuilder) Build() *Server {
+	sb.server.ShutDownFxn = sb.server.createShutdownFunction()
+	return sb.server
+}
+
+func defaultServer() *ServerBuilder {
+	s := &Server{
+		Configs: Configs{
+			Name:            "todoApp",
+			Env:             "dev",
+			MigrationMethod: "UP",
+		},
+		Mux: http.NewServeMux(),
+		Health: &Health{
+			DB:      false,
+			Service: false,
+			Msg:     "INIT HEALTH",
+		},
+		globalLimiter: &rateLimiter{
+			attempts:    make(map[string]*limiterAttempt),
+			maxAttempts: GetEnvOrDefault("GLOBAL_ATTEMPTS", 300),
+			timeWindow:  time.Second * time.Duration(GetEnvOrDefault("GLOBAL_TIME_WINDOW", 60)),
+		},
+		loginLimiter: &rateLimiter{
+			attempts:    make(map[string]*limiterAttempt),
+			maxAttempts: GetEnvOrDefault("LOGIN_ATTEMPTS", 10),
+			timeWindow:  time.Second * time.Duration(GetEnvOrDefault("LOGIN_TIME_WINDOW", 60)),
+		},
+	}
+
+	return &ServerBuilder{server: s}
 }
 
 func (s *Server) createShutdownFunction() func(context.Context) error {

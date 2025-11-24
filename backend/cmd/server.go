@@ -6,11 +6,9 @@ import (
 	"errors"
 	"io"
 	"log/slog"
-	"net"
 	"net/http"
 	"os"
 	"os/signal"
-	"time"
 
 	"todoapp/client"
 	"todoapp/internal/handler"
@@ -27,13 +25,17 @@ func Run(c context.Context, _ io.Writer, _ []string) error {
 	ctx, stop := signal.NotifyContext(c, os.Interrupt)
 	defer stop()
 
-	app, err := server.NewServer()
-	if err != nil {
-		slog.Error(err.Error())
-		return err
+	app := server.NewServerBuilder().
+		WithConfig().
+		WithHostPort().WithServerTimeouts().
+		WithLogger().WithDB().
+		Build()
+
+	if app.DB == nil {
+		return errors.New("couldn't initialize database connection")
 	}
 
-	if err = migrations.RunMigrations(ctx, app, app.MigrationMethod); err != nil {
+	if err := migrations.RunMigrations(ctx, app, app.Configs.MigrationMethod); err != nil {
 		slog.LogAttrs(c, slog.LevelError, "error while running migrations",
 			slog.String("error", err.Error()))
 
@@ -45,19 +47,13 @@ func Run(c context.Context, _ io.Writer, _ []string) error {
 	setupUserRoutes(app)
 	setupTasksRoutes(app)
 
+	app.Handler = app.ServerWideMiddlewares(app.Mux)
+
 	srvErr := make(chan error, 1)
 
-	httpServer := &http.Server{
-		Addr:         net.JoinHostPort(app.Host, app.Port),
-		Handler:      app.ServerWideMiddlewares(app.Mux),
-		ReadTimeout:  time.Duration(app.ReadTimeout * int(time.Second)),
-		WriteTimeout: time.Duration(app.WriteTimeout * int(time.Second)),
-		IdleTimeout:  time.Duration(app.IdleTimeout * int(time.Second)),
-	}
-
 	go func() {
-		app.Logger.LogAttrs(ctx, slog.LevelInfo, "Server started", slog.String("Address", httpServer.Addr))
-		srvErr <- httpServer.ListenAndServe()
+		app.Logger.LogAttrs(ctx, slog.LevelInfo, "Server started", slog.String("Address", app.Addr))
+		srvErr <- app.ListenAndServe()
 	}()
 
 	// Wait for shutdown signal or error
@@ -66,7 +62,7 @@ func Run(c context.Context, _ io.Writer, _ []string) error {
 	}
 
 	// Graceful shutdown
-	return shutdownServer(ctx, app, httpServer)
+	return shutdownServer(ctx, app)
 }
 
 // setupHealthRoutes configures health check endpoints
@@ -112,8 +108,8 @@ func handleServerError(ctx context.Context, app *server.Server, srvErr chan erro
 }
 
 // shutdownServer gracefully shuts down the server
-func shutdownServer(ctx context.Context, app *server.Server, httpServer *http.Server) error {
-	if err := httpServer.Shutdown(context.Background()); err != nil {
+func shutdownServer(ctx context.Context, app *server.Server) error {
+	if err := app.Shutdown(context.Background()); err != nil {
 		app.Logger.LogAttrs(ctx, slog.LevelError, "error while shutting down the server",
 			slog.String("error", err.Error()),
 		)
