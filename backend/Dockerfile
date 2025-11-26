@@ -7,7 +7,6 @@ COPY internal/ ./internal/
 COPY "cmd/" "./cmd/"
 COPY client/ ./client/
 COPY static/ ./static/
-COPY configs/ ./configs/
 
 RUN go mod download
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s -extldflags '-static'" -o main .

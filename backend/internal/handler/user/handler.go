@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	"todoapp/internal/errors"
 	"todoapp/internal/models"
 
 	"github.com/gin-gonic/gin"
@@ -26,12 +27,12 @@ func (h *Handler) Register(c *gin.Context) {
 	var user models.LoginReq
 
 	if err := c.BindJSON(&user); err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err)
+		c.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
 
 	if err := h.svc.Register(c, &user); err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err)
+		errors.HandleHTTPError(c, err)
 		return
 	}
 
@@ -44,13 +45,13 @@ func (h *Handler) Login(c *gin.Context) {
 	var user models.LoginReq
 
 	if err := c.BindJSON(&user); err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err)
+		c.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
 
 	resp, err := h.svc.Login(c, &user)
 	if err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err)
+		errors.HandleHTTPError(c, err)
 		return
 	}
 
@@ -71,7 +72,7 @@ func (h *Handler) Logout(c *gin.Context) {
 	}
 
 	if err := h.svc.Logout(c, authCookie); err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err)
+		errors.HandleHTTPError(c, err)
 		return
 	}
 

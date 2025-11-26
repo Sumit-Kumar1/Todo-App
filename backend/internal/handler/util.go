@@ -1,31 +1,23 @@
 package handler
 
 import (
-	"encoding/json"
-	"net/http"
+	"todoapp/internal/errors"
+	"todoapp/internal/models"
+
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
-func WriteResponse[T any](w http.ResponseWriter, status int, data *T) error {
-	if data == nil {
-		w.WriteHeader(status)
-		return nil
+func GetContextKey(c *gin.Context) (*uuid.UUID, error) {
+	ctxVal, ok := c.Get(string(models.CtxKeyUserID))
+	if !ok {
+		return nil, errors.ErrUserNotFound
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-
-	wrapData := struct {
-		Data T `json:"data"`
-	}{
-		Data: *data,
+	userID, ok := ctxVal.(uuid.UUID)
+	if !ok {
+		return nil, errors.ErrInvalid("login user")
 	}
 
-	rawData, err := json.Marshal(wrapData)
-	if err != nil {
-		return err
-	}
-
-	_, err = w.Write(rawData)
-
-	return err
+	return &userID, nil
 }

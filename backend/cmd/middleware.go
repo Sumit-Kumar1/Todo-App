@@ -1,9 +1,6 @@
 package cmd
 
 import (
-	"context"
-	"net/http"
-
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 
@@ -28,19 +25,9 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-type Middleware func(http.HandlerFunc) http.HandlerFunc
-
-func Chain(f http.HandlerFunc, middlewares ...Middleware) http.HandlerFunc {
-	for _, m := range middlewares {
-		f = m(f)
-	}
-
-	return f
-}
-
 // AuthMiddleware check for valid cookie and extracts user id for the user
 // TODO: Decide wether if token is expired had to refresh and add a new auth cookie to disrupt the flow ?
-func AuthMiddleware() gin.HandlerFunc {
+func authMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		uid, err := validateCookie(c)
 		if err != nil {
@@ -48,9 +35,9 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		c.Request.WithContext(context.WithValue(c, models.CtxKeyUserID, *uid))
+		c.Set(string(models.CtxKeyUserID), *uid)
+		c.Next()
 	}
-
 }
 
 func validateCookie(c *gin.Context) (*uuid.UUID, error) {

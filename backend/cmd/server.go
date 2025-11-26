@@ -5,7 +5,8 @@ import (
 	"context"
 	"database/sql"
 	"io"
-	"log/slog"
+	"log"
+	"net"
 	"os"
 	"strconv"
 	"strings"
@@ -23,26 +24,30 @@ import (
 )
 
 func Run(c context.Context, _ io.Writer, _ []string) error {
-	router := gin.Default()
+	router := gin.New()
+
+	router.Use(gin.LoggerWithConfig(gin.LoggerConfig{Output: os.Stdout}))
+	router.Use(gin.Recovery())
 
 	db, err := newDB(c)
 	if err != nil {
 		return err
 	}
 
-	if err := migrations.RunMigrations(c, db, "UP"); err != nil {
-		slog.LogAttrs(c, slog.LevelError, "error while running migrations",
-			slog.String("error", err.Error()))
+	if err := migrations.RunMigrations(c, db, getEnvOrDefault("MIGRATION_METHOD", "UP")); err != nil {
+		log.Printf("error while running migrations: %s", err.Error())
 
 		return err
 	}
 
-	// Setup health endpoints firsts
 	setupHealthRoutes(router, db)
 	setupUserRoutes(router, db)
 	setupTasksRoutes(router, db)
 
-	return router.Run("localhost:9003")
+	host := getEnvOrDefault("HTTP_HOST", "localhost")
+	port := getEnvOrDefault("HTTP_PORT", "9003")
+
+	return router.Run(net.JoinHostPort(host, port))
 }
 
 // setupHealthRoutes configures health check endpoints
@@ -59,11 +64,15 @@ func setupTasksRoutes(r *gin.Engine, db *sql.DB) {
 	todoSvc := todosvc.New(todoStore)
 	todoHTTP := todohttp.New(todoSvc)
 
-	r.POST("/task", todoHTTP.AddTask)
-	r.GET("/tasks", todoHTTP.GetAllTasks)
-	r.PATCH("/tasks/:id/done", todoHTTP.MarkDone)
-	r.PUT("/tasks/:id", todoHTTP.Update)
-	r.DELETE("/tasks/:id", todoHTTP.DeleteTask)
+	r.POST("/task", authMiddleware(), todoHTTP.AddTask)
+
+	taskGroup := r.Group("/tasks")
+	taskGroup.Use(authMiddleware())
+
+	taskGroup.GET("", todoHTTP.GetAllTasks)
+	taskGroup.PUT("/:id", todoHTTP.Update)
+	taskGroup.DELETE("/:id", todoHTTP.DeleteTask)
+	taskGroup.PATCH("/:id/done", todoHTTP.MarkDone)
 }
 
 func setupUserRoutes(r *gin.Engine, app *sql.DB) {

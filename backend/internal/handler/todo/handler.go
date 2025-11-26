@@ -4,10 +4,10 @@ import (
 	"net/http"
 
 	"todoapp/internal/errors"
+	"todoapp/internal/handler"
 	"todoapp/internal/models"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 type Handler struct {
@@ -21,17 +21,20 @@ func New(todoSvc TodoServicer) *Handler {
 func (h *Handler) AddTask(c *gin.Context) {
 	var taskReq models.TaskReq
 
+	userID, err := handler.GetContextKey(c)
+	if err != nil {
+		c.AbortWithError(http.StatusUnauthorized, err)
+		return
+	}
+
 	if err := c.BindJSON(&taskReq); err != nil {
 		c.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
 
-	//TODO:fix the userID part from getting values from cookie
-	userID := uuid.New()
-
-	task, err := h.Service.AddTask(c, &taskReq, &userID)
+	task, err := h.Service.AddTask(c, &taskReq, userID)
 	if err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err)
+		errors.HandleHTTPError(c, err)
 		return
 	}
 
@@ -39,15 +42,15 @@ func (h *Handler) AddTask(c *gin.Context) {
 }
 
 func (h *Handler) MarkDone(c *gin.Context) {
-	userID, ok := c.Value(models.CtxKeyUserID).(uuid.UUID)
-	if !ok {
-		c.AbortWithError(http.StatusNotFound, errors.ErrUserNotFound)
+	userID, err := handler.GetContextKey(c)
+	if err != nil {
+		c.AbortWithError(http.StatusUnauthorized, err)
 		return
 	}
 
 	id := c.Param("id")
 
-	resp, err := h.Service.MarkDone(c, id, &userID)
+	resp, err := h.Service.MarkDone(c, id, userID)
 	if err != nil {
 		errors.HandleHTTPError(c, err)
 		return
@@ -57,13 +60,13 @@ func (h *Handler) MarkDone(c *gin.Context) {
 }
 
 func (h *Handler) GetAllTasks(c *gin.Context) {
-	userID, ok := c.Value(models.CtxKeyUserID).(uuid.UUID)
-	if !ok {
-		c.AbortWithError(http.StatusNotFound, errors.ErrUserNotFound)
+	userID, err := handler.GetContextKey(c)
+	if err != nil {
+		c.AbortWithError(http.StatusUnauthorized, err)
 		return
 	}
 
-	resp, err := h.Service.GetAll(c, &userID)
+	resp, err := h.Service.GetAll(c, userID)
 	if err != nil {
 		errors.HandleHTTPError(c, err)
 		return
@@ -81,13 +84,13 @@ func (h *Handler) GetAllTasks(c *gin.Context) {
 func (h *Handler) DeleteTask(c *gin.Context) {
 	id := c.Param("id")
 
-	userID, ok := c.Value(models.CtxKeyUserID).(uuid.UUID)
-	if !ok {
-		c.AbortWithError(http.StatusNotFound, errors.ErrUserNotFound)
+	userID, err := handler.GetContextKey(c)
+	if err != nil {
+		c.AbortWithError(http.StatusUnauthorized, err)
 		return
 	}
 
-	if err := h.Service.DeleteTask(c, id, &userID); err != nil {
+	if err := h.Service.DeleteTask(c, id, userID); err != nil {
 		errors.HandleHTTPError(c, err)
 		return
 	}
@@ -98,9 +101,9 @@ func (h *Handler) DeleteTask(c *gin.Context) {
 func (h *Handler) Update(c *gin.Context) {
 	var taskReq models.TaskReq
 
-	userID, ok := c.Value(models.CtxKeyUserID).(uuid.UUID)
-	if !ok {
-		c.AbortWithError(http.StatusNotFound, errors.ErrUserNotFound)
+	userID, err := handler.GetContextKey(c)
+	if err != nil {
+		c.AbortWithError(http.StatusUnauthorized, err)
 		return
 	}
 
@@ -111,7 +114,7 @@ func (h *Handler) Update(c *gin.Context) {
 		return
 	}
 
-	resp, err := h.Service.UpdateTask(c, id, &taskReq, &userID)
+	resp, err := h.Service.UpdateTask(c, id, &taskReq, userID)
 	if err != nil {
 		errors.HandleHTTPError(c, err)
 		return
