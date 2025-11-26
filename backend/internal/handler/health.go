@@ -2,23 +2,26 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
+	"database/sql"
 	"net/http"
 	"time"
 	"todoapp/internal/models"
-	"todoapp/internal/server"
+
+	"github.com/gin-gonic/gin"
 )
 
 type HealthHandler struct {
-	srv *server.Server
+	DB *sql.DB
 }
 
-func NewHealthHandler(srv *server.Server) *HealthHandler {
-	return &HealthHandler{srv: srv}
+func NewHealthHandler(db *sql.DB) *HealthHandler {
+	return &HealthHandler{
+		DB: db,
+	}
 }
 
 // HealthHandler handles health check requests
-func (s *HealthHandler) HealthHandler(w http.ResponseWriter, r *http.Request) {
+func (s *HealthHandler) HealthHandler(c *gin.Context) {
 	response := models.HealthResponse{
 		Status:    "healthy",
 		Timestamp: time.Now(),
@@ -27,29 +30,21 @@ func (s *HealthHandler) HealthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check database health
-	if err := s.checkDatabaseHealth(r.Context()); err != nil {
+	if err := s.checkDatabaseHealth(c); err != nil {
 		response.Status = "unhealthy"
 		response.Database = false
 		response.Message = "Database connection failed: " + err.Error()
-		s.srv.Logger.Error("Database health check failed", "error", err)
 	}
-
-	w.Header().Set("Content-Type", "application/json")
 
 	if response.Status == "unhealthy" {
-		w.WriteHeader(http.StatusServiceUnavailable)
-	} else {
-		w.WriteHeader(http.StatusOK)
+		c.AbortWithStatusJSON(http.StatusServiceUnavailable, response)
+		return
 	}
-
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		s.srv.Logger.Error("Failed to encode health response", "error", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-	}
+	c.IndentedJSON(http.StatusOK, response)
 }
 
 // ReadyHandler handles readiness checks
-func (s *HealthHandler) ReadyHandler(w http.ResponseWriter, r *http.Request) {
+func (s *HealthHandler) ReadyHandler(c *gin.Context) {
 	response := models.HealthResponse{
 		Status:    "ready",
 		Timestamp: time.Now(),
@@ -58,55 +53,42 @@ func (s *HealthHandler) ReadyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check database readiness
-	if err := s.checkDatabaseHealth(r.Context()); err != nil {
+	if err := s.checkDatabaseHealth(c); err != nil {
 		response.Status = "not ready"
 		response.Database = false
 		response.Message = "Database not ready: " + err.Error()
-		s.srv.Logger.Error("Database readiness check failed", "error", err)
 	}
-
-	w.Header().Set("Content-Type", "application/json")
 
 	if response.Status == "not ready" {
-		w.WriteHeader(http.StatusServiceUnavailable)
-	} else {
-		w.WriteHeader(http.StatusOK)
+		c.AbortWithStatusJSON(http.StatusServiceUnavailable, response)
+		return
 	}
 
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		s.srv.Logger.Error("Failed to encode readiness response", "error", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-	}
+	c.IndentedJSON(http.StatusOK, response)
 }
 
 // LivenessHandler handles liveness checks
-func (s *HealthHandler) LivenessHandler(w http.ResponseWriter, r *http.Request) {
-	response := map[string]interface{}{
+func (s *HealthHandler) LivenessHandler(c *gin.Context) {
+	response := map[string]any{
 		"status":    "alive",
 		"timestamp": time.Now(),
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		s.srv.Logger.Error("Failed to encode liveness response", "error", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-	}
+	c.IndentedJSON(http.StatusOK, response)
 }
 
 // checkDatabaseHealth verifies database connectivity
-func (s *HealthHandler) checkDatabaseHealth(ctx context.Context) error {
-	if s.srv.DB == nil {
+func (s *HealthHandler) checkDatabaseHealth(c *gin.Context) error {
+	if s.DB == nil {
 		return context.Canceled
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	ctx, cancel := context.WithTimeout(c, 5*time.Second)
 	defer cancel()
 
 	// Simple query to check database connectivity
 	var result int
-	err := s.srv.DB.QueryRowContext(ctx, "SELECT 1").Scan(&result)
+	err := s.DB.QueryRowContext(ctx, "SELECT 1").Scan(&result)
 	if err != nil {
 		return err
 	}

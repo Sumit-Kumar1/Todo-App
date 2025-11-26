@@ -1,16 +1,12 @@
 package userhttp
 
 import (
-	"encoding/json"
-	pkgErr "errors"
-	"log/slog"
 	"net/http"
 	"time"
 
-	"todoapp/internal/errors"
-	"todoapp/internal/handler"
 	"todoapp/internal/models"
-	"todoapp/internal/todocookie"
+
+	"github.com/gin-gonic/gin"
 )
 
 const (
@@ -26,115 +22,60 @@ func New(svc UserServicer) *Handler {
 	return &Handler{svc: svc}
 }
 
-func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	logger := models.GetLoggerFromCtx(ctx)
-
+func (h *Handler) Register(c *gin.Context) {
 	var user models.LoginReq
 
-	defer r.Body.Close()
-
-	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, "register:error while closing req body",
-			slog.String("error", err.Error()))
-		errors.HandleHTTPError(w, err)
+	if err := c.BindJSON(&user); err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
 
-	if err := h.svc.Register(ctx, &user); err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, "register:service:error while registering user",
-			slog.String("error", err.Error()))
-		errors.HandleHTTPError(w, err)
+	if err := h.svc.Register(c, &user); err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
 
 	resp := "user created successfully"
 
-	if err := handler.WriteResponse(w, http.StatusCreated, &resp); err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, "register:error while writing response",
-			slog.String("error", err.Error()))
-
-		w.WriteHeader(http.StatusInternalServerError)
-
-		return
-	}
-
-	logger.LogAttrs(ctx, slog.LevelInfo, "login:user created successfully!", slog.String("email", user.Email))
+	c.IndentedJSON(http.StatusCreated, resp)
 }
 
-func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	logger := models.GetLoggerFromCtx(ctx)
-
+func (h *Handler) Login(c *gin.Context) {
 	var user models.LoginReq
 
-	defer r.Body.Close()
-
-	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, "login:error while decoding req body",
-			slog.String("error", err.Error()))
-		errors.HandleHTTPError(w, err)
+	if err := c.BindJSON(&user); err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
 
-	resp, err := h.svc.Login(ctx, &user)
+	resp, err := h.svc.Login(c, &user)
 	if err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, "login:service:error while calling service",
-			slog.String("error", err.Error()))
-		errors.HandleHTTPError(w, err)
+		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
 
 	authCookie, refCookie := getLoginCookie(resp)
-	if err := todocookie.WriteCookie(w, authCookie); err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, "login:writing cookie auth",
-			slog.String("error", err.Error()))
-		errors.HandleHTTPError(w, err)
-		return
-	}
-
-	if err := todocookie.WriteCookie(w, refCookie); err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, "login:writing cookie refresh",
-			slog.String("error", err.Error()))
-		errors.HandleHTTPError(w, err)
-		return
-	}
+	c.SetCookieData(&authCookie)
+	c.SetCookieData(&refCookie)
 
 	success := "user login successfully"
 
-	if err := handler.WriteResponse(w, int(http.StatusOK), &success); err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, "login:error while writing response",
-			slog.String("error", err.Error()))
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	logger.LogAttrs(ctx, slog.LevelInfo, "user login successfully!", slog.String("email", user.Email))
+	c.IndentedJSON(http.StatusOK, success)
 }
 
-func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	logger := models.GetLoggerFromCtx(ctx)
-
-	authCookie, err := todocookie.ReadCookie(r, authCookieName)
+func (h *Handler) Logout(c *gin.Context) {
+	authCookie, err := c.Cookie(authCookieName)
 	if err != nil {
-		if pkgErr.Is(err, http.ErrNoCookie) {
-			logger.Log(ctx, slog.LevelError, "logout:service:no cookie in the request")
-		}
-
-		logger.Log(ctx, slog.LevelError, "logout:service:error while fetching cookie")
-		errors.HandleHTTPError(w, err)
+		c.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
 
-	if err := h.svc.Logout(ctx, authCookie); err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, "logout:error while calling service",
-			slog.String("error", err.Error()))
-		errors.HandleHTTPError(w, err)
+	if err := h.svc.Logout(c, authCookie); err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
 
-	_ = todocookie.WriteCookie(w, http.Cookie{
+	c.SetCookieData(&http.Cookie{
 		Name:     authCookieName,
 		Value:    "",
 		Path:     "/",
@@ -146,14 +87,7 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 
 	success := "user logout successfully"
 
-	if err := handler.WriteResponse(w, int(http.StatusOK), &success); err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, "logout:error while writing response",
-			slog.String("error", err.Error()))
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	logger.LogAttrs(ctx, slog.LevelInfo, "user logout successfully!")
+	c.IndentedJSON(http.StatusOK, success)
 }
 
 func getLoginCookie(resp *models.AuthUserResp) (auth, refresh http.Cookie) {

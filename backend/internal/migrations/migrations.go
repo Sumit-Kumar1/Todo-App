@@ -6,11 +6,9 @@ import (
 	liberrors "errors"
 	"fmt"
 	"log/slog"
-	"strings"
 	"time"
 
 	"todoapp/internal/errors"
-	"todoapp/internal/server"
 )
 
 const (
@@ -28,28 +26,23 @@ type migrator interface {
 	down(tx *sql.Tx) error
 }
 
-func RunMigrations(ctx context.Context, s *server.Server, method string) error {
-	if s.DB == nil {
+func RunMigrations(ctx context.Context, db *sql.DB, method string) error {
+	if db == nil {
 		return errors.NewConstError("db is nil")
 	}
 
-	t := time.Now()
-
 	query := fmt.Sprintf(createMigTable, migTableName)
 
-	_, err := s.DB.ExecContext(ctx, query)
+	_, err := db.ExecContext(ctx, query)
 	if err != nil {
-		s.Logger.LogAttrs(ctx, slog.LevelError, "not able to create the migration table",
-			slog.String("error", err.Error()))
-
 		return err
 	}
 
 	switch method {
 	case methodUp:
-		err = runUpMigrations(ctx, s, migrations)
+		err = runUpMigrations(ctx, db, migrations)
 	case methodDown:
-		err = runDownMigrations(ctx, s, migrations)
+		err = runDownMigrations(ctx, db, migrations)
 	default:
 		return errors.ErrInvalid("migration method")
 	}
@@ -58,14 +51,10 @@ func RunMigrations(ctx context.Context, s *server.Server, method string) error {
 		return err
 	}
 
-	s.Logger.LogAttrs(ctx, slog.LevelInfo,
-		fmt.Sprintf("completed the migration in time: %v seconds", time.Since(t).Seconds()),
-	)
-
 	return nil
 }
 
-func runUpMigrations(ctx context.Context, s *server.Server, migs map[string]migrator) error {
+func runUpMigrations(ctx context.Context, s *sql.DB, migs map[string]migrator) error {
 	run := make([]string, 0)
 
 	lastRun, err := getLastRunMigration(ctx, s)
@@ -85,13 +74,10 @@ func runUpMigrations(ctx context.Context, s *server.Server, migs map[string]migr
 		run = append(run, version)
 	}
 
-	s.Logger.LogAttrs(ctx, slog.LevelInfo, "successfully UP migrated",
-		slog.String("runs", fmt.Sprintf("[%s]", strings.Join(run, ", "))))
-
 	return nil
 }
 
-func runDownMigrations(ctx context.Context, s *server.Server, migs map[string]migrator) error {
+func runDownMigrations(ctx context.Context, db *sql.DB, migs map[string]migrator) error {
 	var (
 		run      []string
 		versions []string
@@ -100,7 +86,7 @@ func runDownMigrations(ctx context.Context, s *server.Server, migs map[string]mi
 
 	query := fmt.Sprintf(versionQuery, migTableName)
 
-	rows, err := s.DB.QueryContext(ctx, query)
+	rows, err := db.QueryContext(ctx, query)
 	if err != nil {
 		if liberrors.Is(err, sql.ErrNoRows) {
 			slog.LogAttrs(ctx, slog.LevelWarn, "no versions found to revert")
@@ -122,30 +108,25 @@ func runDownMigrations(ctx context.Context, s *server.Server, migs map[string]mi
 	for idx := range versions {
 		mig := migs[versions[idx]]
 
-		if err := performDownMigrations(ctx, s, mig, versions[idx]); err != nil {
+		if err := performDownMigrations(ctx, db, mig, versions[idx]); err != nil {
 			return err
 		}
 
 		run = append(run, versions[idx])
 	}
 
-	s.Logger.LogAttrs(ctx, slog.LevelInfo, "successfully 'DOWN' migrated",
-		slog.String("runs", fmt.Sprintf("[%s]", strings.Join(run, ", "))))
-
 	return nil
 }
 
-func getLastRunMigration(ctx context.Context, s *server.Server) (string, error) {
+func getLastRunMigration(ctx context.Context, db *sql.DB) (string, error) {
 	var (
 		lastRun         string
 		queryGetLastRun = fmt.Sprintf("SELECT version FROM %s ORDER BY version DESC LIMIT 1;", migTableName)
 	)
 
-	res, err := s.DB.QueryContext(ctx, queryGetLastRun)
+	res, err := db.QueryContext(ctx, queryGetLastRun)
 	if err != nil {
 		if liberrors.Is(err, sql.ErrNoRows) {
-			s.Logger.LogAttrs(ctx, slog.LevelWarn, "no last run migrations found")
-
 			return "", nil
 		}
 
@@ -154,10 +135,6 @@ func getLastRunMigration(ctx context.Context, s *server.Server) (string, error) 
 
 	for res.Next() {
 		if err := res.Scan(&lastRun); err != nil {
-			s.Logger.LogAttrs(ctx, slog.LevelError, "unable to fetch last run of the migration",
-				slog.String("error", err.Error()),
-			)
-
 			return "", err
 		}
 	}
@@ -165,13 +142,9 @@ func getLastRunMigration(ctx context.Context, s *server.Server) (string, error) 
 	return lastRun, nil
 }
 
-func performUpMigrations(ctx context.Context, s *server.Server, val migrator, version string) error {
-	tx, err := s.DB.Begin()
+func performUpMigrations(ctx context.Context, db *sql.DB, val migrator, version string) error {
+	tx, err := db.Begin()
 	if err != nil {
-		s.Logger.LogAttrs(ctx, slog.LevelError, "unable to start transaction",
-			slog.String("error", err.Error()),
-		)
-
 		return err
 	}
 
@@ -179,64 +152,35 @@ func performUpMigrations(ctx context.Context, s *server.Server, val migrator, ve
 
 	_, err = tx.ExecContext(ctx, query, version, time.Now(), methodUp)
 	if err != nil {
-		s.Logger.LogAttrs(ctx, slog.LevelError, migInsertErr,
-			slog.String("migration", version),
-			slog.String("error", err.Error()),
-		)
-
 		return handleRollback(tx, err)
 	}
 
 	if err := val.up(tx); err != nil {
-		s.Logger.LogAttrs(ctx, slog.LevelError, "Migration error",
-			slog.String("migration", version),
-			slog.String("error", err.Error()),
-		)
-
 		return handleRollback(tx, err)
 	}
 
 	query = fmt.Sprintf("UPDATE %s SET end_time=$1 WHERE version=$2;", migTableName)
 
 	if _, err := tx.ExecContext(ctx, query, time.Now(), version); err != nil {
-		s.Logger.LogAttrs(ctx, slog.LevelError, migInsertErr,
-			slog.String("migration", version),
-			slog.String("error", err.Error()),
-		)
-
 		return handleRollback(tx, err)
 	}
 
 	return tx.Commit()
 }
 
-func performDownMigrations(ctx context.Context, s *server.Server, val migrator, key string) error {
-	tx, err := s.DB.Begin()
+func performDownMigrations(ctx context.Context, db *sql.DB, val migrator, key string) error {
+	tx, err := db.Begin()
 	if err != nil {
-		s.Logger.LogAttrs(ctx, slog.LevelError, "unable to start transaction",
-			slog.String("error", err.Error()),
-		)
-
 		return err
 	}
 
 	if err := val.down(tx); err != nil {
-		s.Logger.LogAttrs(ctx, slog.LevelError, "Migration error",
-			slog.String("migration", key),
-			slog.String("error", err.Error()),
-		)
-
 		return handleRollback(tx, err)
 	}
 
 	query := fmt.Sprintf("DELETE FROM %s WHERE version=$1", migTableName)
 
 	if _, err := tx.ExecContext(ctx, query, key); err != nil {
-		s.Logger.LogAttrs(ctx, slog.LevelError, migInsertErr,
-			slog.String("migration", key),
-			slog.String("error", err.Error()),
-		)
-
 		return handleRollback(tx, err)
 	}
 

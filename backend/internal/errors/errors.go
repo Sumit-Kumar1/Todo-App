@@ -2,10 +2,11 @@
 package errors
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
 const (
@@ -101,7 +102,7 @@ func ErrRequired(entity string) error {
 	return NewConstError(fmt.Sprintf(missingFieldFmt, entity))
 }
 
-func HandleHTTPError(w http.ResponseWriter, err error) {
+func HandleHTTPError(c *gin.Context, err error) {
 	hErr := NewHTTPError(http.StatusServiceUnavailable, err.Error(), "")
 
 	switch {
@@ -117,13 +118,5 @@ func HandleHTTPError(w http.ResponseWriter, err error) {
 		hErr.Code = http.StatusServiceUnavailable
 	}
 
-	respErr := struct {
-		Error CustomError `json:"error"`
-	}{Error: *hErr}
-
-	data, _ := json.Marshal(respErr)
-
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(hErr.Code)
-	_, _ = w.Write(data)
+	c.AbortWithError(hErr.Code, hErr)
 }
