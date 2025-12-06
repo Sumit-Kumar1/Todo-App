@@ -13,6 +13,8 @@ import (
 
 	"todoapp/internal/errors"
 	"todoapp/internal/models"
+
+	"github.com/gin-gonic/gin"
 )
 
 const (
@@ -80,7 +82,7 @@ func (c *Client) health(ctx context.Context) error {
 	return nil
 }
 
-func (c *Client) SignUp(ctx context.Context, email, password string) error {
+func (c *Client) SignUp(ctx *gin.Context, email, password string) error {
 	req := models.AuthUserReq{Email: email, Password: password}
 	headers := prepareAuthAPIHeaders(ctx, "")
 
@@ -95,7 +97,7 @@ func (c *Client) SignUp(ctx context.Context, email, password string) error {
 	return err
 }
 
-func (c *Client) SignIn(ctx context.Context, email, password string) (*models.AuthUserResp, error) {
+func (c *Client) SignIn(ctx *gin.Context, email, password string) (*models.AuthUserResp, error) {
 	req := models.AuthUserReq{Email: email, Password: password}
 	headers := prepareAuthAPIHeaders(ctx, "")
 
@@ -109,7 +111,7 @@ func (c *Client) SignIn(ctx context.Context, email, password string) (*models.Au
 	return handleResponse[models.AuthUserResp](resp)
 }
 
-func (c *Client) Refresh(ctx context.Context, auth string) (*string, error) {
+func (c *Client) Refresh(ctx *gin.Context, auth string) (*string, error) {
 	if auth == "" {
 		return nil, errors.ErrRequired("auth token")
 	}
@@ -142,7 +144,7 @@ func (c *Client) Refresh(ctx context.Context, auth string) (*string, error) {
 	return token.RefToken, nil
 }
 
-func (c *Client) Revoke(ctx context.Context, token string) error {
+func (c *Client) Revoke(ctx *gin.Context, token string) error {
 	if token == "" {
 		return errors.ErrRequired("token")
 	}
@@ -167,7 +169,7 @@ func (c *Client) Revoke(ctx context.Context, token string) error {
 	return nil
 }
 
-func (c *Client) postWithHeaders(ctx context.Context, endpoint string, headers map[string]string, reqModel any) (*http.Response, error) {
+func (c *Client) postWithHeaders(ctx *gin.Context, endpoint string, headers map[string]string, reqModel any) (*http.Response, error) {
 	var data []byte
 	if reqModel != nil {
 		var err error

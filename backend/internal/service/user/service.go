@@ -1,9 +1,10 @@
 package usersvc
 
 import (
-	"context"
 	"todoapp/internal/errors"
 	"todoapp/internal/models"
+
+	"github.com/gin-gonic/gin"
 )
 
 type Service struct {
@@ -14,7 +15,7 @@ func New(auth AuthClient) *Service {
 	return &Service{Auth: auth}
 }
 
-func (s *Service) Register(ctx context.Context, req *models.LoginReq) error {
+func (s *Service) Register(ctx *gin.Context, req *models.LoginReq) error {
 	if req == nil {
 		return errors.ErrRequired("user login and password")
 	}
@@ -26,7 +27,7 @@ func (s *Service) Register(ctx context.Context, req *models.LoginReq) error {
 	return s.Auth.SignUp(ctx, req.Email, req.Password)
 }
 
-func (s *Service) Login(ctx context.Context, req *models.LoginReq) (*models.AuthUserResp, error) {
+func (s *Service) Login(ctx *gin.Context, req *models.LoginReq) (*models.AuthUserResp, error) {
 	if req == nil {
 		return nil, errors.ErrRequired("user login and password")
 	}
@@ -47,7 +48,7 @@ func (s *Service) Login(ctx context.Context, req *models.LoginReq) (*models.Auth
 	return authResp, nil
 }
 
-func (s *Service) Logout(ctx context.Context, token string) error {
+func (s *Service) Logout(ctx *gin.Context, token string) error {
 	if token == "" {
 		return errors.ErrRequired("token")
 	}

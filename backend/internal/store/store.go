@@ -1,7 +1,6 @@
 package store
 
 import (
-	"context"
 	"database/sql"
 	pkgErr "errors"
 	"log/slog"
@@ -10,6 +9,7 @@ import (
 	"todoapp/internal/errors"
 	"todoapp/internal/models"
 
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
@@ -39,11 +39,10 @@ func New(db *sql.DB) *Store {
 	return &Store{DB: db}
 }
 
-func (s *Store) GetAll(ctx context.Context, userID *uuid.UUID) ([]models.Task, error) {
+func (s *Store) GetAll(ctx *gin.Context, userID *uuid.UUID) ([]models.Task, error) {
 	var (
-		res    = make([]models.Task, 0)
-		logger = models.GetLoggerFromCtx(ctx)
-		task   models.Task
+		res  = make([]models.Task, 0)
+		task models.Task
 	)
 
 	rows, err := s.DB.QueryContext(ctx, sqlQueries.GetAllByUserID, *userID)
@@ -55,7 +54,12 @@ func (s *Store) GetAll(ctx context.Context, userID *uuid.UUID) ([]models.Task, e
 		return nil, err
 	}
 
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		err := rows.Close()
+		if err != nil {
+			slog.ErrorContext(ctx, "error while closing sql rows", slog.String("error", err.Error()))
+		}
+	}(rows)
 
 	for rows.Next() {
 		err = rows.Scan(&task.ID, &task.UserID, &task.Title, &task.Description, &task.IsDone,
@@ -71,12 +75,12 @@ func (s *Store) GetAll(ctx context.Context, userID *uuid.UUID) ([]models.Task, e
 		return nil, err
 	}
 
-	logger.LogAttrs(ctx, slog.LevelDebug, "get all tasks", slog.String("user", userID.String()))
+	slog.DebugContext(ctx, "get all tasks", slog.String("user", userID.String()))
 
 	return res, nil
 }
 
-func (s *Store) Create(ctx context.Context, task *models.Task) error {
+func (s *Store) Create(ctx *gin.Context, task *models.Task) error {
 	logger := models.GetLoggerFromCtx(ctx)
 
 	res, err := s.DB.ExecContext(ctx, sqlQueries.InsertQuery, task.ID, task.UserID,
@@ -101,7 +105,7 @@ func (s *Store) Create(ctx context.Context, task *models.Task) error {
 	return nil
 }
 
-func (s *Store) Update(ctx context.Context, task *models.Task) error {
+func (s *Store) Update(ctx *gin.Context, task *models.Task) error {
 	logger := models.GetLoggerFromCtx(ctx)
 
 	res, err := s.DB.ExecContext(ctx, sqlQueries.UpdateQuery, task.Title, task.Description,
@@ -125,7 +129,7 @@ func (s *Store) Update(ctx context.Context, task *models.Task) error {
 	return nil
 }
 
-func (s *Store) Delete(ctx context.Context, id string, userID *uuid.UUID) error {
+func (s *Store) Delete(ctx *gin.Context, id string, userID *uuid.UUID) error {
 	logger := models.GetLoggerFromCtx(ctx)
 
 	res, err := s.DB.ExecContext(ctx, sqlQueries.DeleteTask, id, *userID)
@@ -147,7 +151,7 @@ func (s *Store) Delete(ctx context.Context, id string, userID *uuid.UUID) error 
 	return nil
 }
 
-func (s *Store) MarkDone(ctx context.Context, id string, userID *uuid.UUID) error {
+func (s *Store) MarkDone(ctx *gin.Context, id string, userID *uuid.UUID) error {
 	logger := models.GetLoggerFromCtx(ctx)
 
 	res, err := s.DB.ExecContext(ctx, sqlQueries.SetDone, 1, time.Now(), id, *userID)
@@ -168,7 +172,7 @@ func (s *Store) MarkDone(ctx context.Context, id string, userID *uuid.UUID) erro
 	return nil
 }
 
-func (s *Store) GetTaskByID(ctx context.Context, taskID string, userID *uuid.UUID) (*models.Task, error) {
+func (s *Store) GetTaskByID(ctx *gin.Context, taskID string, userID *uuid.UUID) (*models.Task, error) {
 	var task models.Task
 
 	row := s.DB.QueryRowContext(ctx, sqlQueries.GetTaskByID, taskID, *userID)

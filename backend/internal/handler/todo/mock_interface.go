@@ -10,10 +10,10 @@
 package todohttp
 
 import (
-	context "context"
 	reflect "reflect"
 	models "todoapp/internal/models"
 
+	gin "github.com/gin-gonic/gin"
 	uuid "github.com/google/uuid"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -43,7 +43,7 @@ func (m *MockTodoServicer) EXPECT() *MockTodoServicerMockRecorder {
 }
 
 // AddTask mocks base method.
-func (m *MockTodoServicer) AddTask(ctx context.Context, task *models.TaskReq, userID *uuid.UUID) (*models.Task, error) {
+func (m *MockTodoServicer) AddTask(ctx *gin.Context, task *models.TaskReq, userID *uuid.UUID) (*models.Task, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AddTask", ctx, task, userID)
 	ret0, _ := ret[0].(*models.Task)
@@ -58,7 +58,7 @@ func (mr *MockTodoServicerMockRecorder) AddTask(ctx, task, userID any) *gomock.C
 }
 
 // DeleteTask mocks base method.
-func (m *MockTodoServicer) DeleteTask(ctx context.Context, id string, userID *uuid.UUID) error {
+func (m *MockTodoServicer) DeleteTask(ctx *gin.Context, id string, userID *uuid.UUID) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteTask", ctx, id, userID)
 	ret0, _ := ret[0].(error)
@@ -72,7 +72,7 @@ func (mr *MockTodoServicerMockRecorder) DeleteTask(ctx, id, userID any) *gomock.
 }
 
 // GetAll mocks base method.
-func (m *MockTodoServicer) GetAll(ctx context.Context, userID *uuid.UUID) ([]models.Task, error) {
+func (m *MockTodoServicer) GetAll(ctx *gin.Context, userID *uuid.UUID) ([]models.Task, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetAll", ctx, userID)
 	ret0, _ := ret[0].([]models.Task)
@@ -87,7 +87,7 @@ func (mr *MockTodoServicerMockRecorder) GetAll(ctx, userID any) *gomock.Call {
 }
 
 // MarkDone mocks base method.
-func (m *MockTodoServicer) MarkDone(ctx context.Context, id string, userID *uuid.UUID) (*models.Task, error) {
+func (m *MockTodoServicer) MarkDone(ctx *gin.Context, id string, userID *uuid.UUID) (*models.Task, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MarkDone", ctx, id, userID)
 	ret0, _ := ret[0].(*models.Task)
@@ -102,16 +102,16 @@ func (mr *MockTodoServicerMockRecorder) MarkDone(ctx, id, userID any) *gomock.Ca
 }
 
 // UpdateTask mocks base method.
-func (m *MockTodoServicer) UpdateTask(ctx context.Context, id string, task *models.TaskReq, isDone bool, userID *uuid.UUID) (*models.Task, error) {
+func (m *MockTodoServicer) UpdateTask(ctx *gin.Context, id string, task *models.TaskReq, userID *uuid.UUID) (*models.Task, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateTask", ctx, id, task, isDone, userID)
+	ret := m.ctrl.Call(m, "UpdateTask", ctx, id, task, userID)
 	ret0, _ := ret[0].(*models.Task)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // UpdateTask indicates an expected call of UpdateTask.
-func (mr *MockTodoServicerMockRecorder) UpdateTask(ctx, id, task, isDone, userID any) *gomock.Call {
+func (mr *MockTodoServicerMockRecorder) UpdateTask(ctx, id, task, userID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateTask", reflect.TypeOf((*MockTodoServicer)(nil).UpdateTask), ctx, id, task, isDone, userID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateTask", reflect.TypeOf((*MockTodoServicer)(nil).UpdateTask), ctx, id, task, userID)
 }

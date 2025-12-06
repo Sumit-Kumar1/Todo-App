@@ -1,13 +1,14 @@
 package userhttp
 
 import (
-	"context"
 	"todoapp/internal/models"
+
+	"github.com/gin-gonic/gin"
 )
 
 //go:generate mockgen --source=interface.go --destination=mock_interface.go --package=userhttp
 type UserServicer interface {
-	Register(ctx context.Context, req *models.LoginReq) error
-	Login(ctx context.Context, req *models.LoginReq) (*models.AuthUserResp, error)
-	Logout(ctx context.Context, token string) error
+	Register(ctx *gin.Context, req *models.LoginReq) error
+	Login(ctx *gin.Context, req *models.LoginReq) (*models.AuthUserResp, error)
+	Logout(ctx *gin.Context, token string) error
 }

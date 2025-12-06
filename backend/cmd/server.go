@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"io"
 	"log"
+	"log/slog"
 	"net"
 	"os"
 	"strconv"
@@ -20,14 +21,21 @@ import (
 	usersvc "todoapp/internal/service/user"
 	"todoapp/internal/store"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
-func Run(c context.Context, _ io.Writer, _ []string) error {
+const ()
+
+func Run(c context.Context, w io.Writer) error {
+	logger := slog.New(slog.NewJSONHandler(w, &slog.HandlerOptions{AddSource: false, Level: slog.LevelDebug}))
+	slog.SetDefault(logger)
+
 	router := gin.New()
 
-	router.Use(gin.LoggerWithConfig(gin.LoggerConfig{Output: os.Stdout}))
+	router.Use(slogMiddleware(logger))
 	router.Use(gin.Recovery())
+	router.Use(cors.New(loadCORScfg()))
 
 	db, err := newDB(c)
 	if err != nil {
@@ -46,6 +54,8 @@ func Run(c context.Context, _ io.Writer, _ []string) error {
 
 	host := getEnvOrDefault("HTTP_HOST", "localhost")
 	port := getEnvOrDefault("HTTP_PORT", "9003")
+
+	slog.Info("starting server", slog.String("host", host), slog.String("port", port))
 
 	return router.Run(net.JoinHostPort(host, port))
 }
@@ -66,13 +76,13 @@ func setupTasksRoutes(r *gin.Engine, db *sql.DB) {
 
 	r.POST("/task", authMiddleware(), todoHTTP.AddTask)
 
-	taskGroup := r.Group("/tasks")
-	taskGroup.Use(authMiddleware())
+	// taskGroup := r.Group("/tasks")
+	// taskGroup.Use(authMiddleware())
 
-	taskGroup.GET("", todoHTTP.GetAllTasks)
-	taskGroup.PUT("/:id", todoHTTP.Update)
-	taskGroup.DELETE("/:id", todoHTTP.DeleteTask)
-	taskGroup.PATCH("/:id/done", todoHTTP.MarkDone)
+	r.GET("/tasks", authMiddleware(), todoHTTP.GetAllTasks)
+	r.PUT("/tasks/:id", authMiddleware(), todoHTTP.Update)
+	r.DELETE("/tasks/:id", authMiddleware(), todoHTTP.DeleteTask)
+	r.PATCH("/tasks/:id/done", authMiddleware(), todoHTTP.MarkDone)
 }
 
 func setupUserRoutes(r *gin.Engine, app *sql.DB) {

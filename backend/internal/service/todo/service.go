@@ -1,13 +1,13 @@
 package todosvc
 
 import (
-	"context"
 	"log/slog"
 	"time"
 
 	"todoapp/internal/errors"
 	"todoapp/internal/models"
 
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
@@ -19,7 +19,7 @@ func New(st TodoStorer) *Service {
 	return &Service{Store: st}
 }
 
-func (s *Service) GetAll(ctx context.Context, userID *uuid.UUID) ([]models.Task, error) {
+func (s *Service) GetAll(ctx *gin.Context, userID *uuid.UUID) ([]models.Task, error) {
 	logger := models.GetLoggerFromCtx(ctx)
 
 	if err := validateID(userID.String()); err != nil {
@@ -37,7 +37,7 @@ func (s *Service) GetAll(ctx context.Context, userID *uuid.UUID) ([]models.Task,
 	return tasks, nil
 }
 
-func (s *Service) AddTask(ctx context.Context, taskInp *models.TaskReq, userID *uuid.UUID) (*models.Task, error) {
+func (s *Service) AddTask(ctx *gin.Context, taskInp *models.TaskReq, userID *uuid.UUID) (*models.Task, error) {
 	logger := models.GetLoggerFromCtx(ctx)
 
 	if err := taskInp.Validate(); err != nil {
@@ -69,7 +69,7 @@ func (s *Service) AddTask(ctx context.Context, taskInp *models.TaskReq, userID *
 	return s.Store.GetTaskByID(ctx, taskID, userID)
 }
 
-func (s *Service) DeleteTask(ctx context.Context, id string, userID *uuid.UUID) error {
+func (s *Service) DeleteTask(ctx *gin.Context, id string, userID *uuid.UUID) error {
 	logger := models.GetLoggerFromCtx(ctx)
 
 	if err := validateID(id); err != nil {
@@ -88,7 +88,7 @@ func (s *Service) DeleteTask(ctx context.Context, id string, userID *uuid.UUID) 
 	return nil
 }
 
-func (s *Service) MarkDone(ctx context.Context, id string, userID *uuid.UUID) (*models.Task, error) {
+func (s *Service) MarkDone(ctx *gin.Context, id string, userID *uuid.UUID) (*models.Task, error) {
 	logger := models.GetLoggerFromCtx(ctx)
 
 	if err := validateID(id); err != nil {
@@ -107,7 +107,7 @@ func (s *Service) MarkDone(ctx context.Context, id string, userID *uuid.UUID) (*
 	return s.Store.GetTaskByID(ctx, id, userID)
 }
 
-func (s *Service) UpdateTask(ctx context.Context, id string, taskInp *models.TaskReq, userID *uuid.UUID) (*models.Task, error) {
+func (s *Service) UpdateTask(ctx *gin.Context, id string, taskInp *models.TaskReq, userID *uuid.UUID) (*models.Task, error) {
 	logger := models.GetLoggerFromCtx(ctx)
 
 	if err := validateID(id); err != nil {

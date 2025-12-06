@@ -18,7 +18,7 @@ func main() {
 		slog.LogAttrs(ctx, slog.LevelInfo, "loading system/container env")
 	}
 
-	if err := cmd.Run(ctx, os.Stdout, nil); err != nil {
+	if err := cmd.Run(ctx, os.Stdout); err != nil {
 		slog.LogAttrs(ctx, slog.LevelError, err.Error())
 	}
 

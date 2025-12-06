@@ -40,6 +40,7 @@ func (s *HealthHandler) HealthHandler(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusServiceUnavailable, response)
 		return
 	}
+
 	c.IndentedJSON(http.StatusOK, response)
 }
 

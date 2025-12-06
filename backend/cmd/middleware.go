@@ -1,6 +1,11 @@
 package cmd
 
 import (
+	"log/slog"
+	"strings"
+	"time"
+
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 
@@ -12,10 +17,10 @@ import (
 
 const (
 	cookieName     = "auth"
-	allowedOrigin  = "http://localhost:4173"
-	allowedMethods = "POST, GET, PUT, DELETE, PATCH, OPTIONS"
-	allowedHeaders = "Accept, Content-Type, Content-Length, Accept-Encoding"
-	corsMaxAge     = "8640"
+	allowedOrigins = "http://localhost:8081"
+	allowedMethods = "POST,GET,PUT,DELETE,PATCH,OPTIONS"
+	allowedHeaders = "Accept,Content-Type,Content-Length,Accept-Encoding"
+	corsMaxAge     = 8640
 )
 
 type Claims struct {
@@ -25,8 +30,75 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
+// slogMiddleware creates a Gin middleware that logs requests using slog
+func slogMiddleware(logger *slog.Logger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		start := time.Now()
+		path := c.Request.URL.Path
+		raw := c.Request.URL.RawQuery
+
+		// Process request
+		c.Next()
+
+		// Calculate latency
+		latency := time.Since(start)
+
+		// Get status and other metadata
+		status := c.Writer.Status()
+		clientIP := c.ClientIP()
+		method := c.Request.Method
+		errorMessage := c.Errors.ByType(gin.ErrorTypePrivate).String()
+
+		// Prepare attributes
+		attrs := []slog.Attr{
+			slog.Int("status", status),
+			slog.String("method", method),
+			slog.String("path", path),
+			slog.String("ip", clientIP),
+			slog.Duration("latency", time.Duration(latency.Microseconds())),
+		}
+
+		if raw != "" {
+			attrs = append(attrs, slog.String("query", raw))
+		}
+		if errorMessage != "" {
+			attrs = append(attrs, slog.String("error", errorMessage))
+		}
+
+		// Log based on status code
+		level := slog.LevelInfo
+		if status >= 500 {
+			level = slog.LevelError
+		} else if status >= 400 {
+			level = slog.LevelWarn
+		}
+
+		logger.LogAttrs(c.Request.Context(), level, "Incoming Request", attrs...)
+	}
+}
+
+func loadCORScfg() cors.Config {
+	origins := getEnvOrDefault("CORS_ORIGIN", allowedOrigins)
+	methods := getEnvOrDefault("CORS_METHOD", allowedMethods)
+	headers := getEnvOrDefault("CORS_HEADERS", allowedHeaders)
+	maxAge := getEnvOrDefault("CORS_MAX_AGE", corsMaxAge)
+	cfg := cors.Config{
+		AllowCredentials: true,
+		AllowAllOrigins:  false,
+		AllowOrigins:     strings.Split(origins, ","),
+		AllowHeaders:     strings.Split(headers, ","),
+		AllowMethods:     strings.Split(methods, ","),
+		MaxAge:           time.Duration(maxAge),
+	}
+
+	slog.Info("cors configuration", slog.Any("allow-credentials", cfg.AllowCredentials), slog.Any("allow-origins", cfg.AllowAllOrigins),
+		slog.Any("origins", cfg.AllowOrigins), slog.Any("headers", cfg.AllowHeaders), slog.Any("methods", cfg.AllowMethods),
+		slog.Any("Max age", cfg.MaxAge))
+
+	return cfg
+}
+
 // AuthMiddleware check for valid cookie and extracts user id for the user
-// TODO: Decide wether if token is expired had to refresh and add a new auth cookie to disrupt the flow ?
 func authMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		uid, err := validateCookie(c)
@@ -56,11 +128,11 @@ func validateCookie(c *gin.Context) (*uuid.UUID, error) {
 
 	claims, ok := token.Claims.(*Claims)
 	if !ok {
-		return nil, errors.ErrInvalid("claim")
+		return nil, errors.ErrInvalidCookie
 	}
 
 	if !token.Valid {
-		return nil, jwt.ErrSignatureInvalid
+		return nil, errors.ErrInvalidCookie
 	}
 
 	return extractUserID(claims.Subject)
@@ -73,7 +145,7 @@ func extractUserID(claimSubject string) (*uuid.UUID, error) {
 	}
 
 	if uid == uuid.Nil {
-		return nil, errors.ErrInvalid("nil user id in claims")
+		return nil, errors.ErrInvalidCookie
 	}
 
 	return &uid, nil
