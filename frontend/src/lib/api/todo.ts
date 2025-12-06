@@ -1,3 +1,4 @@
+import { handleApiError } from '$lib/stores/apiUtils';
 import type { CreateTaskRequest } from '$lib/types/todo';
 
 // Use environment variable or default to localhost for development
@@ -21,7 +22,7 @@ export async function AddTask(taskReq: CreateTaskRequest) {
 
 		return await res.json();
 	} catch (error) {
-		console.error('Error posting data:', (error as Error).message);
+		handleApiError(error, 'Add Task')
 		throw new Error((error as Error).message);
 	}
 }
@@ -42,7 +43,7 @@ export async function GetTasks() {
 
 		return await res.json();
 	} catch (error) {
-		console.error('Error posting data:', (error as Error).message);
+		handleApiError(error, 'Fetch tasks')
 		throw new Error((error as Error).message);
 	}
 }
@@ -63,7 +64,7 @@ export async function DelTask(id: string) {
 
 		return;
 	} catch (error) {
-		console.error('Error posting data:', (error as Error).message);
+		handleApiError(error, 'Delete task')
 		throw new Error((error as Error).message);
 	}
 }
@@ -84,7 +85,7 @@ export async function MarkDone(id: string) {
 
 		return await res.json();
 	} catch (error) {
-		console.error('Error posting data:', (error as Error).message);
+		handleApiError(error, 'Mark done task')
 		throw new Error((error as Error).message);
 	}
 }
@@ -107,7 +108,7 @@ export async function UpdateTask(id: string, payload: Record<string, unknown>) {
 
 		return await res.json();
 	} catch (error) {
-		console.error('Error posting data:', (error as Error).message);
+		handleApiError(error, 'Updating Task')
 		throw new Error((error as Error).message);
 	}
 }

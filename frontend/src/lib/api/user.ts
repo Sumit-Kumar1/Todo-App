@@ -1,3 +1,5 @@
+import { handleApiError } from '$lib/stores/apiUtils';
+
 const baseURL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:9003';
 
 async function Login(email: string, password: string) {
@@ -14,12 +16,12 @@ async function Login(email: string, password: string) {
 
 		if (!res.ok) {
 			const error = await res.json();
-			throw new Error(`HTTP error! status: ${res.status}, message: ${error.error}`);
+			throw new Error(`HTTP error! status: ${res.status}, message: ${error.error || 'Login failed'}`);
 		}
 
-		return await res.json();
+		return await res;
 	} catch (error) {
-		console.error('Error posting data:', (error as Error).message);
+		handleApiError(error, 'Login')
 		throw new Error((error as Error).message);
 	}
 }
@@ -40,9 +42,9 @@ async function Register(email: string, password: string) {
 			throw new Error(`HTTP error! status: ${res.status}, message: ${error.error}`);
 		}
 
-		return await res.json();
+		return await res;
 	} catch (error) {
-		console.error('Error posting data:', (error as Error).message);
+		handleApiError(error, 'Registeration')
 		throw new Error((error as Error).message);
 	}
 }
@@ -63,9 +65,10 @@ async function Logout() {
 
 		return await res.json();
 	} catch (error) {
-		console.error('Error during logout:', (error as Error).message);
+		handleApiError(error, 'Logout')
 		throw new Error((error as Error).message);
 	}
 }
 
 export { Login, Register, Logout };
+	

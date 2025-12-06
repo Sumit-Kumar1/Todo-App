@@ -8,11 +8,10 @@ export const deletedTasks = writable<Task[]>([]);
 export async function loadTasks(): Promise<void> {
 	try {
 		const res = await GetTasks();
-		const payload = res?.data as unknown;
-		const list: TaskResponse[] = Array.isArray(payload)
-			? (payload as TaskResponse[])
-			: payload
-				? ([payload] as TaskResponse[])
+		const list: TaskResponse[] = Array.isArray(res)
+			? (res as TaskResponse[])
+			: res
+				? ([res] as TaskResponse[])
 				: [];
 		tasks.set(list.map(mapResponseToTask));
 	} catch (err) {
