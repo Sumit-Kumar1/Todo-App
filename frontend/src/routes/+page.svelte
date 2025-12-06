@@ -5,20 +5,14 @@
 	import { goto } from '$app/navigation';
 	import { notifications } from '$lib/stores/notifications';
 
-	let passwordVisible = $state.raw(false);
-	let isLoginPage = $state.raw(true);
+	let passwordVisible = $state(false);
+	let isLoginPage = $state(true);
 
 	let email = $state('');
 	let password = $state('');
 	let response = $state('');
 
-	function getType() {
-		if (passwordVisible) {
-			return 'text';
-		}
-
-		return 'password';
-	}
+	let inputType = $derived(passwordVisible ? 'text' : 'password');
 
 	async function submit(event: Event) {
 		event.preventDefault();
@@ -26,7 +20,7 @@
 		try {
 			if (isLoginPage) {
 				const res = await Login(email, password);
-				if (res.data === 'user login successfully') {
+				if (res.status === 200) {
 					notifications.success(res.data);
 					goto('/todo');
 				} else {
@@ -34,7 +28,7 @@
 				}
 			} else {
 				const res = await Register(email, password);
-				if (res.data === 'user created successfully') {
+				if (res.status === 201) {
 					const loginRes = await Login(email, password);
 					if (loginRes.data === 'user login successfully') {
 						notifications.success(loginRes.data);
@@ -54,9 +48,9 @@
 	}
 </script>
 
-<div class="flex min-h-screen items-center justify-center bg-base-200 text-base-content">
+<div class="bg-base-200 text-base-content flex min-h-screen items-center justify-center">
 	<div
-		class="card-border overflow-w-hidden card gap-2 border-base-300 bg-base-100 card-xl sm:w-2/3 lg:w-1/2"
+		class="card-border overflow-w-hidden card border-base-300 bg-base-100 card-xl gap-2 sm:w-2/3 lg:w-1/2"
 	>
 		<div class="card-title justify-center p-3">
 			<h2 class="mt-5 text-center text-xl font-bold">
@@ -93,11 +87,12 @@
 							name="password"
 							placeholder="password"
 							required
-							type={getType()}
+							type={inputType}
 						/>
-						<a
-							aria-label="password-eye"
-							href="#password"
+						<!-- svelte-ignore a11y_consider_explicit_label -->
+						<button
+							type="button"
+							class="btn btn-ghost btn-xs"
 							onclick={() => {
 								passwordVisible = !passwordVisible;
 							}}
@@ -107,7 +102,7 @@
 							{:else}
 								<Fa icon={faEyeSlash}></Fa>
 							{/if}
-						</a>
+						</button>
 					</label>
 				</div>
 				<button class="btn btn-outline btn-primary lg:w-1/3" type="submit">
@@ -125,16 +120,16 @@
 				{:else}
 					Already registered?
 				{/if}
-				<a
-					class="leading-6 font-semibold text-base-content hover:text-neutral"
-					href="/"
+				<button
+					type="button"
+					class="text-base-content hover:text-neutral btn btn-link font-semibold leading-6 no-underline"
 					onclick={() => {
 						isLoginPage = !isLoginPage;
 					}}
 				>
 					{#if isLoginPage}Register
 					{:else}Login
-					{/if}</a
+					{/if}</button
 				>
 			</p>
 		</div>

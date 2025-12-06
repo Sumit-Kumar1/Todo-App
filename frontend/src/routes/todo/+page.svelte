@@ -50,7 +50,7 @@
 	async function handleMarkDone(id: string) {
 		try {
 			const res = await MarkDone(id);
-			if (res?.data) {
+			if (res) {
 				markDoneInStore(id);
 			}
 		} catch (err) {
@@ -62,14 +62,14 @@
 		try {
 			const payload = { title: task.Title, description: task.Description, dueDate: task.DueDate };
 			const res = await UpdateTask(task.Id, payload);
-			const updated = res?.data;
-			if (updated) {
+			// const updated = res?.data;
+			if (res) {
 				updateInStore({
-					Id: updated.id,
-					Title: updated.title,
-					Description: updated.description,
-					DueDate: updated.dueDate,
-					IsDone: updated.isDone
+					Id: res.id,
+					Title: res.title,
+					Description: res.description,
+					DueDate: res.dueDate,
+					IsDone: res.isDone
 				});
 			}
 		} catch (err) {
@@ -79,9 +79,9 @@
 </script>
 
 <div>
-	<div class="navbar border-b-2 border-accent p-2">
+	<div class="navbar border-accent border-b-2 p-2">
 		<div class="flex-1">
-			<p class="btn text-2xl btn-ghost">Todo App</p>
+			<p class="btn btn-ghost text-2xl">Todo App</p>
 			<a href="/?page=api" class="btn btn-ghost">API Specification</a>
 		</div>
 		<div class="flex-none gap-2">
@@ -92,14 +92,14 @@
 	</div>
 
 	<div class="flex h-screen w-full flex-col items-center gap-5 p-3">
-		<button class="btn w-1/3 btn-accent" aria-label="task-create" onclick={openCreateModal}
+		<button class="btn btn-accent w-1/3" aria-label="task-create" onclick={openCreateModal}
 			>Create New Task</button
 		>
 
 		<TodoForms />
 
 		<div class="w-full max-w-3xl">
-			<div role="tablist" class="tabs-lift mb-3 tabs justify-center">
+			<div role="tablist" class="tabs-lift tabs mb-3 justify-center">
 				<button
 					role="tab"
 					class={`tab ${activeTab === 'tasks' ? 'tab-active' : ''}`}
@@ -182,7 +182,7 @@
 										<p class="font-semibold">{t.Title}</p>
 										<p class="text-sm opacity-80">{t.Description}</p>
 										<p class="text-xs opacity-60">Due: {t.DueDate}</p>
-										<p class="text-xs text-success">Done</p>
+										<p class="text-success text-xs">Done</p>
 									</div>
 									<div class="flex gap-2">
 										<button
