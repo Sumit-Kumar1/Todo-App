@@ -22,7 +22,7 @@ export async function AddTask(taskReq: CreateTaskRequest) {
 
 		return await res.json();
 	} catch (error) {
-		handleApiError(error, 'Add Task')
+		handleApiError(error, 'Add Task');
 		throw new Error((error as Error).message);
 	}
 }
@@ -43,7 +43,7 @@ export async function GetTasks() {
 
 		return await res.json();
 	} catch (error) {
-		handleApiError(error, 'Fetch tasks')
+		handleApiError(error, 'Fetch tasks');
 		throw new Error((error as Error).message);
 	}
 }
@@ -54,8 +54,7 @@ export async function DelTask(id: string) {
 	try {
 		const res = await fetch(url, {
 			method: 'DELETE',
-			credentials: 'include',
-			
+			credentials: 'include'
 		});
 
 		if (!res.ok) {
@@ -65,7 +64,7 @@ export async function DelTask(id: string) {
 
 		return;
 	} catch (error) {
-		handleApiError(error, 'Delete task')
+		handleApiError(error, 'Delete task');
 		throw new Error((error as Error).message);
 	}
 }
@@ -86,7 +85,7 @@ export async function MarkDone(id: string) {
 
 		return await res.json();
 	} catch (error) {
-		handleApiError(error, 'Mark done task')
+		handleApiError(error, 'Mark done task');
 		throw new Error((error as Error).message);
 	}
 }
@@ -109,7 +108,7 @@ export async function UpdateTask(id: string, payload: Record<string, unknown>) {
 
 		return await res.json();
 	} catch (error) {
-		handleApiError(error, 'Updating Task')
+		handleApiError(error, 'Updating Task');
 		throw new Error((error as Error).message);
 	}
 }

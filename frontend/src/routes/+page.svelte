@@ -48,9 +48,9 @@
 	}
 </script>
 
-<div class="bg-base-200 text-base-content flex min-h-screen items-center justify-center">
+<div class="flex min-h-screen items-center justify-center bg-base-200 text-base-content">
 	<div
-		class="card-border overflow-w-hidden card border-base-300 bg-base-100 card-xl gap-2 sm:w-2/3 lg:w-1/2"
+		class="card-border overflow-w-hidden card gap-2 border-base-300 bg-base-100 card-xl sm:w-2/3 lg:w-1/2"
 	>
 		<div class="card-title justify-center p-3">
 			<h2 class="mt-5 text-center text-xl font-bold">
@@ -122,7 +122,7 @@
 				{/if}
 				<button
 					type="button"
-					class="text-base-content hover:text-neutral btn btn-link font-semibold leading-6 no-underline"
+					class="btn leading-6 font-semibold text-base-content btn-link no-underline hover:text-neutral"
 					onclick={() => {
 						isLoginPage = !isLoginPage;
 					}}

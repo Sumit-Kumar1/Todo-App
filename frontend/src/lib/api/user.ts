@@ -1,6 +1,6 @@
 import { handleApiError } from '$lib/stores/apiUtils';
 
-const baseURL ='/api';
+const baseURL = '/api';
 
 async function Login(email: string, password: string) {
 	const url = baseURL + '/login';
@@ -16,12 +16,14 @@ async function Login(email: string, password: string) {
 
 		if (!res.ok) {
 			const error = await res.json();
-			throw new Error(`HTTP error! status: ${res.status}, message: ${error.error || 'Login failed'}`);
+			throw new Error(
+				`HTTP error! status: ${res.status}, message: ${error.error || 'Login failed'}`
+			);
 		}
 
 		return await res;
 	} catch (error) {
-		handleApiError(error, 'Login')
+		handleApiError(error, 'Login');
 		throw new Error((error as Error).message);
 	}
 }
@@ -44,7 +46,7 @@ async function Register(email: string, password: string) {
 
 		return await res;
 	} catch (error) {
-		handleApiError(error, 'Registeration')
+		handleApiError(error, 'Registeration');
 		throw new Error((error as Error).message);
 	}
 }
@@ -65,10 +67,9 @@ async function Logout() {
 
 		return await res.json();
 	} catch (error) {
-		handleApiError(error, 'Logout')
+		handleApiError(error, 'Logout');
 		throw new Error((error as Error).message);
 	}
 }
 
 export { Login, Register, Logout };
-	
