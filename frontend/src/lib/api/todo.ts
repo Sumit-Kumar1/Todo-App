@@ -2,7 +2,7 @@ import { handleApiError } from '$lib/stores/apiUtils';
 import type { CreateTaskRequest } from '$lib/types/todo';
 
 // Use environment variable or default to localhost for development
-const baseURL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:9003';
+const baseURL = '/api';
 
 export async function AddTask(taskReq: CreateTaskRequest) {
 	const url = baseURL + '/task';
@@ -54,7 +54,8 @@ export async function DelTask(id: string) {
 	try {
 		const res = await fetch(url, {
 			method: 'DELETE',
-			credentials: 'include'
+			credentials: 'include',
+			
 		});
 
 		if (!res.ok) {

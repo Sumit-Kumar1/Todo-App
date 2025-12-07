@@ -1,6 +1,6 @@
 import { handleApiError } from '$lib/stores/apiUtils';
 
-const baseURL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:9003';
+const baseURL ='/api';
 
 async function Login(email: string, password: string) {
 	const url = baseURL + '/login';
