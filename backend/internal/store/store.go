@@ -14,21 +14,21 @@ import (
 )
 
 type queries struct {
-	DeleteTask     string
-	GetAllByUserID string
-	GetTaskByID    string
-	InsertQuery    string
-	SetDone        string
-	UpdateQuery    string
+	deleteTask     string
+	getAllByUserID string
+	getTaskByID    string
+	insertQuery    string
+	setDone        string
+	updateQuery    string
 }
 
 var sqlQueries = queries{
-	DeleteTask:     "DELETE FROM tasks WHERE id=$1 AND user_id=$2;",
-	GetAllByUserID: "SELECT id, user_id, title, description, done_status, due_date, added_at, modified_at FROM tasks WHERE user_id=$1;",
-	GetTaskByID:    "SELECT id, user_id, title, description, done_status, due_date, added_at, modified_at FROM tasks WHERE id=$1 AND user_id=$2;",
-	InsertQuery:    "INSERT INTO tasks (id, user_id, title, description, done_status, due_date, added_at) VALUES ($1, $2, $3, $4, $5, $6, $7);",
-	SetDone:        "UPDATE tasks SET done_status=$1, modified_at=$2 WHERE id=$3 AND user_id=$4;",
-	UpdateQuery:    "UPDATE tasks SET title=$1, description=$2, done_status=$3, modified_at=$4 WHERE id=$5 AND user_id=$6;",
+	deleteTask:     "DELETE FROM tasks WHERE id=$1 AND user_id=$2;",
+	getAllByUserID: "SELECT id, user_id, title, description, done_status, due_date, added_at, modified_at FROM tasks WHERE user_id=$1;",
+	getTaskByID:    "SELECT id, user_id, title, description, done_status, due_date, added_at, modified_at FROM tasks WHERE id=$1 AND user_id=$2;",
+	insertQuery:    "INSERT INTO tasks (id, user_id, title, description, done_status, due_date, added_at) VALUES ($1, $2, $3, $4, $5, $6, $7);",
+	setDone:        "UPDATE tasks SET done_status=$1, modified_at=$2 WHERE id=$3 AND user_id=$4;",
+	updateQuery:    "UPDATE tasks SET title=$1, description=$2, done_status=$3, modified_at=$4 WHERE id=$5 AND user_id=$6;",
 }
 
 type Store struct {
@@ -45,7 +45,7 @@ func (s *Store) GetAll(ctx *gin.Context, userID *uuid.UUID) ([]models.Task, erro
 		task models.Task
 	)
 
-	rows, err := s.DB.QueryContext(ctx, sqlQueries.GetAllByUserID, *userID)
+	rows, err := s.DB.QueryContext(ctx, sqlQueries.getAllByUserID, *userID)
 	if err != nil {
 		if pkgErr.Is(err, sql.ErrNoRows) {
 			return res, nil
@@ -83,7 +83,7 @@ func (s *Store) GetAll(ctx *gin.Context, userID *uuid.UUID) ([]models.Task, erro
 func (s *Store) Create(ctx *gin.Context, task *models.Task) error {
 	logger := models.GetLoggerFromCtx(ctx)
 
-	res, err := s.DB.ExecContext(ctx, sqlQueries.InsertQuery, task.ID, task.UserID,
+	res, err := s.DB.ExecContext(ctx, sqlQueries.insertQuery, task.ID, task.UserID,
 		task.Title, task.Description, task.IsDone, task.DueDate, task.AddedAt)
 	if err != nil {
 		return err
@@ -108,7 +108,7 @@ func (s *Store) Create(ctx *gin.Context, task *models.Task) error {
 func (s *Store) Update(ctx *gin.Context, task *models.Task) error {
 	logger := models.GetLoggerFromCtx(ctx)
 
-	res, err := s.DB.ExecContext(ctx, sqlQueries.UpdateQuery, task.Title, task.Description,
+	res, err := s.DB.ExecContext(ctx, sqlQueries.updateQuery, task.Title, task.Description,
 		task.IsDone, task.ModifiedAt, task.ID, task.UserID)
 	if err != nil {
 		return err
@@ -132,7 +132,7 @@ func (s *Store) Update(ctx *gin.Context, task *models.Task) error {
 func (s *Store) Delete(ctx *gin.Context, id string, userID *uuid.UUID) error {
 	logger := models.GetLoggerFromCtx(ctx)
 
-	res, err := s.DB.ExecContext(ctx, sqlQueries.DeleteTask, id, *userID)
+	res, err := s.DB.ExecContext(ctx, sqlQueries.deleteTask, id, *userID)
 	if err != nil {
 		return err
 	}
@@ -154,7 +154,7 @@ func (s *Store) Delete(ctx *gin.Context, id string, userID *uuid.UUID) error {
 func (s *Store) MarkDone(ctx *gin.Context, id string, userID *uuid.UUID) error {
 	logger := models.GetLoggerFromCtx(ctx)
 
-	res, err := s.DB.ExecContext(ctx, sqlQueries.SetDone, 1, time.Now(), id, *userID)
+	res, err := s.DB.ExecContext(ctx, sqlQueries.setDone, 1, time.Now(), id, *userID)
 	if err != nil {
 		return err
 	}
@@ -175,7 +175,7 @@ func (s *Store) MarkDone(ctx *gin.Context, id string, userID *uuid.UUID) error {
 func (s *Store) GetTaskByID(ctx *gin.Context, taskID string, userID *uuid.UUID) (*models.Task, error) {
 	var task models.Task
 
-	row := s.DB.QueryRowContext(ctx, sqlQueries.GetTaskByID, taskID, *userID)
+	row := s.DB.QueryRowContext(ctx, sqlQueries.getTaskByID, taskID, *userID)
 	err := row.Scan(&task.ID, &task.UserID, &task.Title, &task.Description, &task.IsDone,
 		&task.DueDate, &task.AddedAt, &task.ModifiedAt)
 
