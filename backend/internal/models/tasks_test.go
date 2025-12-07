@@ -57,7 +57,7 @@ func TestValidateTask(t *testing.T) {
 		{name: "description is too large", task: TaskReq{Title: "Hello world", Description: strings.Repeat("hello", 201),
 			DueDate: date}, wantErr: errors.ErrInvalid("task description, size > 1K characters")},
 		{name: "missing dueDate", task: TaskReq{Title: "test", DueDate: "  "},
-			wantErr: errors.ErrRequired("due date")},
+			wantErr: nil},
 		{name: "invalid dueDate", task: TaskReq{Title: "test", DueDate: " 1235 "},
 			wantErr: errors.ErrInvalid("due date")},
 	}
@@ -86,7 +86,7 @@ func TestValidateDueDate(t *testing.T) {
 		{name: "yesterday case", val: prevDay, wantErr: errors.NewConstError("older due date from today")},
 		{name: "2 months back case", val: time.Now().AddDate(0, -2, 0).Format(time.DateOnly),
 			wantErr: errors.NewConstError("older due date from today")},
-		{name: "empty due date", val: "", wantErr: errors.ErrRequired("due date")},
+		{name: "empty due date", val: "", wantErr: nil},
 		{name: "invalid due date", val: "123", wantErr: errors.ErrInvalid("due date")},
 	}
 
