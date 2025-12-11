@@ -1,8 +1,7 @@
-import { handleApiError } from '$lib/stores/apiUtils';
 import type { CreateTaskRequest } from '$lib/types/todo';
 
 // Use environment variable or default to localhost for development
-const baseURL = '/api';
+const baseURL = 'http://localhost:9003';
 
 export async function AddTask(taskReq: CreateTaskRequest) {
 	const url = baseURL + '/task';
@@ -22,7 +21,6 @@ export async function AddTask(taskReq: CreateTaskRequest) {
 
 		return await res.json();
 	} catch (error) {
-		handleApiError(error, 'Add Task');
 		throw new Error((error as Error).message);
 	}
 }
@@ -43,7 +41,6 @@ export async function GetTasks() {
 
 		return await res.json();
 	} catch (error) {
-		handleApiError(error, 'Fetch tasks');
 		throw new Error((error as Error).message);
 	}
 }
@@ -64,7 +61,6 @@ export async function DelTask(id: string) {
 
 		return;
 	} catch (error) {
-		handleApiError(error, 'Delete task');
 		throw new Error((error as Error).message);
 	}
 }
@@ -85,7 +81,6 @@ export async function MarkDone(id: string) {
 
 		return await res.json();
 	} catch (error) {
-		handleApiError(error, 'Mark done task');
 		throw new Error((error as Error).message);
 	}
 }
@@ -108,7 +103,6 @@ export async function UpdateTask(id: string, payload: Record<string, unknown>) {
 
 		return await res.json();
 	} catch (error) {
-		handleApiError(error, 'Updating Task');
 		throw new Error((error as Error).message);
 	}
 }

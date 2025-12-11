@@ -20,24 +20,29 @@
 		try {
 			if (isLoginPage) {
 				const res = await Login(email, password);
-				if (res.status === 200) {
-					notifications.success(res.data);
+				const status = res.status;
+
+				if (status === 200) {
+					notifications.success('user login success');
 					goto('/todo');
 				} else {
-					notifications.error(res.error);
+					notifications.error(res.text.toString());
 				}
 			} else {
 				const res = await Register(email, password);
-				if (res.status === 201) {
+				const registerStatus = res.status;
+				if (registerStatus === 201) {
 					const loginRes = await Login(email, password);
-					if (loginRes.data === 'user login successfully') {
-						notifications.success(loginRes.data);
+					const loginText = loginRes.text.toString();
+
+					if (loginText === 'user login successfully') {
+						notifications.success('user login success');
 						goto('/todo');
 					} else {
-						notifications.error(loginRes.error);
+						notifications.error(loginText);
 					}
 				} else {
-					notifications.error(res.error);
+					notifications.error(res.text.toString());
 				}
 			}
 		} catch (error) {
@@ -50,7 +55,7 @@
 
 <div class="flex min-h-screen items-center justify-center bg-base-200 text-base-content">
 	<div
-		class="card-border overflow-w-hidden card gap-2 border-base-300 bg-base-100 card-xl sm:w-2/3 lg:w-1/2"
+		class="overflow-w-hidden card gap-2 border-base-300 bg-base-100 card-xl card-border sm:w-2/3 lg:w-1/2"
 	>
 		<div class="card-title justify-center p-3">
 			<h2 class="mt-5 text-center text-xl font-bold">

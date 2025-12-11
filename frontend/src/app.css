@@ -1,9 +1,9 @@
 @import 'tailwindcss';
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
-@plugin "daisyui";
+@plugin 'daisyui';
 
-@plugin "daisyui/theme" {
+@plugin 'daisyui/theme' {
 	default: true;
 	prefersdark: true;
 	color-scheme: 'light';

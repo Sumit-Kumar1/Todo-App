@@ -1,7 +1,7 @@
 <script lang="ts">
 	let minDate = $state(Date.now());
 	import { AddTask } from '$lib/api/todo';
-	import type { Task, CreateTaskRequest } from '$lib/types/todo';
+	import type { CreateTaskRequest, Task } from '$lib/types/todo';
 	import { addTaskToStore, mapResponseToTask } from '$lib/stores/todo';
 	import { notifications } from '$lib/stores/notifications';
 
@@ -20,15 +20,14 @@
 		try {
 			const res = await AddTask(taskReq);
 			// If backend returns the created task, prefer it; otherwise use taskReq
-			const payload = res?.data as unknown;
-			const created = Array.isArray(payload) ? payload[0] : payload;
+			const created = Array.isArray(res) ? res[0] : res;
 			const taskForUi: Task =
 				created && (created as any).title
 					? mapResponseToTask(created as any)
 					: {
-							Id: crypto.randomUUID(),
-							Title: title,
-							Description: description,
+							Id: created.id,
+							Title: created.title,
+							Description: created.description,
 							DueDate: dueDate,
 							IsDone: false
 						};

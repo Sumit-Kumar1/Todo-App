@@ -7,9 +7,15 @@
 	import { notifications } from '$lib/stores/notifications';
 	import TodoForms from '$lib/components/TodoForms.svelte';
 	import { onMount } from 'svelte';
-	import { tasks, loadTasks } from '$lib/stores/todo';
+	import {
+		deletedTasks,
+		loadTasks,
+		markDoneInStore,
+		moveToDeleted,
+		tasks,
+		updateInStore
+	} from '$lib/stores/todo';
 	import { DelTask, MarkDone, UpdateTask } from '$lib/api/todo';
-	import { markDoneInStore, updateInStore, deletedTasks, moveToDeleted } from '$lib/stores/todo';
 	import type { Task } from '$lib/types/todo';
 
 	async function userLogout(event: Event) {
@@ -17,14 +23,15 @@
 
 		try {
 			const res = await Logout();
-			if (res.data === 'user logged out successfully') {
+			const status = res.status;
+			if (status == 200 && res.text.toString() === 'user logged out successfully') {
 				notifications.success('user logged out successfully');
 			}
 		} catch (err) {
-			notifications.error((err as Error).message);
+			notifications.error((err as Error).message, 5000);
 		}
 
-		goto('/?page=login');
+		goto('/');
 	}
 
 	function openCreateModal() {
@@ -36,7 +43,7 @@
 		loadTasks();
 	});
 
-	let activeTab: 'tasks' | 'done' | 'deleted' = 'tasks';
+	let activeTab: 'tasks' | 'done' = 'tasks';
 
 	async function handleDelete(id: string) {
 		try {
@@ -60,9 +67,9 @@
 
 	async function handleEdit(task: Task) {
 		try {
+			// FIXME: open todo_modal and then hydrate the task details from that form
 			const payload = { title: task.Title, description: task.Description, dueDate: task.DueDate };
 			const res = await UpdateTask(task.Id, payload);
-			// const updated = res?.data;
 			if (res) {
 				updateInStore({
 					Id: res.id,

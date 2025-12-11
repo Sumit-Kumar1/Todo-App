@@ -1,6 +1,4 @@
-import { handleApiError } from '$lib/stores/apiUtils';
-
-const baseURL = '/api';
+const baseURL = 'http://localhost:9003';
 
 async function Login(email: string, password: string) {
 	const url = baseURL + '/login';
@@ -21,9 +19,8 @@ async function Login(email: string, password: string) {
 			);
 		}
 
-		return await res;
+		return res;
 	} catch (error) {
-		handleApiError(error, 'Login');
 		throw new Error((error as Error).message);
 	}
 }
@@ -44,9 +41,8 @@ async function Register(email: string, password: string) {
 			throw new Error(`HTTP error! status: ${res.status}, message: ${error.error}`);
 		}
 
-		return await res;
+		return res;
 	} catch (error) {
-		handleApiError(error, 'Registeration');
 		throw new Error((error as Error).message);
 	}
 }
@@ -65,9 +61,8 @@ async function Logout() {
 			throw new Error(`HTTP error! status: ${res.status}, message: ${error.error}`);
 		}
 
-		return await res.json();
+		return res;
 	} catch (error) {
-		handleApiError(error, 'Logout');
 		throw new Error((error as Error).message);
 	}
 }
