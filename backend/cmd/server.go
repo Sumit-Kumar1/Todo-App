@@ -75,10 +75,6 @@ func setupTasksRoutes(r *gin.Engine, db *sql.DB) {
 	todoHTTP := todohttp.New(todoSvc)
 
 	r.POST("/task", authMiddleware(), todoHTTP.AddTask)
-
-	// taskGroup := r.Group("/tasks")
-	// taskGroup.Use(authMiddleware())
-
 	r.GET("/tasks", authMiddleware(), todoHTTP.GetAllTasks)
 	r.PUT("/tasks/:id", authMiddleware(), todoHTTP.Update)
 	r.DELETE("/tasks/:id", authMiddleware(), todoHTTP.DeleteTask)
