@@ -7,13 +7,7 @@
 	import { notifications } from '$lib/stores/notifications';
 	import TodoForms from '$lib/components/TodoForms.svelte';
 	import { onMount } from 'svelte';
-	import {
-		deletedTasks,
-		loadTasks,
-		markDoneInStore,
-		moveToDeleted,
-		tasks,
-	} from '$lib/stores/todo';
+	import { deletedTasks, loadTasks, markDoneInStore, moveToDeleted, tasks } from '$lib/stores/todo';
 	import { DelTask, MarkDone } from '$lib/api/todo';
 	import type { Task } from '$lib/types/todo';
 

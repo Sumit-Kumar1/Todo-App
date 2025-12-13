@@ -76,7 +76,7 @@
 
 <dialog id="add_modal" class="modal modal-bottom sm:modal-middle">
 	<div class="modal-box">
-		<h3 class="font-bold text-lg mb-4">{editingTask ? 'Edit Task' : 'Create New Task'}</h3>
+		<h3 class="mb-4 text-lg font-bold">{editingTask ? 'Edit Task' : 'Create New Task'}</h3>
 		<form class="flex flex-col gap-3" onsubmit={handleSubmit}>
 			<label class="floating-label">
 				<input
@@ -111,7 +111,9 @@
 			</div>
 			<div>
 				<input type="reset" class="btn btn-outline btn-accent" value="Reset" />
-				<button type="submit" class="btn btn-accent">{editingTask ? 'Update Task' : 'Add Task'}</button>
+				<button type="submit" class="btn btn-accent"
+					>{editingTask ? 'Update Task' : 'Add Task'}</button
+				>
 			</div>
 		</form>
 		<div class="absolute right-3 bottom-0 modal-action p-2">
