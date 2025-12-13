@@ -117,7 +117,7 @@ paths:
             Set-Cookie:
               schema:
                 type: string
-                example: token=a420e905-acfd-4967-aeb2-ed41429debc4; Path=/; Expires=Sat, 26 Oct 2025 03:14:42 GMT; HttpOnly
+                example: token=<some cookie based token>
           content:
             application/json:
               schema:
@@ -164,7 +164,7 @@ paths:
             Set-Cookie:
               schema:
                 type: string
-                example: token=a420e905-acfd-4967-aeb2-ed41429debc4; Path=/; Expires=Sat, 26 Oct 2025 03:14:42 GMT; HttpOnly
+                example: token=<some cookie based token>
         "400":
           description: Invalid input
 
@@ -180,7 +180,7 @@ paths:
             Set-Cookie:
               schema:
                 type: string
-                example: token=a420e905-acfd-4967-aeb2-ed41429debc4; Path=/; Expires=-1; HttpOnly
+                example: token=<some cookie based token>
         "500":
           description: Internal server error
         "404":
