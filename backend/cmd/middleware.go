@@ -115,7 +115,7 @@ func authMiddleware() gin.HandlerFunc {
 func validateCookie(c *gin.Context) (*uuid.UUID, error) {
 	val, err := c.Cookie(cookieName)
 	if err != nil {
-		return nil, err
+		return nil, errors.ErrInvalidCookie
 	}
 
 	token, err := jwt.ParseWithClaims(val, &Claims{}, func(token *jwt.Token) (any, error) {
@@ -123,7 +123,7 @@ func validateCookie(c *gin.Context) (*uuid.UUID, error) {
 		return []byte(secVal), nil
 	}, jwt.WithExpirationRequired())
 	if err != nil {
-		return nil, err
+		return nil, errors.ErrInvalidCookie
 	}
 
 	claims, ok := token.Claims.(*Claims)

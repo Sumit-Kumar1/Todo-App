@@ -28,7 +28,7 @@ var sqlQueries = queries{
 	getTaskByID:    "SELECT id, user_id, title, description, done_status, due_date, added_at, modified_at FROM tasks WHERE id=$1 AND user_id=$2;",
 	insertQuery:    "INSERT INTO tasks (id, user_id, title, description, done_status, due_date, added_at) VALUES ($1, $2, $3, $4, $5, $6, $7);",
 	setDone:        "UPDATE tasks SET done_status=$1, modified_at=$2 WHERE id=$3 AND user_id=$4;",
-	updateQuery:    "UPDATE tasks SET title=$1, description=$2, done_status=$3, modified_at=$4 WHERE id=$5 AND user_id=$6;",
+	updateQuery:    "UPDATE tasks SET title=$1, description=$2, done_status=$3, due_date=$4, modified_at=$5 WHERE id=$6 AND user_id=$7;",
 }
 
 type Store struct {
@@ -109,7 +109,7 @@ func (s *Store) Update(ctx *gin.Context, task *models.Task) error {
 	logger := models.GetLoggerFromCtx(ctx)
 
 	res, err := s.DB.ExecContext(ctx, sqlQueries.updateQuery, task.Title, task.Description,
-		task.IsDone, task.ModifiedAt, task.ID, task.UserID)
+		task.IsDone, task.DueDate, task.ModifiedAt, task.ID, task.UserID)
 	if err != nil {
 		return err
 	}

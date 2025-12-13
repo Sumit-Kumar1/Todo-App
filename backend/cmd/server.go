@@ -99,6 +99,7 @@ func getEnvOrDefault[T string | int | bool](key string, defaultValue T) T {
 	}
 
 	var zero T
+
 	switch any(zero).(type) {
 	case string:
 		return any(env).(T)
