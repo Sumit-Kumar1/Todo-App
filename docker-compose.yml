@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_DB: todo
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: root123
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
@@ -36,7 +36,7 @@ services:
       - DB_PORT=5432
       - DB_NAME=todo
       - DB_USER=postgres
-      - DB_PASSWORD=root123
+      - DB_PASSWORD=${DB_PASSWORD}
       - AUTH_URL=http://auth-api:9001
       - CORS_ORIGIN=http://localhost:8081
     depends_on:

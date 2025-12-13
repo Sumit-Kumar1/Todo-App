@@ -37,7 +37,7 @@ func Run(c context.Context, w io.Writer) error {
 	router.Use(gin.Recovery())
 	router.Use(cors.New(loadCORScfg()))
 
-	db, err := newDB(c)
+	db, err := connectDB(c)
 	if err != nil {
 		return err
 	}
@@ -49,7 +49,7 @@ func Run(c context.Context, w io.Writer) error {
 	}
 
 	setupHealthRoutes(router, db)
-	setupUserRoutes(router, db)
+	setupUserRoutes(router)
 	setupTasksRoutes(router, db)
 
 	host := getEnvOrDefault("HTTP_HOST", "localhost")
@@ -81,7 +81,7 @@ func setupTasksRoutes(r *gin.Engine, db *sql.DB) {
 	r.PATCH("/tasks/:id/done", authMiddleware(), todoHTTP.MarkDone)
 }
 
-func setupUserRoutes(r *gin.Engine, app *sql.DB) {
+func setupUserRoutes(r *gin.Engine) {
 	authURL := getEnvOrDefault("AUTH_URL", "http://localhost:9001")
 	authClient := client.New(authURL)
 	userSvc := usersvc.New(authClient)

@@ -6,39 +6,12 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
-	"sync"
 	"time"
-
 	"todoapp/internal/errors"
 
+	// needed for postgres driver
 	_ "github.com/lib/pq"
 )
-
-var (
-	dbOnce     sync.Once
-	dbInstance *sql.DB
-)
-
-func newDB(c context.Context) (*sql.DB, error) {
-	var (
-		errConn error
-		ctx     = context.Background()
-	)
-
-	dbOnce.Do(func() {
-		slog.InfoContext(ctx, "creating new postgres connection")
-
-		db, err := connectDB(c)
-		if err != nil {
-			errConn = fmt.Errorf("connectDB: %w", err)
-			return
-		}
-
-		dbInstance = db
-	})
-
-	return dbInstance, errConn
-}
 
 func connectDB(c context.Context) (*sql.DB, error) {
 	host := getEnvOrDefault("DB_HOST", "localhost")
@@ -56,7 +29,7 @@ func connectDB(c context.Context) (*sql.DB, error) {
 
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
-		slog.ErrorContext(c, "sql.Open failed", slog.String("dsn", dsn), slog.String("error", err.Error()))
+		slog.ErrorContext(c, "sql.Open failed", slog.String("error", err.Error()))
 		return nil, err
 	}
 
@@ -73,7 +46,7 @@ func connectDB(c context.Context) (*sql.DB, error) {
 		return nil, err
 	}
 
-	slog.InfoContext(ctx, "postgres connection established",
+	slog.InfoContext(c, "postgres connection established",
 		slog.String("host", host), slog.String("port", port), slog.String("db", dbName))
 
 	return db, nil
