@@ -13,9 +13,8 @@
 		markDoneInStore,
 		moveToDeleted,
 		tasks,
-		updateInStore
 	} from '$lib/stores/todo';
-	import { DelTask, MarkDone, UpdateTask } from '$lib/api/todo';
+	import { DelTask, MarkDone } from '$lib/api/todo';
 	import type { Task } from '$lib/types/todo';
 
 	async function userLogout(event: Event) {
@@ -34,9 +33,10 @@
 		goto('/');
 	}
 
+	let todoForm: TodoForms;
+
 	function openCreateModal() {
-		const modal = document.getElementById('add_modal') as HTMLDialogElement | null;
-		modal?.showModal();
+		todoForm.show(null);
 	}
 
 	onMount(() => {
@@ -66,22 +66,7 @@
 	}
 
 	async function handleEdit(task: Task) {
-		try {
-			// FIXME: open todo_modal and then hydrate the task details from that form
-			const payload = { title: task.Title, description: task.Description, dueDate: task.DueDate };
-			const res = await UpdateTask(task.Id, payload);
-			if (res) {
-				updateInStore({
-					Id: res.id,
-					Title: res.title,
-					Description: res.description,
-					DueDate: res.dueDate,
-					IsDone: res.isDone
-				});
-			}
-		} catch (err) {
-			console.error((err as Error).message);
-		}
+		todoForm.show(task);
 	}
 </script>
 
@@ -103,7 +88,7 @@
 			>Create New Task</button
 		>
 
-		<TodoForms />
+		<TodoForms bind:this={todoForm} />
 
 		<div class="w-full max-w-3xl">
 			<div role="tablist" class="tabs-lift mb-3 tabs justify-center">

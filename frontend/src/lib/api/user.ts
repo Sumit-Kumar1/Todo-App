@@ -1,70 +1,66 @@
-const baseURL = 'http://localhost:9003';
+import { apiFetch } from './client';
 
 async function Login(email: string, password: string) {
-	const url = baseURL + '/login';
-	const reqData = { email: email, password: password };
+  const reqData = { email: email, password: password };
 
-	try {
-		const res = await fetch(url, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(reqData),
-			credentials: 'include'
-		});
+  try {
+    const res = await apiFetch('/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(reqData),
+      skipRedirect: true
+    });
 
-		if (!res.ok) {
-			const error = await res.json();
-			throw new Error(
-				`HTTP error! status: ${res.status}, message: ${error.error || 'Login failed'}`
-			);
-		}
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(
+        `HTTP error! status: ${res.status}, message: ${error.error || 'Login failed'}`
+      );
+    }
 
-		return res;
-	} catch (error) {
-		throw new Error((error as Error).message);
-	}
+    return res;
+  } catch (error) {
+    throw new Error((error as Error).message);
+  }
 }
 
 async function Register(email: string, password: string) {
-	const url = baseURL + '/register';
-	const reqData = { email: email, password: password };
+  const reqData = { email: email, password: password };
 
-	try {
-		const res = await fetch(url, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(reqData)
-		});
+  try {
+    const res = await apiFetch('/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(reqData),
+      skipRedirect: true
+    });
 
-		if (!res.ok) {
-			const error = await res.json();
-			throw new Error(`HTTP error! status: ${res.status}, message: ${error.error}`);
-		}
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(`HTTP error! status: ${res.status}, message: ${error.error}`);
+    }
 
-		return res;
-	} catch (error) {
-		throw new Error((error as Error).message);
-	}
+    return res;
+  } catch (error) {
+    throw new Error((error as Error).message);
+  }
 }
 
 async function Logout() {
-	const url = baseURL + '/logout';
+  try {
+    const res = await apiFetch('/logout', {
+      method: 'POST'
+    });
 
-	try {
-		const res = await fetch(url, {
-			method: 'POST',
-			credentials: 'include'
-		});
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(`HTTP error! status: ${res.status}, message: ${error.error}`);
+    }
 
-		if (!res.ok) {
-			const error = await res.json();
-			throw new Error(`HTTP error! status: ${res.status}, message: ${error.error}`);
-		}
-
-		return res;
-	} catch (error) {
-		throw new Error((error as Error).message);
-	}
+    return res;
+  } catch (error) {
+    throw new Error((error as Error).message);
+  }
 }
 
 export { Login, Register, Logout };
