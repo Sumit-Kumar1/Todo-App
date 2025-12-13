@@ -12,14 +12,18 @@ on:
 jobs:
   build-test:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version-file: "go.mod"
+          go-version-file: "backend/go.mod"
           cache: true
+          cache-dependency-path: backend/go.sum
 
       - name: Install dependencies
         run: go mod download
@@ -42,20 +46,48 @@ jobs:
   code-quality:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version-file: "go.mod"
+          go-version-file: "backend/go.mod"
           cache: true
+          cache-dependency-path: backend/go.sum
 
       - name: Install dependencies
+        working-directory: backend
         run: go mod download
 
       - name: Run linter check
         uses: golangci/golangci-lint-action@030ca6c9fbdb3112d99584f1992f5216eb38ad86
         with:
           version: v2.4
-          working-directory: .
-          args: ./... --timeout=5m
+          working-directory: backend/
+          args: --timeout=5m
           skip-cache: false
+
+  frontend-ci:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v6
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Check
+        run: npm run check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build

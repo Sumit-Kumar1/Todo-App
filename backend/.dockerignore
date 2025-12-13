@@ -1,0 +1,9 @@
+configs/.env
+*.key
+*.pem
+.env
+.git
+.gitignore
+README.md
+.vscode
+.idea
