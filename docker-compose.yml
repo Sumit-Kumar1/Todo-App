@@ -1,0 +1,88 @@
+services:
+  todo-db:
+    container_name: todo-db
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: todo
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - todo_db_net
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+  todo-backend:
+    build:
+      context: ./backend
+      args:
+        HTTP_PORT: 9003
+    container_name: todo-backend
+    ports:
+      - "${HTTP_PORT:-9003}:9003"
+    env_file:
+      - ./backend/.env
+    environment:
+      - GIN_MODE=release
+      - HTTP_HOST=0.0.0.0
+      - HTTP_PORT=9003
+      - DB_HOST=todo-db
+      - DB_PORT=5432
+      - DB_NAME=todo
+      - DB_USER=postgres
+      - DB_PASSWORD=${DB_PASSWORD}
+      - AUTH_URL=http://auth-api:9001
+      - CORS_ORIGIN=http://localhost:8081
+    depends_on:
+      todo-db:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://${HTTP_HOST:-localhost}:${HTTP_PORT:-9003}/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    networks:
+      - backend_auth_bridge
+      - todo_db_net
+      - frontend_net
+    restart: unless-stopped
+  todo-frontend:
+    container_name: todo-frontend
+    build:
+      context: ./frontend
+    ports:
+      - "8081:80"
+    volumes:
+      - ./logs:/var/log/nginx:rw,Z
+    environment:
+      - HTTP_PORT=9003
+      - VITE_BACKEND_URL="/api"
+    depends_on:
+      todo-backend:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:80" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    networks:
+      - frontend_net
+    restart: unless-stopped
+volumes:
+  postgres_data:
+networks:
+  backend_auth_bridge:
+    external: true
+  frontend_net:
+    driver: bridge
+  todo_db_net:
+    driver: bridge
+    internal: true
