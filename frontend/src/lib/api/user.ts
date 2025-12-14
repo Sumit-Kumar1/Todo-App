@@ -11,6 +11,10 @@ async function Login(email: string, password: string) {
 			skipRedirect: true
 		});
 
+		if (res.status == 404) {
+			throw new Error(`user doesn't exist, please register first!!`);
+		}
+
 		if (!res.ok) {
 			const error = await res.json();
 			throw new Error(
@@ -35,9 +39,12 @@ async function Register(email: string, password: string) {
 			skipRedirect: true
 		});
 
+		if (res.status === 409) {
+			throw new Error(`user already, please use login!`);
+		}
+
 		if (!res.ok) {
-			const error = await res.json();
-			throw new Error(`HTTP error! status: ${res.status}, message: ${error.error}`);
+			throw new Error(`HTTP error! status: ${res.status}`);
 		}
 
 		return res;

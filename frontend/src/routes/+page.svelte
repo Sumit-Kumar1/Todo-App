@@ -46,9 +46,8 @@
 				}
 			}
 		} catch (error) {
-			const context = isLoginPage ? 'login' : 'register';
-			console.error(`error while ${context}:`, error);
-			notifications.error(`Unexpected ${context} error`);
+			const errMsg = (error as Error).message;
+			notifications.error(`${errMsg}`);
 		}
 	}
 </script>
@@ -60,7 +59,7 @@
 		<div class="card-title justify-center p-3">
 			<h2 class="mt-5 text-center text-xl font-bold">
 				{#if isLoginPage}
-					Sign in to your account
+					Login to your account
 				{:else}
 					New User Registration
 				{/if}
