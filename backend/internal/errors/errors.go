@@ -10,7 +10,6 @@ import (
 )
 
 const (
-	notFoundFormat  = "%s not found"
 	invalidFieldFmt = "incorrect value for field: %s"
 	missingFieldFmt = "missing field: %s"
 )
@@ -20,7 +19,6 @@ var (
 	ErrPsswdNotMatch     = NewConstError("password does not match")
 	ErrUserNotFound      = NewConstError("user not found")
 	ErrInvalidCookie     = NewConstError("invalid cookie value")
-	ErrCookieValTooLong  = NewConstError("cookie value too long")
 	ErrTaskNotFound      = NewConstError("task not found")
 	ErrInvalidTaskID     = NewConstError("invalid task id")
 )
@@ -49,38 +47,26 @@ func NewHTTPError(code int, msg, details string) *CustomError {
 	}
 }
 
-// ErrBadRequest creates an error for bad request scenarios.
-// It wraps the provided error in a CustomError with a 400 status code.
-func ErrBadRequest(err error) *CustomError {
-	return NewHTTPError(400, err.Error(), "")
-}
-
-// ErrNotFound creates an error for when an entity is not found.
-// It formats the error message using the notFoundFormat constant.
-func ErrNotFound(entity string) *CustomError {
-	return NewHTTPError(404, fmt.Sprintf(notFoundFormat, entity), "")
-}
-
-// constError is a type that implements the error interface.
+// ConstError is a type that implements the error interface.
 // It's used for creating constant error values for internal error use.
-type constError string
+type ConstError string
 
 // NewConstError creates a new constant error with the given message.
-// It returns a constError that can be used as a constant error value.
-func NewConstError(message string) constError {
-	return constError(message)
+// It returns a ConstError that can be used as a constant error value.
+func NewConstError(message string) ConstError {
+	return ConstError(message)
 }
 
-// Error implements the error interface for constError.
+// Error implements the error interface for ConstError.
 // It returns the string representation of the error.
-func (err constError) Error() string {
+func (err ConstError) Error() string {
 	return string(err)
 }
 
-// Is implements error comparison for constError.
-// It allows checking if an error matches a specific constError value.
-func (err constError) Is(target error) bool {
-	var t constError
+// Is implements error comparison for ConstError.
+// It allows checking if an error matches a specific ConstError value.
+func (err ConstError) Is(target error) bool {
+	var t ConstError
 
 	ok := errors.As(target, &t)
 	if !ok {

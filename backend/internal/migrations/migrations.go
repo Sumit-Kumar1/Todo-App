@@ -15,7 +15,6 @@ const (
 	methodUp       = "UP"
 	methodDown     = "DOWN"
 	migTableName   = "todo_migrations"
-	migInsertErr   = "Migration table insert error"
 	createMigTable = "CREATE TABLE IF NOT EXISTS %s(version TEXT, start_time TIMESTAMP, end_time TIMESTAMP, method TEXT);"
 	versionQuery   = "SELECT version from %s ORDER BY version DESC"
 	insertVersion  = "INSERT INTO %s(version, start_time, method) VALUES ($1, $2, $3);"
