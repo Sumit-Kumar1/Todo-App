@@ -10,8 +10,7 @@ export async function AddTask(taskReq: CreateTaskRequest) {
 		});
 
 		if (!res.ok) {
-			const error = await res.json();
-			throw new Error(`HTTP error! status: ${res.status}, message: ${error.error}`);
+			throw new Error(`error while adding task: ${res.status}`);
 		}
 
 		return await res.json();
@@ -27,8 +26,7 @@ export async function GetTasks() {
 		});
 
 		if (!res.ok) {
-			const error = await res.json();
-			throw new Error(`HTTP error! status: ${res.status}, message: ${error.error}`);
+			throw new Error(`error while fetching all tasks: ${res.status}`);
 		}
 
 		return await res.json();
@@ -44,8 +42,7 @@ export async function DelTask(id: string) {
 		});
 
 		if (!res.ok) {
-			const error = await res.json();
-			throw new Error(`HTTP error! status: ${res.status}, message: ${error.error}`);
+			throw new Error(`error while deleting task: ${res.status}`);
 		}
 
 		return;
@@ -61,8 +58,7 @@ export async function MarkDone(id: string) {
 		});
 
 		if (!res.ok) {
-			const error = await res.json();
-			throw new Error(`HTTP error! status: ${res.status}, message: ${error.error}`);
+			throw new Error(`error while marking task done: ${res.status}`);
 		}
 
 		return await res.json();
@@ -80,8 +76,7 @@ export async function UpdateTask(id: string, payload: Record<string, unknown>) {
 		});
 
 		if (!res.ok) {
-			const error = await res.json();
-			throw new Error(`HTTP error! status: ${res.status}, message: ${error.error}`);
+			throw new Error(`error while updating task: ${res.status}`);
 		}
 
 		return await res.json();

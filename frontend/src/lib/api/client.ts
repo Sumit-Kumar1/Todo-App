@@ -2,7 +2,7 @@ import { browser } from '$app/environment';
 import { goto } from '$app/navigation';
 import { notifications } from '$lib/stores/notifications';
 
-const baseURL = import.meta.env.VITE_BACKEND_URL || '/api';
+const baseURL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:9003';
 
 interface ApiFetchOptions extends RequestInit {
 	skipRedirect?: boolean;
@@ -32,12 +32,12 @@ export async function apiFetch(path: string, options: ApiFetchOptions = {}) {
 			}
 
 			notifications.error(errorMessage);
-			goto('/');
+			await goto('/');
 
 			// Throwing error after redirect to ensure calling code doesn't proceed
 			const error = await res.json().catch(() => ({ error: 'Unauthorized' }));
 			throw new Error(
-				`HTTP error! status: ${res.status}, message: ${error.error || 'Unauthorized'}`
+				`apiFetch error! status: ${res.status}, message: ${error.error || 'Unauthorized'}`
 			);
 		}
 	}

@@ -12,14 +12,11 @@ async function Login(email: string, password: string) {
 		});
 
 		if (res.status == 404) {
-			throw new Error(`user doesn't exist, please register first!!`);
+			throw new Error(`user doesn't exist, please register first!`);
 		}
 
 		if (!res.ok) {
-			const error = await res.json();
-			throw new Error(
-				`HTTP error! status: ${res.status}, message: ${error.error || 'Login failed'}`
-			);
+			throw new Error(`Login error! status: ${res.status}`);
 		}
 
 		return res;
@@ -44,7 +41,7 @@ async function Register(email: string, password: string) {
 		}
 
 		if (!res.ok) {
-			throw new Error(`HTTP error! status: ${res.status}`);
+			throw new Error(`register error! status: ${res.status}`);
 		}
 
 		return res;
@@ -60,8 +57,8 @@ async function Logout() {
 		});
 
 		if (!res.ok) {
-			const error = await res.json();
-			throw new Error(`HTTP error! status: ${res.status}, message: ${error.error}`);
+			const err = await res.clone().json()
+			throw new Error(`logout error! status: ${res.status}, error: ${err.message}`);
 		}
 
 		return res;
