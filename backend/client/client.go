@@ -1,4 +1,4 @@
-// Package client helps us communicating with auth-rest-api
+// Package client helps us to communicate with auth-rest-api
 package client
 
 import (
@@ -15,6 +15,7 @@ import (
 	"todoapp/internal/models"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 const (
@@ -169,6 +170,30 @@ func (c *Client) Revoke(ctx *gin.Context, token string) error {
 	return nil
 }
 
+func (c *Client) Validate(ctx *gin.Context, token string) (*uuid.UUID, error) {
+	slog.LogAttrs(ctx, slog.LevelInfo, "validation called !!")
+
+	if token == "" {
+		return nil, errors.ErrRequired("token")
+	}
+
+	headers := prepareAuthAPIHeaders(ctx, token)
+
+	resp, err := c.postWithHeaders(ctx, "/validate", headers, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	uid, err := handleResponse[string](resp)
+	if err != nil {
+		return nil, err
+	}
+
+	defer ensureBodyClosed(resp)
+
+	return extractUserID(uid)
+}
+
 func (c *Client) postWithHeaders(ctx *gin.Context, endpoint string, headers map[string]string, reqModel any) (*http.Response, error) {
 	var data []byte
 	if reqModel != nil {
@@ -195,6 +220,23 @@ func (c *Client) postWithHeaders(ctx *gin.Context, endpoint string, headers map[
 // ensureBodyClosed safely closes the response body if it exists
 func ensureBodyClosed(resp *http.Response) {
 	if resp != nil && resp.Body != nil {
-		resp.Body.Close()
+		_ = resp.Body.Close()
 	}
+}
+
+func extractUserID(claimSubject *string) (*uuid.UUID, error) {
+	if claimSubject == nil {
+		return nil, errors.ErrInvalid("nil userID")
+	}
+
+	uid, err := uuid.Parse(*claimSubject)
+	if err != nil {
+		return nil, err
+	}
+
+	if uid == uuid.Nil {
+		return nil, errors.ErrInvalidCookie
+	}
+
+	return &uid, nil
 }
