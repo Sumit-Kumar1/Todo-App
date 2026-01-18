@@ -14,27 +14,29 @@ func handleResponse[T any](resp *http.Response) (*T, error) {
 	}
 
 	var res struct {
-		Data T `json:"data,omitempty"`
+		Data    T       `json:"data,omitempty"`
+		Code    *int    `json:"code,omitempty"`
+		Message *string `json:"message,omitempty"`
 	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
 
 	switch resp.StatusCode {
 	case http.StatusNotFound:
 		return nil, errors.ErrUserNotFound
 	case http.StatusConflict:
 		return nil, errors.ErrUserAlreadyExists
-	case http.StatusUnauthorized, http.StatusForbidden:
-		return nil, errors.ErrPsswdNotMatch
+	case http.StatusBadRequest:
+		return nil, errors.NewHTTPError(*res.Code, *res.Message, "")
 	case http.StatusOK, http.StatusCreated:
-		if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
-			return nil, err
-		}
-
-		defer resp.Body.Close()
+		return &res.Data, nil
 	default:
 		return nil, errInvalidStatus
 	}
-
-	return &res.Data, nil
 }
 
 func prepareAuthAPIHeaders(ctx context.Context, auth string) map[string]string {

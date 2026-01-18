@@ -96,11 +96,13 @@ func HandleHTTPError(c *gin.Context, err error) {
 		hErr.Code = http.StatusConflict
 	case errors.Is(err, ErrUserNotFound), errors.Is(err, ErrTaskNotFound):
 		hErr.Code = http.StatusNotFound
-	case errors.Is(err, ErrPsswdNotMatch), errors.Is(err, ErrInvalidCookie):
+	case errors.Is(err, ErrInvalidCookie):
 		hErr.Code = http.StatusUnauthorized
+	case errors.Is(err, NewHTTPError(http.StatusBadRequest, "", "")):
+		hErr.Code = http.StatusBadRequest
 	default:
 		hErr.Code = http.StatusServiceUnavailable
 	}
 
-	c.AbortWithError(hErr.Code, hErr)
+	c.AbortWithStatusJSON(hErr.Code, hErr)
 }

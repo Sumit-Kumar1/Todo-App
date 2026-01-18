@@ -107,8 +107,6 @@ func (c *Client) SignIn(ctx *gin.Context, email, password string) (*models.AuthU
 		return nil, err
 	}
 
-	defer ensureBodyClosed(resp)
-
 	return handleResponse[models.AuthUserResp](resp)
 }
 
@@ -188,8 +186,6 @@ func (c *Client) Validate(ctx *gin.Context, token string) (*uuid.UUID, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	defer ensureBodyClosed(resp)
 
 	return extractUserID(uid)
 }
