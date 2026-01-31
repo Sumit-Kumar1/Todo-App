@@ -11,6 +11,11 @@ import (
 	"github.com/google/uuid"
 )
 
+const (
+	statusActive   = "ACTIVE"
+	statusInactive = "INACTIVE"
+)
+
 type Service struct {
 	Store TodoStorer
 }
@@ -52,9 +57,9 @@ func (s *Service) AddTask(ctx *gin.Context, taskInp *models.TaskReq, userID *uui
 		UserID:      *userID,
 		Title:       taskInp.Title,
 		Description: taskInp.Description,
-		IsDone:      false,
+		Status:      ptr(string(statusActive)),
 		DueDate:     &dd,
-		AddedAt:     time.Now().UTC(),
+		CreatedAt:   time.Now().UTC(),
 	}
 
 	if err := s.Store.Create(ctx, &task); err != nil {
@@ -76,16 +81,16 @@ func (s *Service) DeleteTask(ctx *gin.Context, id string, userID *uuid.UUID) err
 		return err
 	}
 
-	if err := s.Store.Delete(ctx, id, userID); err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, "error while deleting task",
-			slog.String("error", err.Error()),
-			slog.String("task", id),
-		)
-
-		return err
+	err := s.Store.Delete(ctx, id, userID)
+	if err == nil {
+		return nil
 	}
 
-	return nil
+	logger.LogAttrs(ctx, slog.LevelError, "error while deleting task",
+		slog.String("error", err.Error()), slog.String("task", id),
+	)
+
+	return err
 }
 
 func (s *Service) MarkDone(ctx *gin.Context, id string, userID *uuid.UUID) (*models.Task, error) {
@@ -95,16 +100,16 @@ func (s *Service) MarkDone(ctx *gin.Context, id string, userID *uuid.UUID) (*mod
 		return nil, err
 	}
 
-	if err := s.Store.MarkDone(ctx, id, userID); err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, "error while marking task done",
-			slog.String("error", err.Error()),
-			slog.String("task", id),
-		)
-
-		return nil, err
+	err := s.Store.MarkDone(ctx, id, userID)
+	if err == nil {
+		return s.Store.GetTaskByID(ctx, id, userID)
 	}
 
-	return s.Store.GetTaskByID(ctx, id, userID)
+	logger.LogAttrs(ctx, slog.LevelError, "error while marking task done",
+		slog.String("error", err.Error()), slog.String("task", id),
+	)
+
+	return nil, err
 }
 
 func (s *Service) UpdateTask(ctx *gin.Context, id string, taskInp *models.TaskReq, userID *uuid.UUID) (*models.Task, error) {
@@ -125,22 +130,39 @@ func (s *Service) UpdateTask(ctx *gin.Context, id string, taskInp *models.TaskRe
 		UserID:      *userID,
 		Title:       taskInp.Title,
 		Description: taskInp.Description,
-		IsDone:      taskInp.IsDone,
+		Status:      &taskInp.Status,
 		DueDate:     &dd,
-		ModifiedAt:  &mt,
+		UpdatedAt:   &mt,
 	}
 
 	err := s.Store.Update(ctx, &task)
-	if err != nil {
-		logger.LogAttrs(ctx, slog.LevelError, "error while updating task",
-			slog.String("error", err.Error()),
-			slog.String("task_id", id),
-		)
+	if err == nil {
+		return s.Store.GetTaskByID(ctx, id, userID)
+	}
 
+	logger.LogAttrs(ctx, slog.LevelError, "error while updating task",
+		slog.String("error", err.Error()), slog.String("task_id", id),
+	)
+
+	return nil, err
+}
+
+func (s *Service) GetChildTasks(ctx *gin.Context, taskID string, userID *uuid.UUID) ([]models.Task, error) {
+	logger := models.GetLoggerFromCtx(ctx)
+
+	if err := validateID(taskID); err != nil {
 		return nil, err
 	}
 
-	return s.Store.GetTaskByID(ctx, id, userID)
+	childTasks, err := s.Store.GetChildTasks(ctx, taskID, userID)
+	if err != nil {
+		return childTasks, nil
+	}
+
+	logger.LogAttrs(ctx, slog.LevelError, "error while fetching child tasks",
+		slog.String("error", err.Error()), slog.String("task", taskID))
+
+	return nil, err
 }
 
 func validateID(id string) error {
@@ -150,4 +172,8 @@ func validateID(id string) error {
 	}
 
 	return nil
+}
+
+func ptr[T any](t T) *T {
+	return &t
 }

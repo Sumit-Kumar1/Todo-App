@@ -14,4 +14,5 @@ type TodoServicer interface {
 	DeleteTask(ctx *gin.Context, id string, userID *uuid.UUID) error
 	UpdateTask(ctx *gin.Context, id string, task *models.TaskReq, userID *uuid.UUID) (*models.Task, error)
 	MarkDone(ctx *gin.Context, id string, userID *uuid.UUID) (*models.Task, error)
+	GetChildTasks(ctx *gin.Context, taskID string, userID *uuid.UUID) ([]models.Task, error)
 }

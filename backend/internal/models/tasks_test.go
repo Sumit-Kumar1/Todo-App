@@ -29,11 +29,11 @@ func TestTask_ToTaskResp(t *testing.T) {
 		task Task
 		want *TaskResp
 	}{
-		{name: "valid case", task: Task{ID: taskID, UserID: userID, Title: title, Description: description, IsDone: false,
-			DueDate: &dueDate, AddedAt: addedAt, ModifiedAt: &modifiedAt},
+		{name: "valid case", task: Task{ID: taskID, UserID: userID, Title: title, Description: description, Status: false,
+			DueDate: &dueDate, CreatedAt: addedAt, UpdatedAt: &modifiedAt},
 			want: &TaskResp{ID: taskID, UserID: userID, Title: title, Description: description, DueDate: &dateOnly, AddedAt: addedAt, ModifiedAt: &modifiedAt}},
 		{name: "no due date", task: Task{ID: taskID, UserID: userID, Title: title, Description: description, IsDone: false,
-			DueDate: nil, AddedAt: addedAt, ModifiedAt: &modifiedAt},
+			DueDate: nil, CreatedAt: addedAt, UpdatedAt: &modifiedAt},
 			want: &TaskResp{ID: taskID, UserID: userID, Title: title, Description: description, DueDate: nil, AddedAt: addedAt, ModifiedAt: &modifiedAt}},
 	}
 

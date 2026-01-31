@@ -10,13 +10,15 @@ import (
 
 type Task struct {
 	ID          string     `json:"id"`
-	UserID      uuid.UUID  `json:"user_id"`
+	ParentID    *string    `json:"parentId,omitempty"`
+	UserID      uuid.UUID  `json:"userId"`
 	Title       string     `json:"title"`
 	Description string     `json:"description"`
-	IsDone      bool       `json:"isDone"`
+	Status      *string    `json:"status"`
 	DueDate     *time.Time `json:"dueDate"`
-	AddedAt     time.Time  `json:"addedAt"`
-	ModifiedAt  *time.Time `json:"modifiedAt"`
+	CreatedAt   time.Time  `json:"createdAt"`
+	UpdatedAt   *time.Time `json:"updatedAt"`
+	ChildTasks  []Task     `json:"childTasks,omitempty"`
 }
 
 type TaskResp struct {
@@ -24,17 +26,19 @@ type TaskResp struct {
 	UserID      uuid.UUID  `json:"-"`
 	Title       string     `json:"title,omitempty"`
 	Description string     `json:"description,omitempty"`
-	IsDone      bool       `json:"isDone,omitempty"`
+	Status      string     `json:"status,omitempty"`
 	DueDate     *string    `json:"dueDate,omitempty"`
-	AddedAt     time.Time  `json:"addedAt,omitempty"`
-	ModifiedAt  *time.Time `json:"modifiedAt,omitempty"`
+	ChildTasks  []TaskResp `json:"childTasks,omitempty"`
+	CreatedAt   time.Time  `json:"createdAt,omitempty"`
+	UpdatedAt   *time.Time `json:"updatedAt,omitempty"`
 }
 
 type TaskReq struct {
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	DueDate     string `json:"dueDate"`
-	IsDone      bool   `json:"isDone"`
+	Title       string  `json:"title"`
+	Description string  `json:"description"`
+	DueDate     string  `json:"dueDate"`
+	Status      string  `json:"status"`
+	ParentID    *string `json:"parentId,omitempty"`
 }
 
 func (t *Task) ToTaskResp() *TaskResp {
@@ -43,14 +47,19 @@ func (t *Task) ToTaskResp() *TaskResp {
 		UserID:      t.UserID,
 		Title:       t.Title,
 		Description: t.Description,
-		IsDone:      t.IsDone,
-		AddedAt:     t.AddedAt,
-		ModifiedAt:  t.ModifiedAt,
+		Status:      *t.Status,
+		CreatedAt:   t.CreatedAt,
+		UpdatedAt:   t.UpdatedAt,
+		ChildTasks:  make([]TaskResp, 0),
 	}
 
 	if t.DueDate != nil {
 		dd := t.DueDate.Format(time.DateOnly)
 		tr.DueDate = &dd
+	}
+
+	for _, child := range t.ChildTasks {
+		tr.ChildTasks = append(tr.ChildTasks, *child.ToTaskResp())
 	}
 
 	return &tr

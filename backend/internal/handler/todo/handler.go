@@ -122,3 +122,27 @@ func (h *Handler) Update(c *gin.Context) {
 
 	c.IndentedJSON(http.StatusOK, resp.ToTaskResp())
 }
+
+func (h *Handler) GetChildTasks(c *gin.Context) {
+	userID, err := handler.GetContextKey(c)
+	if err != nil {
+		c.AbortWithError(http.StatusUnauthorized, err)
+		return
+	}
+
+	id := c.Param("id")
+
+	resp, err := h.Service.GetChildTasks(c, id, userID)
+	if err != nil {
+		errors.HandleHTTPError(c, err)
+		return
+	}
+
+	var tasks = make([]models.TaskResp, 0)
+
+	for i := range resp {
+		tasks = append(tasks, *resp[i].ToTaskResp())
+	}
+
+	c.IndentedJSON(http.StatusOK, tasks)
+}
