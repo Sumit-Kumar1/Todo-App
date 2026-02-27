@@ -79,9 +79,11 @@ func setupTasksRoutes(r *gin.Engine, db *sql.DB) {
 
 	r.POST("/task", middleware.authMiddleware(), todoHTTP.AddTask)
 	r.GET("/tasks", middleware.authMiddleware(), todoHTTP.GetAllTasks)
+	r.DELETE("/tasks/completed", middleware.authMiddleware(), todoHTTP.DeleteCompleted)
 	r.PUT("/tasks/:id", middleware.authMiddleware(), todoHTTP.Update)
 	r.DELETE("/tasks/:id", middleware.authMiddleware(), todoHTTP.DeleteTask)
 	r.PATCH("/tasks/:id/done", middleware.authMiddleware(), todoHTTP.MarkDone)
+	r.GET("/tasks/:id/children", middleware.authMiddleware(), todoHTTP.GetChildTasks)
 }
 
 func setupUserRoutes(r *gin.Engine) {

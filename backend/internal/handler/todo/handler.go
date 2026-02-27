@@ -66,7 +66,20 @@ func (h *Handler) GetAllTasks(c *gin.Context) {
 		return
 	}
 
-	resp, err := h.Service.GetAll(c, userID)
+	// Check for filter query params
+	status := c.Query("status")
+	priority := c.Query("priority")
+	category := c.Query("category")
+	search := c.Query("search")
+
+	var resp []models.Task
+
+	if status != "" || priority != "" || category != "" || search != "" {
+		resp, err = h.Service.GetFilteredTasks(c, userID, status, priority, category, search)
+	} else {
+		resp, err = h.Service.GetAll(c, userID)
+	}
+
 	if err != nil {
 		errors.HandleHTTPError(c, err)
 		return
@@ -91,6 +104,21 @@ func (h *Handler) DeleteTask(c *gin.Context) {
 	}
 
 	if err := h.Service.DeleteTask(c, id, userID); err != nil {
+		errors.HandleHTTPError(c, err)
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
+func (h *Handler) DeleteCompleted(c *gin.Context) {
+	userID, err := handler.GetContextKey(c)
+	if err != nil {
+		c.AbortWithError(http.StatusUnauthorized, err)
+		return
+	}
+
+	if err := h.Service.DeleteCompleted(c, userID); err != nil {
 		errors.HandleHTTPError(c, err)
 		return
 	}

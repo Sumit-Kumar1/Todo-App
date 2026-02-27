@@ -12,7 +12,9 @@ type TodoServicer interface {
 	GetAll(ctx *gin.Context, userID *uuid.UUID) ([]models.Task, error)
 	AddTask(ctx *gin.Context, task *models.TaskReq, userID *uuid.UUID) (*models.Task, error)
 	DeleteTask(ctx *gin.Context, id string, userID *uuid.UUID) error
+	DeleteCompleted(ctx *gin.Context, userID *uuid.UUID) error
 	UpdateTask(ctx *gin.Context, id string, task *models.TaskReq, userID *uuid.UUID) (*models.Task, error)
 	MarkDone(ctx *gin.Context, id string, userID *uuid.UUID) (*models.Task, error)
 	GetChildTasks(ctx *gin.Context, taskID string, userID *uuid.UUID) ([]models.Task, error)
+	GetFilteredTasks(ctx *gin.Context, userID *uuid.UUID, status, priority, category, search string) ([]models.Task, error)
 }
