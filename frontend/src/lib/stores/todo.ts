@@ -1,6 +1,6 @@
 import type { Task, TaskResponse } from '$lib/types/todo';
 import { writable } from 'svelte/store';
-import { GetTasks } from '$lib/api/todo';
+import { GetTasks, DeleteCompleted as DeleteCompletedApi } from '$lib/api/todo';
 
 export const tasks = writable<Task[]>([]);
 export const deletedTasks = writable<Task[]>([]);
@@ -29,7 +29,12 @@ export function mapResponseToTask(resp: TaskResponse): Task {
 		Title: resp.title,
 		Description: resp.description,
 		DueDate: resp.dueDate,
-		IsDone: resp.isDone
+		IsDone: resp.status === 'DONE',
+		Priority: (resp.priority as Task['Priority']) || 'MEDIUM',
+		Category: resp.category || '',
+		DueWarning: resp.dueWarning || '',
+		ChildTasks: (resp.childTasks || []).map(mapResponseToTask),
+		ParentId: resp.parentId
 	};
 }
 
@@ -54,4 +59,9 @@ export function moveToDeleted(id: string): void {
 	if (removed) {
 		deletedTasks.update((cur) => [removed as Task, ...cur]);
 	}
+}
+
+export async function clearCompleted(): Promise<void> {
+	await DeleteCompletedApi();
+	tasks.update((current) => current.filter((t) => !t.IsDone));
 }

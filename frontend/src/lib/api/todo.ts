@@ -84,3 +84,19 @@ export async function UpdateTask(id: string, payload: Record<string, unknown>) {
 		throw new Error((error as Error).message);
 	}
 }
+
+export async function DeleteCompleted() {
+	try {
+		const res = await apiFetch('/tasks/completed', {
+			method: 'DELETE'
+		});
+
+		if (!res.ok) {
+			throw new Error(`error while clearing completed tasks: ${res.status}`);
+		}
+
+		return;
+	} catch (error) {
+		throw new Error((error as Error).message);
+	}
+}
