@@ -13,7 +13,7 @@ services:
     networks:
       - todo_db_net
     logging:
-      driver: "k8s-file"
+      driver: "json-file"
       options:
         max-size: "10m"
         max-file: 3
@@ -49,9 +49,9 @@ services:
       todo-db:
         condition: service_healthy
     logging:
-      driver: "k8s-file"
+      driver: "json-file"
       options:
-        max-size: "50m"
+        max-size: "10m"
         max-file: 3
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://${HTTP_HOST:-localhost}:${HTTP_PORT:-9003}/health" ]
@@ -69,17 +69,14 @@ services:
     build:
       context: ./frontend
     ports:
-      - "8081:80"
-    volumes:
-      - ./logs:/var/log/nginx:rw,Z
+      - "8081:3000"
     environment:
-      - HTTP_PORT=9003
       - VITE_BACKEND_URL="/api"
     depends_on:
       todo-backend:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:80" ]
+      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:3000" ]
       # interval: 30s
       timeout: 10s
       retries: 3
@@ -96,4 +93,4 @@ networks:
     driver: bridge
   todo_db_net:
     driver: bridge
-    internal: true
+    # internal: true
