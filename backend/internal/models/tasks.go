@@ -115,11 +115,11 @@ func (t *TaskReq) Validate() error {
 	t.Category = strings.TrimSpace(t.Category)
 
 	if t.Title == "" {
-		return errors.ErrRequired("task title")
+		return errors.Required("task title")
 	}
 
 	if len(t.Description) > 1000 {
-		return errors.ErrInvalid("task description, size > 1K characters")
+		return errors.Invalid("task description, size > 1K characters")
 	}
 
 	if t.Priority == "" {
@@ -127,7 +127,7 @@ func (t *TaskReq) Validate() error {
 	}
 
 	if !validPriorities[t.Priority] {
-		return errors.ErrInvalid("priority, must be one of: LOW, MEDIUM, HIGH, URGENT")
+		return errors.Invalid("priority, must be one of: LOW, MEDIUM, HIGH, URGENT")
 	}
 
 	return validateDueDate(t.DueDate)
@@ -142,11 +142,11 @@ func validateDueDate(val string) error {
 
 	tt, err := time.Parse(time.DateOnly, val)
 	if err != nil {
-		return errors.ErrInvalid("due date")
+		return errors.Invalid("due date")
 	}
 
 	if !tt.After(tn) {
-		return errors.NewConstError("older due date from today")
+		return errors.ErrDueDatePast
 	}
 
 	return nil

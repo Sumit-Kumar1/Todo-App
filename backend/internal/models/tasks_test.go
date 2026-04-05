@@ -144,15 +144,15 @@ func TestValidateTask(t *testing.T) {
 		{name: "valid with priority", task: TaskReq{Title: "test", DueDate: date, Priority: "HIGH"}, wantErr: nil},
 		{name: "empty priority defaults to MEDIUM", task: TaskReq{Title: "test", DueDate: date, Priority: ""}, wantErr: nil},
 		{name: "invalid priority", task: TaskReq{Title: "test", DueDate: date, Priority: "CRITICAL"},
-			wantErr: errors.ErrInvalid("priority, must be one of: LOW, MEDIUM, HIGH, URGENT")},
+			wantErr: errors.Invalid("priority, must be one of: LOW, MEDIUM, HIGH, URGENT")},
 		{name: "valid with category", task: TaskReq{Title: "test", DueDate: date, Category: "Work"}, wantErr: nil},
-		{name: "empty title", task: TaskReq{Title: ""}, wantErr: errors.ErrRequired("task title")},
+		{name: "empty title", task: TaskReq{Title: ""}, wantErr: errors.Required("task title")},
 		{name: "description is too large", task: TaskReq{Title: "Hello world", Description: strings.Repeat("hello", 201),
-			DueDate: date}, wantErr: errors.ErrInvalid("task description, size > 1K characters")},
+			DueDate: date}, wantErr: errors.Invalid("task description, size > 1K characters")},
 		{name: "missing dueDate", task: TaskReq{Title: "test", DueDate: "  "},
 			wantErr: nil},
 		{name: "invalid dueDate", task: TaskReq{Title: "test", DueDate: " 1235 "},
-			wantErr: errors.ErrInvalid("due date")},
+			wantErr: errors.Invalid("due date")},
 	}
 
 	for i, tt := range tests {
@@ -176,11 +176,11 @@ func TestValidateDueDate(t *testing.T) {
 		{name: "tomorrow case", val: dd, wantErr: nil},
 		{name: "today case", val: today, wantErr: nil},
 		{name: "2 months ahead case", val: time.Now().AddDate(0, 2, 0).Format(time.DateOnly), wantErr: nil},
-		{name: "yesterday case", val: prevDay, wantErr: errors.NewConstError("older due date from today")},
+		{name: "yesterday case", val: prevDay, wantErr: errors.ErrDueDatePast},
 		{name: "2 months back case", val: time.Now().AddDate(0, -2, 0).Format(time.DateOnly),
-			wantErr: errors.NewConstError("older due date from today")},
+			wantErr: errors.ErrDueDatePast},
 		{name: "empty due date", val: "", wantErr: nil},
-		{name: "invalid due date", val: "123", wantErr: errors.ErrInvalid("due date")},
+		{name: "invalid due date", val: "123", wantErr: errors.Invalid("due date")},
 	}
 
 	for i, tt := range tests {

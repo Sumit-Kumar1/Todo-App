@@ -3,7 +3,6 @@ package todohttp
 import (
 	"net/http"
 
-	"todoapp/internal/errors"
 	"todoapp/internal/handler"
 	"todoapp/internal/models"
 
@@ -34,7 +33,7 @@ func (h *Handler) AddTask(c *gin.Context) {
 
 	task, err := h.Service.AddTask(c, &taskReq, userID)
 	if err != nil {
-		errors.HandleHTTPError(c, err)
+		handler.HandleError(c, err)
 		return
 	}
 
@@ -52,7 +51,7 @@ func (h *Handler) MarkDone(c *gin.Context) {
 
 	resp, err := h.Service.MarkDone(c, id, userID)
 	if err != nil {
-		errors.HandleHTTPError(c, err)
+		handler.HandleError(c, err)
 		return
 	}
 
@@ -81,7 +80,7 @@ func (h *Handler) GetAllTasks(c *gin.Context) {
 	}
 
 	if err != nil {
-		errors.HandleHTTPError(c, err)
+		handler.HandleError(c, err)
 		return
 	}
 
@@ -104,7 +103,7 @@ func (h *Handler) DeleteTask(c *gin.Context) {
 	}
 
 	if err := h.Service.DeleteTask(c, id, userID); err != nil {
-		errors.HandleHTTPError(c, err)
+		handler.HandleError(c, err)
 		return
 	}
 
@@ -119,7 +118,7 @@ func (h *Handler) DeleteCompleted(c *gin.Context) {
 	}
 
 	if err := h.Service.DeleteCompleted(c, userID); err != nil {
-		errors.HandleHTTPError(c, err)
+		handler.HandleError(c, err)
 		return
 	}
 
@@ -138,13 +137,13 @@ func (h *Handler) Update(c *gin.Context) {
 	id := c.Param("id")
 
 	if err := c.BindJSON(&taskReq); err != nil {
-		errors.HandleHTTPError(c, err)
+		handler.HandleError(c, err)
 		return
 	}
 
 	resp, err := h.Service.UpdateTask(c, id, &taskReq, userID)
 	if err != nil {
-		errors.HandleHTTPError(c, err)
+		handler.HandleError(c, err)
 		return
 	}
 
@@ -162,7 +161,7 @@ func (h *Handler) GetChildTasks(c *gin.Context) {
 
 	resp, err := h.Service.GetChildTasks(c, id, userID)
 	if err != nil {
-		errors.HandleHTTPError(c, err)
+		handler.HandleError(c, err)
 		return
 	}
 

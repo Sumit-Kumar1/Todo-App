@@ -38,19 +38,19 @@ func (l *LoginReq) Validate() error {
 	passwd := strings.TrimSpace(l.Password)
 
 	if email == "" {
-		return errors.ErrRequired(Email)
+		return errors.Required(Email)
 	}
 
 	if !emailRegex.MatchString(email) {
-		return errors.ErrInvalid(Email)
+		return errors.Invalid(Email)
 	}
 
 	if passwd == "" {
-		return errors.ErrRequired(Password)
+		return errors.Required(Password)
 	}
 
 	if len(passwd) < 8 {
-		return errors.ErrInvalid("password is too short")
+		return errors.Invalid("password is too short")
 	}
 
 	return nil

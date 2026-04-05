@@ -33,7 +33,7 @@ var sqlQueries = queries{
 	getTaskByID:     "SELECT id, parent_id, user_id, title, description, status, priority, category, due_date, created_at, updated_at FROM tasks WHERE id=$1 AND user_id=$2;",
 	getChildTasks:   "SELECT id, parent_id, user_id, title, description, status, priority, category, due_date, created_at, updated_at FROM tasks WHERE parent_id=$1 AND user_id=$2;",
 	insertQuery:     "INSERT INTO tasks (id, parent_id, user_id, title, description, status, priority, category, due_date, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);",
-	setDone:         "UPDATE tasks SET done_status=$1, updated_at=$2 WHERE id=$3 AND user_id=$4;",
+	setDone:         "UPDATE tasks SET status=$1, updated_at=$2 WHERE id=$3 AND user_id=$4;",
 	updateQuery:     "UPDATE tasks SET title=$1, description=$2, status=$3, priority=$4, category=$5, due_date=$6, updated_at=$7, parent_id=$10 WHERE id=$8 AND user_id=$9;",
 }
 
@@ -118,7 +118,7 @@ func (s *Store) Create(ctx *gin.Context, task *models.Task) error {
 	}
 
 	if affected == 0 {
-		return errors.NewConstError("not able to insert into database")
+		return errors.ErrInsertFailed
 	}
 
 	logger.LogAttrs(ctx, slog.LevelDebug, "task added successfully",
@@ -195,7 +195,7 @@ func (s *Store) DeleteCompleted(ctx *gin.Context, userID *uuid.UUID) error {
 func (s *Store) MarkDone(ctx *gin.Context, id string, userID *uuid.UUID) error {
 	logger := models.GetLoggerFromCtx(ctx)
 
-	res, err := s.DB.ExecContext(ctx, sqlQueries.setDone, 1, time.Now(), id, *userID)
+	res, err := s.DB.ExecContext(ctx, sqlQueries.setDone, "DONE", time.Now(), id, *userID)
 	if err != nil {
 		return err
 	}

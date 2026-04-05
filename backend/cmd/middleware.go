@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"todoapp/internal/errors"
+	"todoapp/internal/handler"
 	"todoapp/internal/models"
 
 	"github.com/gin-contrib/cors"
@@ -109,7 +110,7 @@ func (cc clientMiddleware) authMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		uid, err := cc.validateCookie(c)
 		if err != nil {
-			errors.HandleHTTPError(c, err)
+			handler.HandleError(c, err)
 			return
 		}
 

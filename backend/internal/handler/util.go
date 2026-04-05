@@ -16,7 +16,7 @@ func GetContextKey(c *gin.Context) (*uuid.UUID, error) {
 
 	userID, ok := ctxVal.(uuid.UUID)
 	if !ok {
-		return nil, errors.ErrInvalid("login user")
+		return nil, errors.Invalid("login user")
 	}
 
 	return &userID, nil

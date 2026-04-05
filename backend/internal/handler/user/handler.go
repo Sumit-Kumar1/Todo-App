@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"todoapp/internal/errors"
+	"todoapp/internal/handler"
 	"todoapp/internal/models"
 
 	"github.com/gin-gonic/gin"
@@ -32,7 +32,7 @@ func (h *Handler) Register(c *gin.Context) {
 	}
 
 	if err := h.svc.Register(c, &user); err != nil {
-		errors.HandleHTTPError(c, err)
+		handler.HandleError(c, err)
 		return
 	}
 
@@ -51,7 +51,7 @@ func (h *Handler) Login(c *gin.Context) {
 
 	resp, err := h.svc.Login(c, &user)
 	if err != nil {
-		errors.HandleHTTPError(c, err)
+		handler.HandleError(c, err)
 		return
 	}
 
@@ -72,7 +72,7 @@ func (h *Handler) Logout(c *gin.Context) {
 	}
 
 	if err := h.svc.Logout(c, authCookie); err != nil {
-		errors.HandleHTTPError(c, err)
+		handler.HandleError(c, err)
 		return
 	}
 

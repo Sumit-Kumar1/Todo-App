@@ -21,7 +21,7 @@ func connectDB(c context.Context) (*sql.DB, error) {
 	dbName := getEnvOrDefault("DB_NAME", "todo")
 
 	if strings.TrimSpace(password) == "" {
-		return nil, errors.NewConstError("empty db password")
+		return nil, errors.ErrEmptyDBPassword
 	}
 
 	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
