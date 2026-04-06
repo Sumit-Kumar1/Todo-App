@@ -13,6 +13,7 @@
 	let parentId = $state<string | undefined>(undefined);
 	let editingTask: Task | null = $state(null);
 	let minDate = $state(new Date().toISOString().split('T')[0]);
+	let submitting = $state(false);
 
 	let existingCategories = $derived(() => {
 		const cats = new Set<string>();
@@ -46,7 +47,8 @@
 		event.preventDefault();
 		const form = event.target as HTMLFormElement;
 
-		if (!title) return;
+		if (!title || submitting) return;
+		submitting = true;
 
 		try {
 			if (editingTask) {
@@ -78,65 +80,80 @@
 			parentId = undefined;
 		} catch (err) {
 			notifications.error((err as Error).message);
+		} finally {
+			submitting = false;
 		}
 	}
-
-	const priorityColors: Record<Priority, string> = {
-		LOW: 'badge-ghost',
-		MEDIUM: 'badge-info',
-		HIGH: 'badge-warning',
-		URGENT: 'badge-error'
-	};
 </script>
 
 <dialog id="add_modal" class="modal modal-bottom sm:modal-middle">
-	<div class="modal-box">
-		<h3 class="mb-4 text-lg font-bold">
+	<div class="modal-box w-full max-w-lg">
+		<form method="dialog">
+			<button class="btn absolute top-3 right-3 btn-circle btn-ghost btn-sm" aria-label="Close">
+				<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M6 18L18 6M6 6l12 12"
+					/>
+				</svg>
+			</button>
+		</form>
+
+		<h3 class="mb-5 text-lg font-bold">
 			{editingTask ? 'Edit Task' : parentId ? 'Add Subtask' : 'Create New Task'}
 		</h3>
-		<form class="flex flex-col gap-3" onsubmit={handleSubmit}>
-			<label class="floating-label">
+
+		<form class="flex flex-col gap-4" onsubmit={handleSubmit}>
+			<label class="form-control w-full">
+				<div class="label"><span class="label-text font-medium">Title</span></div>
 				<input
-					placeholder="Task name here..."
 					name="title"
 					type="text"
 					id="title"
-					class="validator input input-md w-full"
+					class="input-bordered input w-full"
+					placeholder="What needs to be done?"
 					required
-					size="100"
 					bind:value={title}
 				/>
-				<span>Title...</span>
 			</label>
-			<label class="floating-label">
+
+			<label class="form-control w-full">
+				<div class="label"><span class="label-text font-medium">Description</span></div>
 				<input
-					placeholder="Description"
 					name="description"
 					type="text"
 					id="description"
-					class="validator input input-md w-full"
-					size="1000"
+					class="input-bordered input w-full"
+					placeholder="Add some details (optional)"
 					bind:value={description}
 				/>
-				<span>Description</span>
 			</label>
-			<div>
-				<label class="validator input">
-					<span class="label">Due Date</span>
-					<input type="date" name="dueDate" id="dueDate" min={minDate} bind:value={dueDate} />
-				</label>
-			</div>
-			<div class="flex gap-3">
-				<label class="form-control w-1/2">
-					<div class="label"><span class="label-text">Priority</span></div>
+
+			<label class="form-control w-full">
+				<div class="label"><span class="label-text font-medium">Due Date</span></div>
+				<input
+					type="date"
+					name="dueDate"
+					id="dueDate"
+					class="input-bordered input w-full"
+					min={minDate}
+					bind:value={dueDate}
+				/>
+			</label>
+
+			<div class="flex flex-col gap-4 sm:flex-row sm:gap-3">
+				<label class="form-control w-full sm:w-1/2">
+					<div class="label"><span class="label-text font-medium">Priority</span></div>
 					<select class="select-bordered select w-full" bind:value={priority}>
 						{#each ['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as Priority[] as p}
 							<option value={p}>{p}</option>
 						{/each}
 					</select>
 				</label>
-				<label class="form-control w-1/2">
-					<div class="label"><span class="label-text">Category</span></div>
+				<label class="form-control w-full sm:w-1/2">
+					<div class="label"><span class="label-text font-medium">Category</span></div>
 					<input
 						type="text"
 						list="category-list"
@@ -151,18 +168,17 @@
 					</datalist>
 				</label>
 			</div>
-			<div>
-				<input type="reset" class="btn btn-outline btn-accent" value="Reset" />
-				<button type="submit" class="btn btn-accent"
-					>{editingTask ? 'Update Task' : 'Add Task'}</button
-				>
+
+			<div class="modal-action mt-2">
+				<input type="reset" class="btn btn-ghost" value="Reset" />
+				<button type="submit" class="btn btn-primary" disabled={submitting}>
+					{#if submitting}
+						<span class="loading loading-sm loading-spinner"></span>
+					{/if}
+					{editingTask ? 'Update Task' : 'Add Task'}
+				</button>
 			</div>
 		</form>
-		<div class="absolute right-3 bottom-0 modal-action p-2">
-			<form method="dialog">
-				<button class="btn">Cancel</button>
-			</form>
-		</div>
 	</div>
 	<form method="dialog" class="modal-backdrop">
 		<button>close</button>

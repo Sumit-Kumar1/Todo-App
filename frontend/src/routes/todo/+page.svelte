@@ -25,8 +25,7 @@
 
 		try {
 			const res = await Logout();
-			const status = res.status;
-			if (status == 200 && res.text.toString() === 'user logged out successfully') {
+			if (res.ok) {
 				notifications.success('user logged out successfully');
 			}
 		} catch (err) {
@@ -102,7 +101,8 @@
 		if (search) {
 			list = list.filter(
 				(t) =>
-					t.Title.toLowerCase().includes(search) || t.Description.toLowerCase().includes(search)
+					t.Title.toLowerCase().includes(search) ||
+					(t.Description && t.Description.toLowerCase().includes(search))
 			);
 		}
 
@@ -120,6 +120,8 @@
 	});
 
 	let doneCount = $derived($tasks.filter((t) => !t.ParentId && t.IsDone).length);
+	let activeCount = $derived($tasks.filter((t) => !t.ParentId && !t.IsDone).length);
+	let totalCount = $derived($tasks.filter((t) => !t.ParentId).length);
 
 	async function handleDelete(id: string) {
 		try {
@@ -210,7 +212,7 @@
 	});
 
 	const priorityBorder: Record<Priority, string> = {
-		LOW: 'border-l-gray-400',
+		LOW: 'border-l-base-content/20',
 		MEDIUM: 'border-l-info',
 		HIGH: 'border-l-warning',
 		URGENT: 'border-l-error'
@@ -224,328 +226,433 @@
 	};
 </script>
 
-<div>
-	<div class="navbar border-b-2 border-accent p-2">
-		<div class="flex-1">
-			<p class="btn text-2xl btn-ghost">Todo App</p>
-			<a href="/?page=api" class="btn btn-ghost">API Specification</a>
+<!-- Navbar -->
+<nav class="navbar sticky top-0 z-30 border-b border-base-300 bg-base-100/80 px-4 backdrop-blur-md">
+	<div class="flex-1 gap-2">
+		<span class="text-lg font-bold sm:text-xl">Todo App</span>
+	</div>
+	<div class="flex-none gap-1">
+		<button class="btn btn-circle btn-ghost btn-sm" aria-label="toggle theme" onclick={toggleTheme}>
+			{#if $theme === 'light'}
+				<Fa icon={faMoon} />
+			{:else}
+				<Fa icon={faSun} />
+			{/if}
+		</button>
+		<button class="btn btn-ghost btn-sm" aria-label="logout" onclick={userLogout}>
+			<Fa icon={faArrowRightFromBracket}></Fa>
+			<span class="hidden sm:inline">Logout</span>
+		</button>
+	</div>
+</nav>
+
+<main class="mx-auto w-full max-w-2xl px-4 py-6">
+	<!-- Header with stats and create button -->
+	<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+		<div>
+			<h1 class="text-2xl font-bold">My Tasks</h1>
+			<p class="text-sm text-base-content/60">
+				{activeCount} active, {doneCount} completed
+			</p>
 		</div>
-		<div class="flex-none gap-2">
-			<button class="btn btn-circle btn-ghost" aria-label="toggle theme" onclick={toggleTheme}>
-				{#if $theme === 'light'}
-					<Fa icon={faMoon} />
-				{:else}
-					<Fa icon={faSun} />
-				{/if}
-			</button>
-			<button class="btn btn-outline" aria-label="logout" onclick={userLogout}>
-				<Fa icon={faArrowRightFromBracket}></Fa>
-			</button>
-		</div>
+		<button class="btn btn-primary sm:btn-md" aria-label="task-create" onclick={openCreateModal}>
+			<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+			</svg>
+			New Task
+		</button>
 	</div>
 
-	<div class="flex h-screen w-full flex-col items-center gap-5 p-3">
-		<button class="btn w-1/3 btn-accent" aria-label="task-create" onclick={openCreateModal}
-			>Create New Task</button
-		>
+	<TodoForms bind:this={todoForm} />
 
-		<TodoForms bind:this={todoForm} />
-
-		<div class="w-full max-w-3xl">
-			<!-- Search bar -->
-			<div class="mb-3">
-				<input
-					type="text"
-					class="input-bordered input w-full"
-					placeholder="Search tasks..."
-					value={searchQuery}
-					oninput={onSearchInput}
+	<!-- Search bar -->
+	<div class="mb-4">
+		<label class="input-bordered input flex w-full items-center gap-2">
+			<svg class="h-4 w-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					stroke-width="2"
+					d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
 				/>
-			</div>
+			</svg>
+			<input
+				type="text"
+				class="grow"
+				placeholder="Search tasks..."
+				value={searchQuery}
+				oninput={onSearchInput}
+			/>
+		</label>
+	</div>
 
-			<!-- Filter row -->
-			<div class="mb-3 flex flex-wrap items-center gap-3">
-				<!-- Tab filters -->
-				<div role="tablist" class="tabs-lift tabs">
-					<button
-						role="tab"
-						class={`tab ${activeTab === 'all' ? 'tab-active' : ''}`}
-						onclick={() => (activeTab = 'all')}>All</button
-					>
-					<button
-						role="tab"
-						class={`tab ${activeTab === 'active' ? 'tab-active' : ''}`}
-						onclick={() => (activeTab = 'active')}>Active</button
-					>
-					<button
-						role="tab"
-						class={`tab ${activeTab === 'done' ? 'tab-active' : ''}`}
-						onclick={() => (activeTab = 'done')}>Done</button
-					>
-				</div>
+	<!-- Filter row -->
+	<div class="mb-4 flex flex-wrap items-center gap-2">
+		<!-- Tab filters -->
+		<div role="tablist" class="tabs-box tabs tabs-sm">
+			<button
+				role="tab"
+				class={`tab ${activeTab === 'all' ? 'tab-active' : ''}`}
+				onclick={() => (activeTab = 'all')}>All ({totalCount})</button
+			>
+			<button
+				role="tab"
+				class={`tab ${activeTab === 'active' ? 'tab-active' : ''}`}
+				onclick={() => (activeTab = 'active')}>Active</button
+			>
+			<button
+				role="tab"
+				class={`tab ${activeTab === 'done' ? 'tab-active' : ''}`}
+				onclick={() => (activeTab = 'done')}>Done</button
+			>
+		</div>
 
-				<!-- Priority filter -->
-				<select class="select-bordered select select-sm" bind:value={filterPriority}>
-					<option value="">All Priorities</option>
-					<option value="URGENT">Urgent</option>
-					<option value="HIGH">High</option>
-					<option value="MEDIUM">Medium</option>
-					<option value="LOW">Low</option>
-				</select>
+		<div class="flex flex-1 flex-wrap items-center justify-end gap-2">
+			<!-- Priority filter -->
+			<select class="select-bordered select select-sm" bind:value={filterPriority}>
+				<option value="">Priority</option>
+				<option value="URGENT">Urgent</option>
+				<option value="HIGH">High</option>
+				<option value="MEDIUM">Medium</option>
+				<option value="LOW">Low</option>
+			</select>
 
-				<!-- Category filter -->
-				<select class="select-bordered select select-sm" bind:value={filterCategory}>
-					<option value="">All Categories</option>
-					{#each allCategories() as cat}
-						<option value={cat}>{cat}</option>
-					{/each}
-				</select>
+			<!-- Category filter -->
+			<select class="select-bordered select select-sm" bind:value={filterCategory}>
+				<option value="">Category</option>
+				{#each allCategories() as cat}
+					<option value={cat}>{cat}</option>
+				{/each}
+			</select>
 
-				<!-- Clear completed button -->
-				{#if activeTab === 'done' && doneCount > 0}
-					<button class="btn ml-auto btn-sm btn-error" onclick={handleClearCompleted}>
-						Clear Completed
-					</button>
-				{/if}
-			</div>
-
-			{#if filteredTasks().length === 0}
-				<p class="text-center opacity-70">No tasks found.</p>
-			{:else}
-				<ul
-					class="flex flex-col gap-2"
-					use:dndzone={{ items: dndItems, flipDurationMs: 200 }}
-					onconsider={handleDndConsider}
-					onfinalize={handleDndFinalize}
-				>
-					{#each dndItems as t (t.id)}
-						<li
-							class={`card border-l-4 bg-base-200 p-4 ${priorityBorder[t.Priority] || 'border-l-info'}`}
-						>
-							<div class="flex items-start justify-between gap-3">
-								<div class="flex-1">
-									<div class="flex items-center gap-2">
-										<p class="font-semibold" class:line-through={t.IsDone}>{t.Title}</p>
-										<span class={`badge badge-xs ${priorityBadge[t.Priority] || 'badge-info'}`}
-											>{t.Priority}</span
-										>
-										{#if t.Category}
-											<span class="badge badge-outline badge-xs">{t.Category}</span>
-										{/if}
-									</div>
-									{#if t.Description}
-										<p class="text-sm opacity-80">{t.Description}</p>
-									{/if}
-									<div class="mt-1 flex items-center gap-2 text-xs opacity-60">
-										{#if t.DueDate}
-											<span>Due: {t.DueDate}</span>
-										{/if}
-										{#if t.DueWarning === 'overdue'}
-											<span class="badge badge-xs badge-error">Overdue</span>
-										{:else if t.DueWarning === 'due_today'}
-											<span class="badge badge-xs badge-warning">Due Today</span>
-										{:else if t.DueWarning === 'due_soon'}
-											<span
-												class="badge badge-xs"
-												style="background: oklch(85% 0.15 85); color: oklch(30% 0.05 85);"
-												>Due Soon</span
-											>
-										{/if}
-										{#if t.IsDone}
-											<span class="text-success">Done</span>
-										{/if}
-									</div>
-
-									<!-- Subtask toggle -->
-									{#if t.ChildTasks && t.ChildTasks.length > 0}
-										<button class="btn mt-1 btn-ghost btn-xs" onclick={() => toggleExpand(t.Id)}>
-											{expandedTasks.has(t.Id) ? '▼' : '▶'}
-											{t.ChildTasks.length} subtask{t.ChildTasks.length === 1 ? '' : 's'}
-										</button>
-									{/if}
-								</div>
-								<div class="flex gap-1">
-									{#if !t.IsDone}
-										<button
-											class="btn btn-ghost btn-sm"
-											title="Add Subtask"
-											aria-label="Add subtask"
-											onclick={() => handleAddSubtask(t.Id)}
-										>
-											<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													stroke-width="2"
-													d="M12 4v16m8-8H4"
-												/>
-											</svg>
-										</button>
-									{/if}
-									<button
-										class="btn btn-ghost btn-sm"
-										title="Edit"
-										aria-label="edit button"
-										onclick={() => handleEdit(t)}
-									>
-										<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path
-												stroke-linecap="round"
-												stroke-linejoin="round"
-												stroke-width="2"
-												d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-											/>
-										</svg>
-									</button>
-									<button
-										class="btn btn-ghost btn-sm"
-										title="Delete"
-										aria-label="Delete button"
-										onclick={() => handleDelete(t.Id)}
-									>
-										<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path
-												stroke-linecap="round"
-												stroke-linejoin="round"
-												stroke-width="2"
-												d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-											/>
-										</svg>
-									</button>
-									{#if !t.IsDone}
-										<button
-											class="btn btn-ghost btn-sm"
-											title="Mark done"
-											aria-label="Mark done button"
-											onclick={() => handleMarkDone(t.Id)}
-										>
-											<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													stroke-width="2"
-													d="M5 13l4 4L19 7"
-												/>
-											</svg>
-										</button>
-									{/if}
-								</div>
-							</div>
-
-							<!-- Expanded subtasks -->
-							{#if expandedTasks.has(t.Id) && t.ChildTasks && t.ChildTasks.length > 0}
-								<ul class="mt-2 ml-6 flex flex-col gap-1 border-l-2 border-base-300 pl-3">
-									{#each t.ChildTasks as child}
-										<li
-											class={`card border-l-2 bg-base-100 p-3 ${priorityBorder[child.Priority] || 'border-l-info'}`}
-										>
-											<div class="flex items-start justify-between gap-2">
-												<div class="flex-1">
-													<div class="flex items-center gap-2">
-														<p class="text-sm font-medium" class:line-through={child.IsDone}>
-															{child.Title}
-														</p>
-														<span
-															class={`badge badge-xs ${priorityBadge[child.Priority] || 'badge-info'}`}
-															>{child.Priority}</span
-														>
-													</div>
-													{#if child.Description}
-														<p class="text-xs opacity-80">{child.Description}</p>
-													{/if}
-													<div class="flex items-center gap-2 text-xs opacity-60">
-														{#if child.DueDate}
-															<span>Due: {child.DueDate}</span>
-														{/if}
-														{#if child.DueWarning === 'overdue'}
-															<span class="badge badge-xs badge-error">Overdue</span>
-														{:else if child.DueWarning === 'due_today'}
-															<span class="badge badge-xs badge-warning">Due Today</span>
-														{:else if child.DueWarning === 'due_soon'}
-															<span
-																class="badge badge-xs"
-																style="background: oklch(85% 0.15 85); color: oklch(30% 0.05 85);"
-																>Due Soon</span
-															>
-														{/if}
-														{#if child.IsDone}
-															<span class="text-success">Done</span>
-														{/if}
-													</div>
-												</div>
-												<div class="flex gap-1">
-													<button
-														class="btn btn-ghost btn-xs"
-														title="Edit"
-														aria-label="Edit subtask"
-														onclick={() => handleEdit(child)}
-													>
-														<svg
-															class="h-3 w-3"
-															fill="none"
-															stroke="currentColor"
-															viewBox="0 0 24 24"
-														>
-															<path
-																stroke-linecap="round"
-																stroke-linejoin="round"
-																stroke-width="2"
-																d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-															/>
-														</svg>
-													</button>
-													<button
-														class="btn btn-ghost btn-xs"
-														title="Delete"
-														aria-label="Delete subtask"
-														onclick={() => handleDelete(child.Id)}
-													>
-														<svg
-															class="h-3 w-3"
-															fill="none"
-															stroke="currentColor"
-															viewBox="0 0 24 24"
-														>
-															<path
-																stroke-linecap="round"
-																stroke-linejoin="round"
-																stroke-width="2"
-																d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-															/>
-														</svg>
-													</button>
-													{#if !child.IsDone}
-														<button
-															class="btn btn-ghost btn-xs"
-															title="Mark done"
-															aria-label="Mark subtask done"
-															onclick={() => handleMarkDone(child.Id)}
-														>
-															<svg
-																class="h-3 w-3"
-																fill="none"
-																stroke="currentColor"
-																viewBox="0 0 24 24"
-															>
-																<path
-																	stroke-linecap="round"
-																	stroke-linejoin="round"
-																	stroke-width="2"
-																	d="M5 13l4 4L19 7"
-																/>
-															</svg>
-														</button>
-													{/if}
-												</div>
-											</div>
-										</li>
-									{/each}
-								</ul>
-							{/if}
-						</li>
-					{/each}
-				</ul>
+			<!-- Clear completed button -->
+			{#if activeTab === 'done' && doneCount > 0}
+				<button class="btn btn-outline btn-sm btn-error" onclick={handleClearCompleted}>
+					Clear Done
+				</button>
 			{/if}
 		</div>
 	</div>
-</div>
+
+	<!-- Task list -->
+	{#if filteredTasks().length === 0}
+		<div class="flex flex-col items-center justify-center py-16 text-base-content/40">
+			<svg class="mb-4 h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					stroke-width="1.5"
+					d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+				/>
+			</svg>
+			<p class="text-lg font-medium">No tasks found</p>
+			<p class="text-sm">
+				{#if activeTab === 'done'}
+					No completed tasks yet
+				{:else if debouncedSearch}
+					Try a different search term
+				{:else}
+					Create your first task to get started
+				{/if}
+			</p>
+		</div>
+	{:else}
+		<ul
+			class="flex flex-col gap-3"
+			use:dndzone={{ items: dndItems, flipDurationMs: 200 }}
+			onconsider={handleDndConsider}
+			onfinalize={handleDndFinalize}
+		>
+			{#each dndItems as t (t.id)}
+				<li
+					class={`card border-l-4 bg-base-200 transition-shadow hover:shadow-md ${priorityBorder[t.Priority] || 'border-l-info'}`}
+				>
+					<div class="card-body gap-2 p-4">
+						<!-- Top row: title + badges -->
+						<div class="flex flex-wrap items-start justify-between gap-2">
+							<div class="min-w-0 flex-1">
+								<div class="flex flex-wrap items-center gap-2">
+									<h3
+										class="truncate text-base font-semibold"
+										class:line-through={t.IsDone}
+										class:opacity-50={t.IsDone}
+									>
+										{t.Title}
+									</h3>
+									<span class={`badge badge-sm ${priorityBadge[t.Priority] || 'badge-info'}`}
+										>{t.Priority}</span
+									>
+									{#if t.Category}
+										<span class="badge badge-outline badge-sm">{t.Category}</span>
+									{/if}
+								</div>
+								{#if t.Description}
+									<p class="mt-1 text-sm text-base-content/70">{t.Description}</p>
+								{/if}
+							</div>
+
+							<!-- Actions dropdown for mobile, inline for desktop -->
+							<div class="dropdown dropdown-end sm:hidden">
+								<div tabindex="0" role="button" class="btn btn-circle btn-ghost btn-sm">
+									<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M12 5v.01M12 12v.01M12 19v.01"
+										/>
+									</svg>
+								</div>
+								<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+								<ul
+									tabindex="0"
+									class="dropdown-content menu z-10 w-44 rounded-box bg-base-100 p-2 shadow-lg"
+								>
+									{#if !t.IsDone}
+										<li><button onclick={() => handleAddSubtask(t.Id)}>Add Subtask</button></li>
+									{/if}
+									<li><button onclick={() => handleEdit(t)}>Edit</button></li>
+									{#if !t.IsDone}
+										<li><button onclick={() => handleMarkDone(t.Id)}>Mark Done</button></li>
+									{/if}
+									<li>
+										<button class="text-error" onclick={() => handleDelete(t.Id)}>Delete</button>
+									</li>
+								</ul>
+							</div>
+
+							<!-- Desktop action buttons -->
+							<div class="hidden gap-1 sm:flex">
+								{#if !t.IsDone}
+									<button
+										class="btn btn-circle btn-ghost btn-sm"
+										title="Add Subtask"
+										aria-label="Add subtask"
+										onclick={() => handleAddSubtask(t.Id)}
+									>
+										<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												stroke-width="2"
+												d="M12 4v16m8-8H4"
+											/>
+										</svg>
+									</button>
+								{/if}
+								<button
+									class="btn btn-circle btn-ghost btn-sm"
+									title="Edit"
+									aria-label="edit button"
+									onclick={() => handleEdit(t)}
+								>
+									<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+										/>
+									</svg>
+								</button>
+								<button
+									class="btn btn-circle btn-ghost btn-sm"
+									title="Delete"
+									aria-label="Delete button"
+									onclick={() => handleDelete(t.Id)}
+								>
+									<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+										/>
+									</svg>
+								</button>
+								{#if !t.IsDone}
+									<button
+										class="btn btn-circle btn-ghost btn-sm"
+										title="Mark done"
+										aria-label="Mark done button"
+										onclick={() => handleMarkDone(t.Id)}
+									>
+										<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												stroke-width="2"
+												d="M5 13l4 4L19 7"
+											/>
+										</svg>
+									</button>
+								{/if}
+							</div>
+						</div>
+
+						<!-- Meta row: due date + warnings -->
+						<div class="flex flex-wrap items-center gap-2 text-xs text-base-content/50">
+							{#if t.DueDate}
+								<span>Due: {t.DueDate}</span>
+							{/if}
+							{#if t.DueWarning === 'overdue'}
+								<span class="badge badge-sm badge-error">Overdue</span>
+							{:else if t.DueWarning === 'due_today'}
+								<span class="badge badge-sm badge-warning">Due Today</span>
+							{:else if t.DueWarning === 'due_soon'}
+								<span
+									class="badge badge-sm"
+									style="background: oklch(85% 0.15 85); color: oklch(30% 0.05 85);">Due Soon</span
+								>
+							{/if}
+							{#if t.IsDone}
+								<span class="badge badge-sm badge-success">Done</span>
+							{/if}
+						</div>
+
+						<!-- Subtask toggle -->
+						{#if t.ChildTasks && t.ChildTasks.length > 0}
+							<button
+								class="btn mt-1 w-fit gap-1 btn-ghost btn-xs"
+								onclick={() => toggleExpand(t.Id)}
+							>
+								<svg
+									class="h-3 w-3 transition-transform"
+									class:rotate-90={expandedTasks.has(t.Id)}
+									fill="none"
+									stroke="currentColor"
+									viewBox="0 0 24 24"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M9 5l7 7-7 7"
+									/>
+								</svg>
+								{t.ChildTasks.length} subtask{t.ChildTasks.length === 1 ? '' : 's'}
+							</button>
+						{/if}
+
+						<!-- Expanded subtasks -->
+						{#if expandedTasks.has(t.Id) && t.ChildTasks && t.ChildTasks.length > 0}
+							<ul class="mt-2 flex flex-col gap-2 border-l-2 border-base-300 pl-3 sm:ml-4">
+								{#each t.ChildTasks as child}
+									<li
+										class={`card border-l-2 bg-base-100 p-3 ${priorityBorder[child.Priority] || 'border-l-info'}`}
+									>
+										<div class="flex flex-wrap items-start justify-between gap-2">
+											<div class="min-w-0 flex-1">
+												<div class="flex flex-wrap items-center gap-2">
+													<p
+														class="text-sm font-medium"
+														class:line-through={child.IsDone}
+														class:opacity-50={child.IsDone}
+													>
+														{child.Title}
+													</p>
+													<span
+														class={`badge badge-xs ${priorityBadge[child.Priority] || 'badge-info'}`}
+														>{child.Priority}</span
+													>
+												</div>
+												{#if child.Description}
+													<p class="mt-0.5 text-xs text-base-content/70">{child.Description}</p>
+												{/if}
+												<div
+													class="mt-1 flex flex-wrap items-center gap-2 text-xs text-base-content/50"
+												>
+													{#if child.DueDate}
+														<span>Due: {child.DueDate}</span>
+													{/if}
+													{#if child.DueWarning === 'overdue'}
+														<span class="badge badge-xs badge-error">Overdue</span>
+													{:else if child.DueWarning === 'due_today'}
+														<span class="badge badge-xs badge-warning">Due Today</span>
+													{:else if child.DueWarning === 'due_soon'}
+														<span
+															class="badge badge-xs"
+															style="background: oklch(85% 0.15 85); color: oklch(30% 0.05 85);"
+															>Due Soon</span
+														>
+													{/if}
+													{#if child.IsDone}
+														<span class="text-success">Done</span>
+													{/if}
+												</div>
+											</div>
+											<div class="flex gap-1">
+												<button
+													class="btn btn-circle btn-ghost btn-xs"
+													title="Edit"
+													aria-label="Edit subtask"
+													onclick={() => handleEdit(child)}
+												>
+													<svg
+														class="h-3.5 w-3.5"
+														fill="none"
+														stroke="currentColor"
+														viewBox="0 0 24 24"
+													>
+														<path
+															stroke-linecap="round"
+															stroke-linejoin="round"
+															stroke-width="2"
+															d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+														/>
+													</svg>
+												</button>
+												<button
+													class="btn btn-circle btn-ghost btn-xs"
+													title="Delete"
+													aria-label="Delete subtask"
+													onclick={() => handleDelete(child.Id)}
+												>
+													<svg
+														class="h-3.5 w-3.5"
+														fill="none"
+														stroke="currentColor"
+														viewBox="0 0 24 24"
+													>
+														<path
+															stroke-linecap="round"
+															stroke-linejoin="round"
+															stroke-width="2"
+															d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+														/>
+													</svg>
+												</button>
+												{#if !child.IsDone}
+													<button
+														class="btn btn-circle btn-ghost btn-xs"
+														title="Mark done"
+														aria-label="Mark subtask done"
+														onclick={() => handleMarkDone(child.Id)}
+													>
+														<svg
+															class="h-3.5 w-3.5"
+															fill="none"
+															stroke="currentColor"
+															viewBox="0 0 24 24"
+														>
+															<path
+																stroke-linecap="round"
+																stroke-linejoin="round"
+																stroke-width="2"
+																d="M5 13l4 4L19 7"
+															/>
+														</svg>
+													</button>
+												{/if}
+											</div>
+										</div>
+									</li>
+								{/each}
+							</ul>
+						{/if}
+					</div>
+				</li>
+			{/each}
+		</ul>
+	{/if}
+</main>

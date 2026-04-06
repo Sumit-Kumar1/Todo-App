@@ -27,7 +27,7 @@ export function mapResponseToTask(resp: TaskResponse): Task {
 	return {
 		Id: resp.id,
 		Title: resp.title,
-		Description: resp.description,
+		Description: resp.description || '',
 		DueDate: resp.dueDate,
 		IsDone: resp.status === 'DONE',
 		Priority: (resp.priority as Task['Priority']) || 'MEDIUM',

@@ -9,6 +9,10 @@ export async function AddTask(taskReq: CreateTaskRequest) {
 			body: JSON.stringify(taskReq)
 		});
 
+		if (res === undefined) {
+			throw new Error(`undefined response from POST /task api`)
+		}
+
 		if (!res.ok) {
 			throw new Error(`error while adding task: ${res.status}`);
 		}
@@ -24,6 +28,11 @@ export async function GetTasks() {
 		const res = await apiFetch('/tasks', {
 			method: 'GET'
 		});
+
+		if (res === undefined) {
+			throw new Error(`undefined response from GET /tasks api`)
+		}
+
 
 		if (!res.ok) {
 			throw new Error(`error while fetching all tasks: ${res.status}`);
@@ -41,6 +50,11 @@ export async function DelTask(id: string) {
 			method: 'DELETE'
 		});
 
+		if (res === undefined) {
+			throw new Error(`undefined response from DELETE /tasks api`)
+		}
+
+
 		if (!res.ok) {
 			throw new Error(`error while deleting task: ${res.status}`);
 		}
@@ -56,6 +70,11 @@ export async function MarkDone(id: string) {
 		const res = await apiFetch('/tasks/' + id + '/done', {
 			method: 'PATCH'
 		});
+
+		if (res === undefined) {
+			throw new Error(`undefined response from PATCH /tasks/{id}/done api`)
+		}
+
 
 		if (!res.ok) {
 			throw new Error(`error while marking task done: ${res.status}`);
@@ -75,6 +94,11 @@ export async function UpdateTask(id: string, payload: Record<string, unknown>) {
 			body: JSON.stringify(payload)
 		});
 
+		if (res === undefined) {
+			throw new Error(`undefined response from PUT /task/{id} api`)
+		}
+
+
 		if (!res.ok) {
 			throw new Error(`error while updating task: ${res.status}`);
 		}
@@ -90,6 +114,11 @@ export async function DeleteCompleted() {
 		const res = await apiFetch('/tasks/completed', {
 			method: 'DELETE'
 		});
+
+		if (res === undefined) {
+			throw new Error(`undefined response from DELETE /tasks/completed api`)
+		}
+
 
 		if (!res.ok) {
 			throw new Error(`error while clearing completed tasks: ${res.status}`);

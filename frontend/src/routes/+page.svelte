@@ -7,15 +7,17 @@
 
 	let passwordVisible = $state(false);
 	let isLoginPage = $state(true);
+	let loading = $state(false);
 
 	let email = $state('');
 	let password = $state('');
-	let response = $state('');
 
 	let inputType = $derived(passwordVisible ? 'text' : 'password');
 
 	async function submit(event: Event) {
 		event.preventDefault();
+		if (loading) return;
+		loading = true;
 
 		try {
 			if (isLoginPage) {
@@ -48,26 +50,34 @@
 		} catch (error) {
 			const errMsg = (error as Error).message;
 			notifications.error(`${errMsg}`);
+		} finally {
+			loading = false;
 		}
 	}
 </script>
 
-<div class="flex min-h-screen items-center justify-center bg-base-200 text-base-content">
-	<div
-		class="overflow-w-hidden card gap-2 border-base-300 bg-base-100 card-xl card-border sm:w-2/3 lg:w-1/2"
-	>
-		<div class="card-title justify-center p-3">
-			<h2 class="mt-5 text-center text-xl font-bold">
-				{#if isLoginPage}
-					Login to your account
-				{:else}
-					New User Registration
-				{/if}
-			</h2>
-		</div>
-		<div class="card-body gap-2">
-			<form class="flex flex-col items-center justify-center gap-4" onsubmit={submit}>
-				<label class="input w-full">
+<div class="flex min-h-svh items-center justify-center bg-base-200 px-4 py-8 text-base-content">
+	<div class="card w-full max-w-md border border-base-300 bg-base-100 shadow-lg">
+		<div class="card-body gap-6">
+			<div class="text-center">
+				<h1 class="text-2xl font-bold tracking-tight">
+					{#if isLoginPage}
+						Welcome back
+					{:else}
+						Create an account
+					{/if}
+				</h1>
+				<p class="mt-1 text-sm text-base-content/60">
+					{#if isLoginPage}
+						Sign in to manage your tasks
+					{:else}
+						Get started with your todo list
+					{/if}
+				</p>
+			</div>
+
+			<form class="flex flex-col gap-4" onsubmit={submit}>
+				<label class="input-bordered input w-full">
 					<Fa icon={faEnvelope}></Fa>
 					<input
 						autocomplete="email"
@@ -80,36 +90,39 @@
 						type="email"
 					/>
 				</label>
-				<div class="w-full">
-					<label class="input w-full">
-						<Fa icon={faKey}></Fa>
-						<input
-							bind:value={password}
-							class="w-full grow"
-							id="password"
-							minlength="8"
-							name="password"
-							placeholder="password"
-							required
-							type={inputType}
-						/>
-						<!-- svelte-ignore a11y_consider_explicit_label -->
-						<button
-							type="button"
-							class="btn btn-ghost btn-xs"
-							onclick={() => {
-								passwordVisible = !passwordVisible;
-							}}
-						>
-							{#if !passwordVisible}
-								<Fa icon={faEye}></Fa>
-							{:else}
-								<Fa icon={faEyeSlash}></Fa>
-							{/if}
-						</button>
-					</label>
-				</div>
-				<button class="btn btn-outline btn-primary lg:w-1/3" type="submit">
+
+				<label class="input-bordered input w-full">
+					<Fa icon={faKey}></Fa>
+					<input
+						bind:value={password}
+						class="grow"
+						id="password"
+						minlength="8"
+						name="password"
+						placeholder="password"
+						required
+						type={inputType}
+					/>
+					<!-- svelte-ignore a11y_consider_explicit_label -->
+					<button
+						type="button"
+						class="btn btn-ghost btn-xs"
+						onclick={() => {
+							passwordVisible = !passwordVisible;
+						}}
+					>
+						{#if !passwordVisible}
+							<Fa icon={faEye}></Fa>
+						{:else}
+							<Fa icon={faEyeSlash}></Fa>
+						{/if}
+					</button>
+				</label>
+
+				<button class="btn w-full btn-primary" type="submit" disabled={loading}>
+					{#if loading}
+						<span class="loading loading-sm loading-spinner"></span>
+					{/if}
 					{#if isLoginPage}
 						Sign in
 					{:else}
@@ -118,28 +131,24 @@
 				</button>
 			</form>
 
-			<p class="mt-5 text-center text-sm text-gray-500">
+			<div class="divider my-0 text-xs text-base-content/40">OR</div>
+
+			<p class="text-center text-sm text-base-content/60">
 				{#if isLoginPage}
-					Create new account?
+					Don't have an account?
 				{:else}
-					Already registered?
+					Already have an account?
 				{/if}
 				<button
 					type="button"
-					class="btn leading-6 font-semibold text-base-content btn-link no-underline hover:text-neutral"
+					class="link font-semibold link-primary"
 					onclick={() => {
 						isLoginPage = !isLoginPage;
 					}}
 				>
-					{#if isLoginPage}Register
-					{:else}Login
-					{/if}</button
-				>
+					{#if isLoginPage}Register{:else}Login{/if}
+				</button>
 			</p>
 		</div>
 	</div>
-
-	{#if response}
-		<p>{response}</p>
-	{/if}
 </div>
