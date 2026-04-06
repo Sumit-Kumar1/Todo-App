@@ -78,6 +78,7 @@ func (c *Client) health(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
 	defer ensureBodyClosed(resp)
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
@@ -99,6 +100,7 @@ func (c *Client) SignUp(ctx *gin.Context, email, password string) error {
 	defer ensureBodyClosed(resp)
 
 	_, err = handleResponse[string](resp)
+
 	return err
 }
 
