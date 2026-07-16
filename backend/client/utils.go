@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+
 	"todoapp/internal/errors"
 	"todoapp/internal/models"
 )
@@ -14,27 +15,28 @@ func handleResponse[T any](resp *http.Response) (*T, error) {
 	}
 
 	var res struct {
-		Data T `json:"data,omitempty"`
+		Data  T `json:"data,omitempty"`
+		Error *struct {
+			Message *string `json:"message,omitempty"`
+		} `json:"error,omitempty"`
 	}
 
-	switch resp.StatusCode {
-	case http.StatusNotFound:
-		return nil, errors.ErrUserNotFound
-	case http.StatusConflict:
-		return nil, errors.ErrUserAlreadyExists
-	case http.StatusUnauthorized, http.StatusForbidden:
-		return nil, errors.ErrPsswdNotMatch
-	case http.StatusOK, http.StatusCreated:
-		if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
-			return nil, err
-		}
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		return nil, err
+	}
 
-		defer resp.Body.Close()
+	defer resp.Body.Close()
+
+	statusCode := resp.StatusCode
+
+	switch statusCode {
+	case http.StatusBadRequest, http.StatusNotFound, http.StatusUnauthorized, http.StatusConflict, http.StatusForbidden:
+		return nil, errors.NewHTTPError(statusCode, *res.Error.Message, "")
+	case http.StatusOK, http.StatusCreated:
+		return &res.Data, nil
 	default:
 		return nil, errInvalidStatus
 	}
-
-	return &res.Data, nil
 }
 
 func prepareAuthAPIHeaders(ctx context.Context, auth string) map[string]string {

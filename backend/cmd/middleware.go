@@ -5,12 +5,12 @@ import (
 	"strings"
 	"time"
 
+	"todoapp/internal/errors"
+	"todoapp/internal/handler"
+	"todoapp/internal/models"
+
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
-
-	"todoapp/internal/errors"
-	"todoapp/internal/models"
 
 	"github.com/google/uuid"
 )
@@ -23,11 +23,18 @@ const (
 	corsMaxAge     = 8640
 )
 
-type Claims struct {
-	Email    string `json:"email"`
-	ClaimUID string `json:"claimID"`
-	// registeredClaim's subject is userID from db
-	jwt.RegisteredClaims
+type Auth interface {
+	Validate(ctx *gin.Context, token string) (*uuid.UUID, error)
+}
+
+type clientMiddleware struct {
+	client Auth
+}
+
+func newMiddleware(client Auth) clientMiddleware {
+	return clientMiddleware{
+		client: client,
+	}
 }
 
 // slogMiddleware creates a Gin middleware that logs requests using slog
@@ -55,7 +62,7 @@ func slogMiddleware(logger *slog.Logger) gin.HandlerFunc {
 			slog.String("method", method),
 			slog.String("path", path),
 			slog.String("ip", clientIP),
-			slog.Duration("latency", time.Duration(latency.Microseconds())),
+			slog.Duration("latency(ms)", time.Duration(latency.Milliseconds())),
 		}
 
 		if raw != "" {
@@ -99,11 +106,11 @@ func loadCORScfg() cors.Config {
 }
 
 // AuthMiddleware check for valid cookie and extracts user id for the user
-func authMiddleware() gin.HandlerFunc {
+func (cc clientMiddleware) authMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		uid, err := validateCookie(c)
+		uid, err := cc.validateCookie(c)
 		if err != nil {
-			errors.HandleHTTPError(c, err)
+			handler.HandleError(c, err)
 			return
 		}
 
@@ -112,41 +119,16 @@ func authMiddleware() gin.HandlerFunc {
 	}
 }
 
-func validateCookie(c *gin.Context) (*uuid.UUID, error) {
+func (cc clientMiddleware) validateCookie(c *gin.Context) (*uuid.UUID, error) {
 	val, err := c.Cookie(cookieName)
 	if err != nil {
 		return nil, errors.ErrInvalidCookie
 	}
 
-	token, err := jwt.ParseWithClaims(val, &Claims{}, func(token *jwt.Token) (any, error) {
-		secVal := "33cea8f88c5c8ad73b1700af7d72891fe3097297e59fb6cbe5fd8b545a8316d0"
-		return []byte(secVal), nil
-	}, jwt.WithExpirationRequired())
+	userID, err := cc.client.Validate(c, val)
 	if err != nil {
 		return nil, errors.ErrInvalidCookie
 	}
 
-	claims, ok := token.Claims.(*Claims)
-	if !ok {
-		return nil, errors.ErrInvalidCookie
-	}
-
-	if !token.Valid {
-		return nil, errors.ErrInvalidCookie
-	}
-
-	return extractUserID(claims.Subject)
-}
-
-func extractUserID(claimSubject string) (*uuid.UUID, error) {
-	uid, err := uuid.Parse(claimSubject)
-	if err != nil {
-		return nil, err
-	}
-
-	if uid == uuid.Nil {
-		return nil, errors.ErrInvalidCookie
-	}
-
-	return &uid, nil
+	return userID, nil
 }

@@ -9,9 +9,12 @@ export async function AddTask(taskReq: CreateTaskRequest) {
 			body: JSON.stringify(taskReq)
 		});
 
+		if (res === undefined) {
+			throw new Error(`undefined response from POST /task api`)
+		}
+
 		if (!res.ok) {
-			const error = await res.json();
-			throw new Error(`HTTP error! status: ${res.status}, message: ${error.error}`);
+			throw new Error(`error while adding task: ${res.status}`);
 		}
 
 		return await res.json();
@@ -26,9 +29,13 @@ export async function GetTasks() {
 			method: 'GET'
 		});
 
+		if (res === undefined) {
+			throw new Error(`undefined response from GET /tasks api`)
+		}
+
+
 		if (!res.ok) {
-			const error = await res.json();
-			throw new Error(`HTTP error! status: ${res.status}, message: ${error.error}`);
+			throw new Error(`error while fetching all tasks: ${res.status}`);
 		}
 
 		return await res.json();
@@ -43,9 +50,13 @@ export async function DelTask(id: string) {
 			method: 'DELETE'
 		});
 
+		if (res === undefined) {
+			throw new Error(`undefined response from DELETE /tasks api`)
+		}
+
+
 		if (!res.ok) {
-			const error = await res.json();
-			throw new Error(`HTTP error! status: ${res.status}, message: ${error.error}`);
+			throw new Error(`error while deleting task: ${res.status}`);
 		}
 
 		return;
@@ -60,9 +71,13 @@ export async function MarkDone(id: string) {
 			method: 'PATCH'
 		});
 
+		if (res === undefined) {
+			throw new Error(`undefined response from PATCH /tasks/{id}/done api`)
+		}
+
+
 		if (!res.ok) {
-			const error = await res.json();
-			throw new Error(`HTTP error! status: ${res.status}, message: ${error.error}`);
+			throw new Error(`error while marking task done: ${res.status}`);
 		}
 
 		return await res.json();
@@ -79,12 +94,37 @@ export async function UpdateTask(id: string, payload: Record<string, unknown>) {
 			body: JSON.stringify(payload)
 		});
 
+		if (res === undefined) {
+			throw new Error(`undefined response from PUT /task/{id} api`)
+		}
+
+
 		if (!res.ok) {
-			const error = await res.json();
-			throw new Error(`HTTP error! status: ${res.status}, message: ${error.error}`);
+			throw new Error(`error while updating task: ${res.status}`);
 		}
 
 		return await res.json();
+	} catch (error) {
+		throw new Error((error as Error).message);
+	}
+}
+
+export async function DeleteCompleted() {
+	try {
+		const res = await apiFetch('/tasks/completed', {
+			method: 'DELETE'
+		});
+
+		if (res === undefined) {
+			throw new Error(`undefined response from DELETE /tasks/completed api`)
+		}
+
+
+		if (!res.ok) {
+			throw new Error(`error while clearing completed tasks: ${res.status}`);
+		}
+
+		return;
 	} catch (error) {
 		throw new Error((error as Error).message);
 	}

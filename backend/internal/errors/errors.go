@@ -1,120 +1,84 @@
-// Package errors unified package for service and handler errors
+// Package errors provides domain error types and sentinel errors for the application.
 package errors
 
 import (
 	"errors"
 	"fmt"
-	"net/http"
-
-	"github.com/gin-gonic/gin"
 )
 
+// ConstError is a string-based error type that supports const declarations,
+// making sentinel errors truly immutable.
+type ConstError string
+
+func (e ConstError) Error() string { return string(e) }
+
+// Sentinel errors for domain-specific failures.
 const (
-	notFoundFormat  = "%s not found"
-	invalidFieldFmt = "incorrect value for field: %s"
-	missingFieldFmt = "missing field: %s"
+	ErrUserAlreadyExists ConstError = "user already exists"
+	ErrPsswdNotMatch     ConstError = "password does not match"
+	ErrUserNotFound      ConstError = "user not found"
+	ErrInvalidCookie     ConstError = "invalid cookie value"
+	ErrTaskNotFound      ConstError = "task not found"
+	ErrInvalidTaskID     ConstError = "invalid task id"
+	ErrInsertFailed      ConstError = "not able to insert into database"
+	ErrEmptyDBPassword   ConstError = "empty db password"
+	ErrNilDB             ConstError = "db is nil"
+	ErrDueDatePast       ConstError = "older due date from today"
+	ErrInvalidMigMethod  ConstError = "invalid migration method"
 )
 
+// ErrRequired and ErrInvalid are sentinel errors for validation categories.
+// Use errors.Is(err, ErrRequired) to check if an error is a missing-field error.
 var (
-	ErrUserAlreadyExists = NewConstError("user already exists")
-	ErrPsswdNotMatch     = NewConstError("password does not match")
-	ErrUserNotFound      = NewConstError("user not found")
-	ErrInvalidCookie     = NewConstError("invalid cookie value")
-	ErrCookieValTooLong  = NewConstError("cookie value too long")
-	ErrTaskNotFound      = NewConstError("task not found")
-	ErrInvalidTaskID     = NewConstError("invalid task id")
+	ErrRequired = errors.New("missing required field")
+	ErrInvalid  = errors.New("invalid field value")
 )
 
-// CustomError represents an error that can be sent in HTTP responses.
-// It includes an HTTP status code and an error message.
-type CustomError struct {
+// ValidationError represents a field-level validation failure.
+// It wraps ErrRequired or ErrInvalid so callers can match the category
+// with errors.Is and inspect the field with errors.As.
+type ValidationError struct {
+	Field string
+	kind  error
+}
+
+func (e ValidationError) Error() string {
+	if errors.Is(e.kind, ErrRequired) {
+		return "missing field: " + e.Field
+	}
+
+	return "invalid field: " + e.Field
+}
+
+func (e ValidationError) Unwrap() error { return e.kind }
+
+// Required creates a validation error indicating a missing required field.
+func Required(field string) ValidationError {
+	return ValidationError{Field: field, kind: ErrRequired}
+}
+
+// Invalid creates a validation error indicating an invalid field value.
+func Invalid(field string) ValidationError {
+	return ValidationError{Field: field, kind: ErrInvalid}
+}
+
+// HTTPError represents an error that originated from an HTTP response.
+// Used by the client package to propagate upstream API errors.
+type HTTPError struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
 	Details string `json:"details,omitempty"`
 }
 
-// Error implements the error interface for CustomError.
-// It returns the error message.
-func (e *CustomError) Error() string {
-	return e.Message
+func (e *HTTPError) Error() string { return e.Message }
+
+// NewHTTPError creates an HTTPError with the given status code and message.
+func NewHTTPError(code int, msg, details string) *HTTPError {
+	return &HTTPError{Code: code, Message: msg, Details: details}
 }
 
-// NewHTTPError created a custom error based on code, msg and detail of error,
-// use only at handler layer
-func NewHTTPError(code int, msg, details string) *CustomError {
-	return &CustomError{
-		Code:    code,
-		Message: msg,
-		Details: details,
-	}
-}
-
-// ErrBadRequest creates an error for bad request scenarios.
-// It wraps the provided error in a CustomError with a 400 status code.
-func ErrBadRequest(err error) *CustomError {
-	return NewHTTPError(400, err.Error(), "")
-}
-
-// ErrNotFound creates an error for when an entity is not found.
-// It formats the error message using the notFoundFormat constant.
-func ErrNotFound(entity string) *CustomError {
-	return NewHTTPError(404, fmt.Sprintf(notFoundFormat, entity), "")
-}
-
-// constError is a type that implements the error interface.
-// It's used for creating constant error values for internal error use.
-type constError string
-
-// NewConstError creates a new constant error with the given message.
-// It returns a constError that can be used as a constant error value.
-func NewConstError(message string) constError {
-	return constError(message)
-}
-
-// Error implements the error interface for constError.
-// It returns the string representation of the error.
-func (err constError) Error() string {
-	return string(err)
-}
-
-// Is implements error comparison for constError.
-// It allows checking if an error matches a specific constError value.
-func (err constError) Is(target error) bool {
-	var t constError
-
-	ok := errors.As(target, &t)
-	if !ok {
-		return false
-	}
-
-	return err == t
-}
-
-// ErrInvalid creates an error for invalid entity scenarios.
-// It formats the error message using the invalidFormat constant.
-func ErrInvalid(entity string) error {
-	return NewConstError(fmt.Sprintf(invalidFieldFmt, entity))
-}
-
-// ErrRequired creates an error for required field scenarios.
-// It formats the error message using the requiredFormat constant.
-func ErrRequired(entity string) error {
-	return NewConstError(fmt.Sprintf(missingFieldFmt, entity))
-}
-
-func HandleHTTPError(c *gin.Context, err error) {
-	hErr := NewHTTPError(http.StatusServiceUnavailable, err.Error(), "")
-
-	switch {
-	case errors.Is(err, ErrUserAlreadyExists):
-		hErr.Code = http.StatusConflict
-	case errors.Is(err, ErrUserNotFound), errors.Is(err, ErrTaskNotFound):
-		hErr.Code = http.StatusNotFound
-	case errors.Is(err, ErrPsswdNotMatch), errors.Is(err, ErrInvalidCookie):
-		hErr.Code = http.StatusUnauthorized
-	default:
-		hErr.Code = http.StatusServiceUnavailable
-	}
-
-	c.AbortWithError(hErr.Code, hErr)
+// Wrap adds context to an error using fmt.Errorf wrapping.
+// The original error remains matchable via errors.Is and errors.As.
+func Wrap(err error, msg string) error {
+	return fmt.Errorf("%s: %w", msg, err)
 }

@@ -11,3 +11,7 @@ type AuthUserResp struct {
 	AccessToken  string `json:"accessToken,omitempty"`
 	RefreshToken string `json:"refreshToken,omitempty"`
 }
+
+type ValidationResp struct {
+	UserID string `json:"userId,omitempty,omitzero"`
+}

@@ -13,6 +13,9 @@ type TodoStorer interface {
 	Create(ctx *gin.Context, task *models.Task) error
 	Update(ctx *gin.Context, task *models.Task) error
 	Delete(ctx *gin.Context, id string, userID *uuid.UUID) error
+	DeleteCompleted(ctx *gin.Context, userID *uuid.UUID) error
 	MarkDone(ctx *gin.Context, id string, userID *uuid.UUID) error
 	GetTaskByID(ctx *gin.Context, taskID string, userID *uuid.UUID) (*models.Task, error)
+	GetChildTasks(ctx *gin.Context, taskID string, userID *uuid.UUID) ([]models.Task, error)
+	GetFilteredTasks(ctx *gin.Context, userID *uuid.UUID, status, priority, category, search string) ([]models.Task, error)
 }

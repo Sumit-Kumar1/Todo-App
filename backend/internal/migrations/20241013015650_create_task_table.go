@@ -6,13 +6,15 @@ const (
 	tasksDown = "DROP TABLE IF EXISTS tasks;"
 	taskTable = `CREATE TABLE IF NOT EXISTS tasks(
     id VARCHAR(50) PRIMARY KEY,
+	parent_id VARCHAR(36),
     user_id VARCHAR(50) NOT NULL,
     title TEXT NOT NULL,
 	description TEXT,
-    done_status BOOLEAN,
+    status VARCHAR(50),
     due_date TIMESTAMP,
-    added_at TIMESTAMP NOT NULL,
-    modified_at TIMESTAMP);`
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP,
+	FOREIGN KEY (parent_id) REFERENCES tasks(id) ON DELETE CASCADE);`
 )
 
 type M20241013015650 string

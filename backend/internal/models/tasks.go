@@ -8,15 +8,26 @@ import (
 	"github.com/google/uuid"
 )
 
+var validPriorities = map[string]bool{
+	"LOW":    true,
+	"MEDIUM": true,
+	"HIGH":   true,
+	"URGENT": true,
+}
+
 type Task struct {
 	ID          string     `json:"id"`
-	UserID      uuid.UUID  `json:"user_id"`
+	ParentID    *string    `json:"parentId,omitempty"`
+	UserID      uuid.UUID  `json:"userId"`
 	Title       string     `json:"title"`
 	Description string     `json:"description"`
-	IsDone      bool       `json:"isDone"`
+	Status      *string    `json:"status"`
+	Priority    string     `json:"priority"`
+	Category    string     `json:"category"`
 	DueDate     *time.Time `json:"dueDate"`
-	AddedAt     time.Time  `json:"addedAt"`
-	ModifiedAt  *time.Time `json:"modifiedAt"`
+	CreatedAt   time.Time  `json:"createdAt"`
+	UpdatedAt   *time.Time `json:"updatedAt"`
+	ChildTasks  []Task     `json:"childTasks,omitempty"`
 }
 
 type TaskResp struct {
@@ -24,17 +35,49 @@ type TaskResp struct {
 	UserID      uuid.UUID  `json:"-"`
 	Title       string     `json:"title,omitempty"`
 	Description string     `json:"description,omitempty"`
-	IsDone      bool       `json:"isDone,omitempty"`
+	Status      string     `json:"status,omitempty"`
+	Priority    string     `json:"priority,omitempty"`
+	Category    string     `json:"category,omitempty"`
 	DueDate     *string    `json:"dueDate,omitempty"`
-	AddedAt     time.Time  `json:"addedAt,omitempty"`
-	ModifiedAt  *time.Time `json:"modifiedAt,omitempty"`
+	DueWarning  string     `json:"dueWarning,omitempty"`
+	ChildTasks  []TaskResp `json:"childTasks,omitempty"`
+	ParentID    *string    `json:"parentId,omitempty"`
+	CreatedAt   time.Time  `json:"createdAt,omitempty"`
+	UpdatedAt   *time.Time `json:"updatedAt,omitempty"`
 }
 
 type TaskReq struct {
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	DueDate     string `json:"dueDate"`
-	IsDone      bool   `json:"isDone"`
+	Title       string  `json:"title"`
+	Description string  `json:"description"`
+	DueDate     string  `json:"dueDate"`
+	Status      string  `json:"status"`
+	Priority    string  `json:"priority"`
+	Category    string  `json:"category"`
+	ParentID    *string `json:"parentId,omitempty"`
+}
+
+func computeDueWarning(dueDate *time.Time) string {
+	if dueDate == nil || dueDate.IsZero() {
+		return ""
+	}
+
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	due := time.Date(dueDate.Year(), dueDate.Month(), dueDate.Day(), 0, 0, 0, 0, dueDate.Location())
+
+	if due.Before(today) {
+		return "overdue"
+	}
+
+	if due.Equal(today) {
+		return "due_today"
+	}
+
+	if due.Before(today.AddDate(0, 0, 4)) {
+		return "due_soon"
+	}
+
+	return ""
 }
 
 func (t *Task) ToTaskResp() *TaskResp {
@@ -43,14 +86,23 @@ func (t *Task) ToTaskResp() *TaskResp {
 		UserID:      t.UserID,
 		Title:       t.Title,
 		Description: t.Description,
-		IsDone:      t.IsDone,
-		AddedAt:     t.AddedAt,
-		ModifiedAt:  t.ModifiedAt,
+		Status:      *t.Status,
+		Priority:    t.Priority,
+		Category:    t.Category,
+		ParentID:    t.ParentID,
+		DueWarning:  computeDueWarning(t.DueDate),
+		CreatedAt:   t.CreatedAt,
+		UpdatedAt:   t.UpdatedAt,
+		ChildTasks:  make([]TaskResp, 0),
 	}
 
 	if t.DueDate != nil {
 		dd := t.DueDate.Format(time.DateOnly)
 		tr.DueDate = &dd
+	}
+
+	for _, child := range t.ChildTasks {
+		tr.ChildTasks = append(tr.ChildTasks, *child.ToTaskResp())
 	}
 
 	return &tr
@@ -59,13 +111,23 @@ func (t *Task) ToTaskResp() *TaskResp {
 func (t *TaskReq) Validate() error {
 	t.Title = strings.TrimSpace(t.Title)
 	t.Description = strings.TrimSpace(t.Description)
+	t.Priority = strings.TrimSpace(strings.ToUpper(t.Priority))
+	t.Category = strings.TrimSpace(t.Category)
 
 	if t.Title == "" {
-		return errors.ErrRequired("task title")
+		return errors.Required("task title")
 	}
 
 	if len(t.Description) > 1000 {
-		return errors.ErrInvalid("task description, size > 1K characters")
+		return errors.Invalid("task description, size > 1K characters")
+	}
+
+	if t.Priority == "" {
+		t.Priority = "MEDIUM"
+	}
+
+	if !validPriorities[t.Priority] {
+		return errors.Invalid("priority, must be one of: LOW, MEDIUM, HIGH, URGENT")
 	}
 
 	return validateDueDate(t.DueDate)
@@ -80,11 +142,11 @@ func validateDueDate(val string) error {
 
 	tt, err := time.Parse(time.DateOnly, val)
 	if err != nil {
-		return errors.ErrInvalid("due date")
+		return errors.Invalid("due date")
 	}
 
 	if !tt.After(tn) {
-		return errors.NewConstError("older due date from today")
+		return errors.ErrDueDatePast
 	}
 
 	return nil

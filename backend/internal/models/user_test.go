@@ -20,19 +20,19 @@ func TestLoginReqValidate(t *testing.T) {
 		wantErr error
 	}{
 		{name: "valid case", email: validEmail, passwd: validPasswd, wantErr: nil},
-		{name: "missing email", email: "", passwd: validPasswd, wantErr: errors.ErrRequired("email")},
+		{name: "missing email", email: "", passwd: validPasswd, wantErr: errors.Required("email")},
 		{
 			name:    "invalid email",
 			email:   "acbcd@abc",
 			passwd:  validPasswd,
-			wantErr: errors.ErrInvalid("email"),
+			wantErr: errors.Invalid("email"),
 		},
-		{name: "missing password", email: validEmail, passwd: "", wantErr: errors.ErrRequired("password")},
+		{name: "missing password", email: validEmail, passwd: "", wantErr: errors.Required("password")},
 		{
 			name:    "invalid password",
 			email:   validEmail,
 			passwd:  "abcd",
-			wantErr: errors.ErrInvalid("password is too short"),
+			wantErr: errors.Invalid("password is too short"),
 		},
 	}
 

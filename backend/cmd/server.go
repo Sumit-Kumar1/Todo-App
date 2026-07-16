@@ -25,8 +25,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const ()
-
 func Run(c context.Context, w io.Writer) error {
 	logger := slog.New(slog.NewJSONHandler(w, &slog.HandlerOptions{AddSource: false, Level: slog.LevelDebug}))
 	slog.SetDefault(logger)
@@ -70,15 +68,22 @@ func setupHealthRoutes(r *gin.Engine, db *sql.DB) {
 }
 
 func setupTasksRoutes(r *gin.Engine, db *sql.DB) {
+	authURL := getEnvOrDefault("AUTH_URL", "http://localhost:9001")
+	authClient := client.New(authURL)
+
+	middleware := newMiddleware(authClient)
+
 	todoStore := store.New(db)
 	todoSvc := todosvc.New(todoStore)
 	todoHTTP := todohttp.New(todoSvc)
 
-	r.POST("/task", authMiddleware(), todoHTTP.AddTask)
-	r.GET("/tasks", authMiddleware(), todoHTTP.GetAllTasks)
-	r.PUT("/tasks/:id", authMiddleware(), todoHTTP.Update)
-	r.DELETE("/tasks/:id", authMiddleware(), todoHTTP.DeleteTask)
-	r.PATCH("/tasks/:id/done", authMiddleware(), todoHTTP.MarkDone)
+	r.POST("/task", middleware.authMiddleware(), todoHTTP.AddTask)
+	r.GET("/tasks", middleware.authMiddleware(), todoHTTP.GetAllTasks)
+	r.DELETE("/tasks/completed", middleware.authMiddleware(), todoHTTP.DeleteCompleted)
+	r.PUT("/tasks/:id", middleware.authMiddleware(), todoHTTP.Update)
+	r.DELETE("/tasks/:id", middleware.authMiddleware(), todoHTTP.DeleteTask)
+	r.PATCH("/tasks/:id/done", middleware.authMiddleware(), todoHTTP.MarkDone)
+	r.GET("/tasks/:id/children", middleware.authMiddleware(), todoHTTP.GetChildTasks)
 }
 
 func setupUserRoutes(r *gin.Engine) {

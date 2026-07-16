@@ -1,4 +1,4 @@
-// Package client helps us communicating with auth-rest-api
+// Package client helps us to communicate with auth-rest-api
 package client
 
 import (
@@ -15,18 +15,22 @@ import (
 	"todoapp/internal/models"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 const (
-	healthEndpoint = "/health"
-	healthTimeout  = 10 * time.Second
+	healthEndpoint = "/.well-known/health"
+	healthTimeout  = 5 * time.Second
+)
+
+const (
+	errInvalidStatus errors.ConstError = "invalid status found"
+	errAuthNilResp   errors.ConstError = "nil response from auth-rest-api"
 )
 
 var (
-	errInvalidStatus = errors.NewConstError("invalid status found")
-	errAuthNilResp   = errors.NewConstError("nil response from auth-rest-api")
-	once             sync.Once
-	clientInstance   *Client
+	once           sync.Once
+	clientInstance *Client
 )
 
 type Client struct {
@@ -57,6 +61,7 @@ func New(url string) *Client {
 			panic(err)
 		}
 	})
+
 	return clientInstance
 }
 
@@ -73,10 +78,11 @@ func (c *Client) health(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
 	defer ensureBodyClosed(resp)
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return errors.ErrInvalid("auth service health check failed: " + resp.Status)
+		return errors.Invalid("auth service health check failed: " + resp.Status)
 	}
 
 	return nil
@@ -94,6 +100,7 @@ func (c *Client) SignUp(ctx *gin.Context, email, password string) error {
 	defer ensureBodyClosed(resp)
 
 	_, err = handleResponse[string](resp)
+
 	return err
 }
 
@@ -106,14 +113,12 @@ func (c *Client) SignIn(ctx *gin.Context, email, password string) (*models.AuthU
 		return nil, err
 	}
 
-	defer ensureBodyClosed(resp)
-
 	return handleResponse[models.AuthUserResp](resp)
 }
 
 func (c *Client) Refresh(ctx *gin.Context, auth string) (*string, error) {
 	if auth == "" {
-		return nil, errors.ErrRequired("auth token")
+		return nil, errors.Required("auth token")
 	}
 
 	headers := prepareAuthAPIHeaders(ctx, auth)
@@ -126,7 +131,7 @@ func (c *Client) Refresh(ctx *gin.Context, auth string) (*string, error) {
 	defer ensureBodyClosed(resp)
 
 	if resp == nil {
-		return nil, errors.ErrRequired("response for refresh")
+		return nil, errors.Required("response for refresh")
 	}
 
 	if resp.StatusCode != http.StatusCreated {
@@ -146,7 +151,7 @@ func (c *Client) Refresh(ctx *gin.Context, auth string) (*string, error) {
 
 func (c *Client) Revoke(ctx *gin.Context, token string) error {
 	if token == "" {
-		return errors.ErrRequired("token")
+		return errors.Required("token")
 	}
 
 	headers := prepareAuthAPIHeaders(ctx, token)
@@ -159,14 +164,36 @@ func (c *Client) Revoke(ctx *gin.Context, token string) error {
 	defer ensureBodyClosed(resp)
 
 	if resp == nil {
-		return errors.ErrRequired("response from revoke")
+		return errors.Required("response from revoke")
 	}
 
-	if resp.StatusCode != http.StatusNoContent {
-		return errors.ErrInvalid("revoke status code: " + resp.Status)
+	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
+		return errors.Invalid("revoke status code: " + resp.Status)
 	}
 
 	return nil
+}
+
+func (c *Client) Validate(ctx *gin.Context, token string) (*uuid.UUID, error) {
+	slog.LogAttrs(ctx, slog.LevelInfo, "validation called !!")
+
+	if token == "" {
+		return nil, errors.Required("token")
+	}
+
+	headers := prepareAuthAPIHeaders(ctx, token)
+
+	resp, err := c.postWithHeaders(ctx, "/validate", headers, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	valResp, err := handleResponse[models.ValidationResp](resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return extractUserID(&valResp.UserID)
 }
 
 func (c *Client) postWithHeaders(ctx *gin.Context, endpoint string, headers map[string]string, reqModel any) (*http.Response, error) {
@@ -195,6 +222,23 @@ func (c *Client) postWithHeaders(ctx *gin.Context, endpoint string, headers map[
 // ensureBodyClosed safely closes the response body if it exists
 func ensureBodyClosed(resp *http.Response) {
 	if resp != nil && resp.Body != nil {
-		resp.Body.Close()
+		_ = resp.Body.Close()
 	}
+}
+
+func extractUserID(claimSubject *string) (*uuid.UUID, error) {
+	if claimSubject == nil {
+		return nil, errors.Invalid("nil userID")
+	}
+
+	uid, err := uuid.Parse(*claimSubject)
+	if err != nil {
+		return nil, err
+	}
+
+	if uid == uuid.Nil {
+		return nil, errors.ErrInvalidCookie
+	}
+
+	return &uid, nil
 }

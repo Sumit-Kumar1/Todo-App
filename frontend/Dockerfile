@@ -12,17 +12,15 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-# Stage 2: Serve with Nginx
-FROM nginx:stable-alpine
+# Stage 2: Serve static files
+FROM node:25-alpine
 
-# Copy the built static files from the 'builder' stage to Nginx's serving directory
-COPY --from=builder /app/build /usr/share/nginx/html
+WORKDIR /app
 
-# Copy custom nginx configuration if needed
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+RUN npm install -g serve
 
-# Expose the port Nginx listens on (default 80)
-EXPOSE 80
+COPY --from=builder /app/build ./build
 
-# Nginx starts automatically by default
-CMD ["nginx", "-g", "daemon off;"]
+EXPOSE 3000
+
+CMD ["serve", "-s", "build", "-l", "3000"]

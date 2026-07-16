@@ -15,7 +15,6 @@ const (
 	methodUp       = "UP"
 	methodDown     = "DOWN"
 	migTableName   = "todo_migrations"
-	migInsertErr   = "Migration table insert error"
 	createMigTable = "CREATE TABLE IF NOT EXISTS %s(version TEXT, start_time TIMESTAMP, end_time TIMESTAMP, method TEXT);"
 	versionQuery   = "SELECT version from %s ORDER BY version DESC"
 	insertVersion  = "INSERT INTO %s(version, start_time, method) VALUES ($1, $2, $3);"
@@ -28,7 +27,7 @@ type migrator interface {
 
 func RunMigrations(ctx context.Context, db *sql.DB, method string) error {
 	if db == nil {
-		return errors.NewConstError("db is nil")
+		return errors.ErrNilDB
 	}
 
 	query := fmt.Sprintf(createMigTable, migTableName)
@@ -44,7 +43,7 @@ func RunMigrations(ctx context.Context, db *sql.DB, method string) error {
 	case methodDown:
 		err = runDownMigrations(ctx, db, migrations)
 	default:
-		return errors.ErrInvalid("migration method")
+		return errors.ErrInvalidMigMethod
 	}
 
 	if err != nil {

@@ -11,11 +11,16 @@ async function Login(email: string, password: string) {
 			skipRedirect: true
 		});
 
+		if (res === undefined) {
+			throw new Error(`undefined response from POST/login`)
+		}
+
+		if (res.status == 404) {
+			throw new Error(`user doesn't exist, please register first!`);
+		}
+
 		if (!res.ok) {
-			const error = await res.json();
-			throw new Error(
-				`HTTP error! status: ${res.status}, message: ${error.error || 'Login failed'}`
-			);
+			throw new Error(`Login error! status: ${res.status}`);
 		}
 
 		return res;
@@ -35,9 +40,16 @@ async function Register(email: string, password: string) {
 			skipRedirect: true
 		});
 
+		if (res === undefined) {
+			throw new Error(`undefined response from POST/register`)
+		}
+
+		if (res.status === 409) {
+			throw new Error(`user already, please use login!`);
+		}
+
 		if (!res.ok) {
-			const error = await res.json();
-			throw new Error(`HTTP error! status: ${res.status}, message: ${error.error}`);
+			throw new Error(`register error! status: ${res.status}`);
 		}
 
 		return res;
@@ -52,9 +64,13 @@ async function Logout() {
 			method: 'POST'
 		});
 
+		if (res === undefined) {
+			throw new Error(`undefined response from POST/logout`)
+		}
+
 		if (!res.ok) {
-			const error = await res.json();
-			throw new Error(`HTTP error! status: ${res.status}, message: ${error.error}`);
+			const err = await res.clone().json();
+			throw new Error(`logout error! status: ${res.status}, error: ${err.message}`);
 		}
 
 		return res;
